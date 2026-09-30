@@ -2,7 +2,10 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import { pool } from './db/pool';
 import { authRouter } from './modules/auth/auth.routes';
+import { venuesRouter } from './modules/venues/venues.routes';
+import { eventsRouter } from './modules/events/events.routes';
 import { requireAuth, requireRole } from './middleware/auth';
+import { errorHandler } from './middleware/errorHandler';
 
 export const app = express();
 
@@ -10,6 +13,8 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use('/auth', authRouter);
+app.use('/venues', venuesRouter);
+app.use('/events', eventsRouter);
 
 // Protected test route for verification
 app.get('/protected-test', requireAuth, requireRole('ORGANIZER'), (req, res) => {
@@ -25,3 +30,5 @@ app.get('/health', async (req, res) => {
     res.status(500).json({ status: 'error', message: 'Database connection failed' });
   }
 });
+
+app.use(errorHandler);
