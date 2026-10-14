@@ -8,7 +8,7 @@ const logger = pino({ name: 'error-handler' });
 export function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
   if (err instanceof ZodError) {
     return res.status(400).json({
-      error: { message: 'Validation failed', code: 400, details: err.errors }
+      error: { message: 'Validation failed', code: 400, details: (err as any).errors || (err as any).issues }
     });
   }
 

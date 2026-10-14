@@ -7,11 +7,9 @@ export async function createShow(req: Request, res: Response, next: NextFunction
   try {
     const data = createShowSchema.parse(req.body);
     const userId = req.user!.userId;
-    const { eventId } = req.params;
+    const eventId = req.params.eventId as string;
 
-    const result = await withTransaction(async (client) => {
-      return await showsService.createShow(client, userId, eventId, data);
-    });
+    const result = await showsService.createShow(userId, eventId, data);
 
     res.status(201).json(result);
   } catch (err) {
@@ -21,7 +19,7 @@ export async function createShow(req: Request, res: Response, next: NextFunction
 
 export async function getShowDetails(req: Request, res: Response, next: NextFunction) {
   try {
-    const { showId } = req.params;
+    const showId = req.params.showId as string;
     
     const client = await pool.connect();
     try {

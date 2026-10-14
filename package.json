@@ -9,7 +9,8 @@
     "migrate:create": "node-pg-migrate -m migrations --migration-file-language sql create",
     "migrate:up": "node-pg-migrate -m migrations --migration-file-language sql up",
     "migrate:down": "node-pg-migrate -m migrations --migration-file-language sql down",
-    "db:verify-002": "docker compose exec -T postgres psql -U flashseat -d flashseat -f - < scripts/verify-002.sql"
+    "db:verify-002": "docker compose exec -T postgres psql -U flashseat -d flashseat -f - < scripts/verify-002.sql",
+    "db:backfill-seats": "docker compose exec -T postgres psql -U flashseat -d flashseat -f - < scripts/backfill-show-seats.sql"
   },
   "keywords": [],
   "author": "",

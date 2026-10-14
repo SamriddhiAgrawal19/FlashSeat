@@ -22,7 +22,7 @@ export async function updateEvent(req: Request, res: Response, next: NextFunctio
   try {
     const data = updateEventSchema.parse(req.body);
     const userId = req.user!.userId;
-    const { eventId } = req.params;
+    const eventId = req.params.eventId as string;
 
     const result = await withTransaction(async (client) => {
       return await eventsService.updateEvent(client, userId, eventId, data);
@@ -37,7 +37,7 @@ export async function updateEvent(req: Request, res: Response, next: NextFunctio
 export async function publishEvent(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = req.user!.userId;
-    const { eventId } = req.params;
+    const eventId = req.params.eventId as string;
 
     await withTransaction(async (client) => {
       await eventsService.publishEvent(client, userId, eventId);
@@ -52,7 +52,7 @@ export async function publishEvent(req: Request, res: Response, next: NextFuncti
 export async function cancelEvent(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = req.user!.userId;
-    const { eventId } = req.params;
+    const eventId = req.params.eventId as string;
 
     await withTransaction(async (client) => {
       await eventsService.cancelEvent(client, userId, eventId);
@@ -83,7 +83,7 @@ export async function getEvents(req: Request, res: Response, next: NextFunction)
 
 export async function getEventDetails(req: Request, res: Response, next: NextFunction) {
   try {
-    const { eventId } = req.params;
+    const eventId = req.params.eventId as string;
     
     const client = await pool.connect();
     try {

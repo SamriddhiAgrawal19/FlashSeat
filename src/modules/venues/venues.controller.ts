@@ -22,7 +22,7 @@ export async function bulkCreateSeats(req: Request, res: Response, next: NextFun
   try {
     const data = bulkSeatsSchema.parse(req.body);
     const userId = req.user!.userId;
-    const { venueId } = req.params;
+    const venueId = req.params.venueId as string;
 
     await withTransaction(async (client) => {
       await venuesService.bulkInsertSeats(client, userId, venueId, data);
