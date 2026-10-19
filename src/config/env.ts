@@ -10,7 +10,18 @@ const envSchema = z.object({
   JWT_ACCESS_SECRET: z.string().min(1),
   JWT_ACCESS_EXPIRY: z.string().min(1),
   REFRESH_TOKEN_EXPIRY_DAYS: z.coerce.number().positive(),
-});
+  HOLD_DURATION_SECONDS: z.coerce.number().int().positive().default(600),
+  MAX_SEATS_PER_RESERVATION: z.coerce.number().int().positive().default(6),
+  ENABLE_MOCK_PAYMENT: z
+    .preprocess((val) => val === 'true' || val === true, z.boolean())
+    .default(false),
+}).refine(
+  (data) => !(data.NODE_ENV === 'production' && data.ENABLE_MOCK_PAYMENT),
+  {
+    message: 'ENABLE_MOCK_PAYMENT cannot be true in production',
+    path: ['ENABLE_MOCK_PAYMENT'],
+  }
+);
 
 // Parse and validate process.env. If it fails, Zod will throw an error and crash the app immediately.
 const _env = envSchema.safeParse(process.env);

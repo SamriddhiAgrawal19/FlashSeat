@@ -13,8 +13,15 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
   }
 
   if (err instanceof AppError) {
+    const errorBody: { message: string; code: string | number; details?: any } = {
+      message: err.message,
+      code: err.code,
+    };
+    if (err.details !== undefined) {
+      errorBody.details = err.details;
+    }
     return res.status(err.statusCode).json({
-      error: { message: err.message, code: err.statusCode }
+      error: errorBody,
     });
   }
 
