@@ -2,11 +2,15 @@
  * =========================================================================
  * GLOBAL LOCK ORDER
  * Every transaction that locks these entities must lock in this strict order:
- *   1. reservation row (FOR UPDATE)
- *   2. booking row (FOR UPDATE)
- *   3. show_seats rows (ORDER BY id ASC FOR UPDATE)
+ *   1. event row (FOR UPDATE for mutations, FOR SHARE for read-then-create)
+ *   2. show row (FOR SHARE on booking paths, FOR UPDATE in cancelEvent)
+ *   3. reservation row (FOR UPDATE)
+ *   4. booking row (FOR UPDATE)
+ *   5. show_seats rows (ORDER BY id ASC FOR UPDATE)
  *
- * Never lock in a different order anywhere in the codebase.
+ * Never lock in a different order anywhere in the codebase. Paths that only
+ * know a reservation/booking id first do a plain (non-locking) SELECT of show_id
+ * (with the owner check), then lock the show row before anything below it.
  * =========================================================================
  */
 
@@ -25,6 +29,8 @@ export interface ReservationWithSeatIdsRow {
   user_id: string;
   show_id: string;
   status: string;
+  /** status with lazy expiry applied: ACTIVE past expires_at reads as EXPIRED */
+  effective_status: string;
   expires_at: Date;
   idempotency_key: string;
   seat_ids: string[];
@@ -51,6 +57,8 @@ export interface ReservationSeatDetailRow {
   user_id: string;
   show_id: string;
   status: string;
+  /** status with lazy expiry applied: ACTIVE past expires_at reads as EXPIRED */
+  effective_status: string;
   expires_at: Date;
   seat_id: string;
   section: string;
@@ -64,6 +72,26 @@ export interface ReservationForUpdateRow {
   id: string;
   user_id: string;
   status: string;
+}
+
+// 0a. Plain (non-locking) read of the reservation's show — the owner check lives
+// here so checkout/release can learn show_id before taking the show lock (hierarchy).
+export async function getReservationOwnerShow(
+  client: PoolClient,
+  userId: string,
+  reservationId: string
+): Promise<{ id: string; user_id: string; show_id: string } | null> {
+  const result = await client.query<{ id: string; user_id: string; show_id: string }>(
+    'SELECT id, user_id, show_id FROM reservations WHERE id = $1 AND user_id = $2',
+    [reservationId, userId]
+  );
+  return result.rows[0] || null;
+}
+
+// 0b. Lock the show row FOR SHARE (hierarchy level 2). Release takes this only to
+// respect the hierarchy — release never requires the show to be bookable.
+export async function lockShowForRelease(client: PoolClient, showId: string): Promise<void> {
+  await client.query('SELECT id FROM shows WHERE id = $1 FOR SHARE', [showId]);
 }
 
 // 1. Get show for booking verification with FOR SHARE lock
@@ -93,6 +121,8 @@ export async function findReservationByKey(
 ): Promise<ReservationWithSeatIdsRow | null> {
   const result = await client.query<ReservationWithSeatIdsRow>(
     `SELECT r.id, r.user_id, r.show_id, r.status, r.expires_at, r.idempotency_key,
+            (CASE WHEN r.status = 'ACTIVE' AND r.expires_at <= now()
+                  THEN 'EXPIRED' ELSE r.status::text END) AS effective_status,
             COALESCE(
               ARRAY_AGG(rs.show_seat_id::text ORDER BY rs.show_seat_id) FILTER (WHERE rs.show_seat_id IS NOT NULL),
               ARRAY[]::text[]
@@ -198,6 +228,8 @@ export async function getReservationWithSeats(
 ): Promise<ReservationSeatDetailRow[]> {
   const result = await client.query<ReservationSeatDetailRow>(
     `SELECT r.id, r.user_id, r.show_id, r.status, r.expires_at,
+            (CASE WHEN r.status = 'ACTIVE' AND r.expires_at <= now()
+                  THEN 'EXPIRED' ELSE r.status::text END) AS effective_status,
             ss.id AS seat_id, vs.section, vs.row_label, vs.seat_number, vs.category, ss.price_paise
        FROM reservations r
        JOIN reservation_seats rs ON rs.reservation_id = r.id

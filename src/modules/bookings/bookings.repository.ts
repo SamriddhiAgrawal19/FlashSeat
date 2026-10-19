@@ -2,11 +2,16 @@
  * =========================================================================
  * GLOBAL LOCK ORDER
  * Every transaction that locks these entities must lock in this strict order:
- *   1. reservation row (FOR UPDATE)
- *   2. booking row (FOR UPDATE)
- *   3. show_seats rows (ORDER BY id ASC FOR UPDATE)
+ *   1. event row (FOR UPDATE for mutations, FOR SHARE for read-then-create)
+ *   2. show row (FOR SHARE on booking paths, FOR UPDATE in cancelEvent)
+ *   3. reservation row (FOR UPDATE)
+ *   4. booking row (FOR UPDATE)
+ *   5. show_seats rows (ORDER BY id ASC FOR UPDATE)
  *
- * Never lock in a different order anywhere in the codebase.
+ * Never lock in a different order anywhere in the codebase. Checkout, confirm
+ * and release only know a reservation/booking id: they first do a plain
+ * (non-locking) SELECT of show_id (with the owner check), then lock the show row
+ * FOR SHARE before touching reservations, bookings or seats.
  * =========================================================================
  */
 
@@ -19,6 +24,8 @@ export interface ReservationForCheckoutRow {
   status: string;
   expires_at: Date;
   is_active_valid: boolean;
+  /** status with lazy expiry applied: ACTIVE past expires_at reads as EXPIRED */
+  effective_status: string;
 }
 
 export interface BookingRow {
@@ -55,6 +62,8 @@ export interface BookingDetailRow {
   created_at: Date;
   confirmed_at: Date | null;
   reservation_expires_at: Date;
+  /** false when the reservation is gone or lazily expired — reads report EXPIRED */
+  reservation_active: boolean;
   event_id: string;
   event_title: string;
   show_id: string;
@@ -73,6 +82,20 @@ export interface BookingDetailRow {
   }>;
 }
 
+// 0. Plain (non-locking) read of the reservation's show_id with the owner check —
+// done before any locking so the show row can be locked first (Rule A).
+export async function getReservationRefForCheckout(
+  client: PoolClient,
+  userId: string,
+  reservationId: string
+): Promise<{ id: string; user_id: string; show_id: string } | null> {
+  const result = await client.query<{ id: string; user_id: string; show_id: string }>(
+    'SELECT id, user_id, show_id FROM reservations WHERE id = $1 AND user_id = $2',
+    [reservationId, userId]
+  );
+  return result.rows[0] || null;
+}
+
 // 1. Lock reservation row FOR UPDATE for checkout
 export async function getReservationForCheckout(
   client: PoolClient,
@@ -81,7 +104,9 @@ export async function getReservationForCheckout(
 ): Promise<ReservationForCheckoutRow | null> {
   const result = await client.query<ReservationForCheckoutRow>(
     `SELECT id, user_id, show_id, status, expires_at,
-            (status = 'ACTIVE' AND expires_at > now()) AS is_active_valid
+            (status = 'ACTIVE' AND expires_at > now()) AS is_active_valid,
+            (CASE WHEN status = 'ACTIVE' AND expires_at <= now()
+                  THEN 'EXPIRED' ELSE status::text END) AS effective_status
        FROM reservations
       WHERE id = $1 AND user_id = $2
         FOR UPDATE`,
@@ -167,13 +192,17 @@ export async function insertBooking(
   return result.rows[0];
 }
 
-// 6. Read booking row without lock (step 1 of confirmBookingCore)
+// 6. Read booking row without lock (step 1 of confirmBookingCore); joins the
+// reservation only to learn show_id before taking the show lock.
 export async function findBookingById(
   client: PoolClient | Pool,
   bookingId: string
-): Promise<{ id: string; user_id: string; reservation_id: string; status: string } | null> {
-  const result = await client.query<{ id: string; user_id: string; reservation_id: string; status: string }>(
-    `SELECT id, user_id, reservation_id, status FROM bookings WHERE id = $1`,
+): Promise<{ id: string; user_id: string; reservation_id: string; status: string; show_id: string } | null> {
+  const result = await client.query<{ id: string; user_id: string; reservation_id: string; status: string; show_id: string }>(
+    `SELECT b.id, b.user_id, b.reservation_id, b.status, r.show_id
+       FROM bookings b
+       JOIN reservations r ON r.id = b.reservation_id
+      WHERE b.id = $1`,
     [bookingId]
   );
   return result.rows[0] || null;
@@ -266,6 +295,7 @@ export async function getBookingDetailById(
   const result = await client.query<BookingDetailRow>(
     `SELECT b.id, b.user_id, b.status, b.total_amount_paise, b.created_at, b.confirmed_at,
             r.expires_at AS reservation_expires_at,
+            (r.status = 'ACTIVE' AND r.expires_at > now()) AS reservation_active,
             e.id AS event_id, e.title AS event_title,
             s.id AS show_id, s.starts_at AS show_starts_at,
             v.name AS venue_name, v.city AS venue_city,
@@ -293,7 +323,7 @@ export async function getBookingDetailById(
        JOIN venue_seats vs ON vs.id = ss.venue_seat_id
        LEFT JOIN booking_seats bs ON bs.booking_id = b.id AND bs.show_seat_id = ss.id AND bs.released_at IS NULL
       WHERE b.id = $1
-      GROUP BY b.id, r.expires_at, e.id, e.title, s.id, s.starts_at, v.name, v.city`,
+      GROUP BY b.id, r.expires_at, r.status, e.id, e.title, s.id, s.starts_at, v.name, v.city`,
     [bookingId]
   );
   return result.rows[0] || null;
@@ -309,6 +339,7 @@ export async function listUserBookings(
   const result = await client.query<BookingDetailRow>(
     `SELECT b.id, b.user_id, b.status, b.total_amount_paise, b.created_at, b.confirmed_at,
             r.expires_at AS reservation_expires_at,
+            (r.status = 'ACTIVE' AND r.expires_at > now()) AS reservation_active,
             e.id AS event_id, e.title AS event_title,
             s.id AS show_id, s.starts_at AS show_starts_at,
             v.name AS venue_name, v.city AS venue_city,
@@ -337,7 +368,7 @@ export async function listUserBookings(
        JOIN venue_seats vs ON vs.id = ss.venue_seat_id
        LEFT JOIN booking_seats bs ON bs.booking_id = b.id AND bs.show_seat_id = ss.id AND bs.released_at IS NULL
       WHERE b.user_id = $1
-      GROUP BY b.id, r.expires_at, e.id, e.title, s.id, s.starts_at, v.name, v.city
+      GROUP BY b.id, r.expires_at, r.status, e.id, e.title, s.id, s.starts_at, v.name, v.city
       ORDER BY b.created_at DESC
       LIMIT $2 OFFSET $3`,
     [userId, limit, offset]

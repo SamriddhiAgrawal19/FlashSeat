@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { uuidParam } from '../../utils/zod';
 
 export const createShowSchema = z.object({
   venueId: z.string().uuid(),
@@ -20,6 +21,14 @@ export const createShowSchema = z.object({
 }).refine(data => new Date(data.endsAt) > new Date(data.startsAt), {
   message: 'endsAt must be after startsAt',
   path: ['endsAt']
+});
+
+export const eventIdParamSchema = z.object({
+  eventId: uuidParam('Invalid event ID'),
+});
+
+export const showIdParamSchema = z.object({
+  showId: uuidParam('Invalid show ID'),
 });
 
 export type CreateShowRequest = z.infer<typeof createShowSchema>;

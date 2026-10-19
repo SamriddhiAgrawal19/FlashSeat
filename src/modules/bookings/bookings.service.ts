@@ -57,9 +57,14 @@ function formatBooking(row: repo.BookingDetailRow): FormattedBookingResponse {
     return seatObj;
   });
 
+  // Lazy expiry on reads: a PENDING_PAYMENT booking whose reservation is gone or
+  // past its hold is not payable anymore and must not read as pending.
+  const reportedStatus =
+    row.status === 'PENDING_PAYMENT' && !row.reservation_active ? 'EXPIRED' : row.status;
+
   const resObj: FormattedBookingResponse = {
     id: row.id,
-    status: row.status,
+    status: reportedStatus,
     totalPaise: Number(row.total_amount_paise),
     createdAt: new Date(row.created_at).toISOString(),
     confirmedAt: row.confirmed_at ? new Date(row.confirmed_at).toISOString() : null,
@@ -78,7 +83,7 @@ function formatBooking(row: repo.BookingDetailRow): FormattedBookingResponse {
     seats,
   };
 
-  if (row.status === 'PENDING_PAYMENT' && row.reservation_expires_at) {
+  if (reportedStatus === 'PENDING_PAYMENT' && row.reservation_expires_at) {
     resObj.payBefore = new Date(row.reservation_expires_at).toISOString();
   }
 
@@ -88,7 +93,9 @@ function formatBooking(row: repo.BookingDetailRow): FormattedBookingResponse {
 /**
  * checkout
  * Creates a PENDING_PAYMENT booking row for an active reservation.
- * Lock order: reservation -> booking -> show_seats (Rule A).
+ * Lock order (Rule A): show -> reservation -> booking -> show_seats (ascending id).
+ * The show_id is learned with a plain read first (owner check), then the show row
+ * is locked FOR SHARE before anything below it.
  * Tickets (booking_seats) are NOT inserted here (Rule B).
  */
 export async function checkout(
@@ -96,38 +103,69 @@ export async function checkout(
   reservationId: string
 ): Promise<{ booking: FormattedBookingResponse; replayed: boolean }> {
   return await withTransaction(async (client) => {
-    // 1. SELECT reservation FOR UPDATE (owner check)
+    // 0. Plain (non-locking) SELECT of show_id (owner check)
+    const ref = await repo.getReservationRefForCheckout(client, userId, reservationId);
+    if (!ref) {
+      throw new NotFoundError('Reservation not found');
+    }
+
+    // 1. show row FOR SHARE (lock hierarchy level 2)
+    const show = await repo.getShowBookableStatus(client, ref.show_id);
+    if (!show || show.event_status === 'DRAFT') {
+      throw new NotFoundError('Show not found');
+    }
+
+    // 2. SELECT reservation FOR UPDATE
     const reservation = await repo.getReservationForCheckout(client, userId, reservationId);
     if (!reservation) {
       throw new NotFoundError('Reservation not found');
     }
 
-    // 2. SELECT booking FOR UPDATE (idempotent double-click safety)
+    // 3. SELECT booking FOR UPDATE (idempotent double-click safety)
     const existingBooking = await repo.getBookingByReservationForUpdate(client, reservationId);
     if (existingBooking) {
-      const detail = await repo.getBookingDetailById(client, existingBooking.id);
-      return {
-        booking: formatBooking(detail!),
-        replayed: true,
-      };
+      // Idempotent replay, but only while the booking is actually live: a checkout
+      // is not "replayed" if its booking was since cancelled or its hold is dead.
+      if (existingBooking.status === 'CONFIRMED') {
+        const detail = await repo.getBookingDetailById(client, existingBooking.id);
+        return {
+          booking: formatBooking(detail!),
+          replayed: true,
+        };
+      }
+      if (existingBooking.status === 'PENDING_PAYMENT') {
+        if (reservation.is_active_valid) {
+          const detail = await repo.getBookingDetailById(client, existingBooking.id);
+          return {
+            booking: formatBooking(detail!),
+            replayed: true,
+          };
+        }
+        throw new ConflictError('Reservation is not active', 'RESERVATION_NOT_ACTIVE', {
+          status: reservation.effective_status,
+        });
+      }
+      throw new ConflictError(
+        `Booking is not in payable state (status: ${existingBooking.status})`,
+        'BOOKING_NOT_PAYABLE',
+        { status: existingBooking.status }
+      );
     }
 
-    // 3. Verify reservation status and DB clock expiry
+    // 4. Verify reservation status and DB clock expiry
     if (!reservation.is_active_valid) {
       let msg = 'Reservation is not active';
       if (reservation.status === 'RELEASED') {
         msg = 'Reservation has been released';
-      } else if (reservation.status === 'EXPIRED' || new Date(reservation.expires_at) <= new Date()) {
+      } else if (reservation.status === 'EXPIRED' || reservation.effective_status === 'EXPIRED') {
         msg = 'Reservation has expired';
       }
-      throw new ConflictError(msg, 'RESERVATION_NOT_ACTIVE');
+      throw new ConflictError(msg, 'RESERVATION_NOT_ACTIVE', {
+        status: reservation.effective_status,
+      });
     }
 
-    // 4. Verify show bookability using FOR SHARE lock
-    const show = await repo.getShowBookableStatus(client, reservation.show_id);
-    if (!show || show.event_status === 'DRAFT') {
-      throw new NotFoundError('Show not found');
-    }
+    // 5. Verify show bookability using FOR SHARE lock
     const isBookable =
       show.status === 'SCHEDULED' &&
       show.event_status === 'PUBLISHED' &&
@@ -137,7 +175,7 @@ export async function checkout(
       throw new ConflictError('Show is not bookable', 'SHOW_NOT_BOOKABLE');
     }
 
-    // 5. Lock seats in ascending ID order and verify Rule D
+    // 6. Lock seats in ascending ID order and verify Rule D
     const { seats: lockedSeats, expectedCount } = await repo.lockReservationSeatsInOrder(
       client,
       reservationId
@@ -154,7 +192,7 @@ export async function checkout(
       throw new ConflictError('Seat hold has expired or was lost', 'HOLD_LOST');
     }
 
-    // 6. INSERT the booking with status PENDING_PAYMENT (Rule B: do NOT insert booking_seats yet)
+    // 7. INSERT the booking with status PENDING_PAYMENT (Rule B: do NOT insert booking_seats yet)
     const totalAmountPaise = lockedSeats.reduce((sum, s) => sum + s.price_paise, 0);
     const newBooking = await repo.insertBooking(
       client,
@@ -164,7 +202,7 @@ export async function checkout(
       totalAmountPaise
     );
 
-    // 7. Return 201 { booking } including payBefore
+    // 8. Return 201 { booking } including payBefore
     const detail = await repo.getBookingDetailById(client, newBooking.id);
     return {
       booking: formatBooking(detail!),
@@ -177,19 +215,25 @@ export async function checkout(
  * confirmBookingCore
  * Reusable core confirmation logic without ownership checks.
  * In Phase 3, the real payment webhook will call this exact core.
- * Adheres strictly to Global Lock Order: reservation -> booking -> seats.
+ * Adheres strictly to Global Lock Order: show -> reservation -> booking -> seats.
  */
 export async function confirmBookingCore(
   client: PoolClient,
   bookingId: string
 ): Promise<{ booking: FormattedBookingResponse; replayed: boolean }> {
-  // 1. Read (without locking) the booking to get its reservation_id
+  // 1. Plain (non-locking) read to learn show_id (with its reservation)
   const bookingMeta = await repo.findBookingById(client, bookingId);
   if (!bookingMeta) {
     throw new NotFoundError('Booking not found');
   }
 
-  // 2. Lock reservation row FOR UPDATE, then booking row FOR UPDATE (Rule A)
+  // 2. Lock the show row FOR SHARE (lock hierarchy level 2)
+  const show = await repo.getShowBookableStatus(client, bookingMeta.show_id);
+  if (!show || show.event_status === 'DRAFT') {
+    throw new NotFoundError('Show not found');
+  }
+
+  // 3. Lock reservation row FOR UPDATE, then booking row FOR UPDATE (Rule A)
   const reservation = await repo.lockReservationForConfirm(client, bookingMeta.reservation_id);
   if (!reservation) {
     throw new NotFoundError('Reservation not found');
@@ -200,7 +244,8 @@ export async function confirmBookingCore(
     throw new NotFoundError('Booking not found');
   }
 
-  // 3. Idempotent replay if already CONFIRMED
+  // 4. Idempotent replay if already CONFIRMED. Checked before the show check so a
+  // webhook retry of an already-confirmed booking never fails after the fact.
   if (booking.status === 'CONFIRMED') {
     const detail = await repo.getBookingDetailById(client, bookingId);
     return {
@@ -209,19 +254,31 @@ export async function confirmBookingCore(
     };
   }
 
+  // 5. Re-check the show under its lock (status/not-started computed in SQL).
+  // The Phase 3 payment webhook calls this exact core: when it throws
+  // SHOW_NOT_BOOKABLE after money was captured, the webhook must trigger a refund.
+  const isBookable =
+    show.status === 'SCHEDULED' &&
+    show.event_status === 'PUBLISHED' &&
+    show.not_started;
+  if (!isBookable) {
+    throw new ConflictError('Show is not bookable', 'SHOW_NOT_BOOKABLE');
+  }
+
   if (booking.status !== 'PENDING_PAYMENT') {
     throw new ConflictError(
       `Booking is not in payable state (status: ${booking.status})`,
-      'BOOKING_NOT_PAYABLE'
+      'BOOKING_NOT_PAYABLE',
+      { status: booking.status }
     );
   }
 
-  // 4. Reservation must be ACTIVE and expires_at > now()
+  // 6. Reservation must be ACTIVE and expires_at > now()
   if (!reservation.is_active_valid) {
     throw new ConflictError('Hold has expired or is no longer active', 'HOLD_LOST');
   }
 
-  // 5. Lock seats in ID order and verify Rule D
+  // 7. Lock seats in ID order and verify Rule D
   const { seats: lockedSeats, expectedCount } = await repo.lockReservationSeatsInOrder(
     client,
     booking.reservation_id
@@ -240,7 +297,7 @@ export async function confirmBookingCore(
   const seatIds = lockedSeats.map((s) => s.id);
 
   try {
-    // 6. UPDATE show_seats to BOOKED
+    // 8. UPDATE show_seats to BOOKED
     const updatedCount = await repo.markSeatsBooked(client, bookingId, seatIds);
     if (updatedCount !== seatIds.length) {
       throw new Error(
@@ -248,7 +305,7 @@ export async function confirmBookingCore(
       );
     }
 
-    // 7. INSERT INTO booking_seats (the actual tickets created only upon confirmation)
+    // 9. INSERT INTO booking_seats (the actual tickets created only upon confirmation)
     const insertedTotalPrice = await repo.insertBookingSeats(client, bookingId, seatIds);
     if (insertedTotalPrice !== Number(booking.total_amount_paise)) {
       throw new Error(
@@ -256,10 +313,10 @@ export async function confirmBookingCore(
       );
     }
 
-    // 8. UPDATE bookings to CONFIRMED and reservations to CONFIRMED
+    // 10. UPDATE bookings to CONFIRMED and reservations to CONFIRMED
     await repo.setBookingAndReservationConfirmed(client, bookingId, booking.reservation_id);
 
-    // 9. Return the confirmed booking
+    // 11. Return the confirmed booking
     const detail = await repo.getBookingDetailById(client, bookingId);
     return {
       booking: formatBooking(detail!),

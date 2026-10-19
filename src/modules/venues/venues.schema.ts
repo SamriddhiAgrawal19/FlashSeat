@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { uuidParam } from '../../utils/zod';
 
 export const createVenueSchema = z.object({
   name: z.string().min(1),
@@ -21,6 +22,10 @@ export const bulkSeatsSchema = z.discriminatedUnion('mode', [
     category: z.string().default('REGULAR'),
   }),
 ]);
+
+export const venueIdParamSchema = z.object({
+  venueId: uuidParam('Invalid venue ID'),
+});
 
 export type CreateVenueRequest = z.infer<typeof createVenueSchema>;
 export type BulkSeatsRequest = z.infer<typeof bulkSeatsSchema>;

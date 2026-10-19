@@ -76,8 +76,107 @@ export async function updateEventStatus(client: PoolClient, eventId: string, sta
   await client.query(`UPDATE events SET ${setClause} WHERE id = $2`, [status, eventId]);
 }
 
-export async function cancelAllShowsForEvent(client: PoolClient, eventId: string): Promise<void> {
+// Lock the event row FOR UPDATE (hierarchy level 1) for state mutations.
+export async function findEventForUpdate(client: PoolClient, eventId: string): Promise<EventRow | null> {
+  const result = await client.query<EventRow>('SELECT * FROM events WHERE id = $1 FOR UPDATE', [eventId]);
+  return result.rows[0] || null;
+}
+
+// Lock the event row FOR UPDATE with the owner check (hierarchy level 1).
+export async function lockEventForCancel(
+  client: PoolClient,
+  eventId: string,
+  organizerId: string
+): Promise<{ id: string; status: string } | null> {
+  const result = await client.query<{ id: string; status: string }>(
+    'SELECT id, status FROM events WHERE id = $1 AND organizer_id = $2 FOR UPDATE',
+    [eventId, organizerId]
+  );
+  return result.rows[0] || null;
+}
+
+// Lock the event row FOR SHARE (hierarchy level 1) so a concurrent cancelEvent
+// (which needs FOR UPDATE) cannot run between a status check and a write.
+export async function lockEventForShowCreate(
+  client: PoolClient,
+  eventId: string
+): Promise<{ id: string; organizer_id: string; status: string } | null> {
+  const result = await client.query<{ id: string; organizer_id: string; status: string }>(
+    'SELECT id, organizer_id, status FROM events WHERE id = $1 FOR SHARE',
+    [eventId]
+  );
+  return result.rows[0] || null;
+}
+
+// ---- cancelEvent pipeline (set-based, lock hierarchy: shows -> reservations ->
+// ---- bookings -> show_seats; every level locked ORDER BY id ASC) ----------
+
+export async function lockShowsForEvent(client: PoolClient, eventId: string): Promise<void> {
+  await client.query('SELECT id FROM shows WHERE event_id = $1 ORDER BY id FOR UPDATE', [eventId]);
+}
+
+export async function cancelShowsForEvent(client: PoolClient, eventId: string): Promise<void> {
   await client.query(`UPDATE shows SET status = 'CANCELLED' WHERE event_id = $1`, [eventId]);
+}
+
+export async function lockActiveReservationsForEvent(client: PoolClient, eventId: string): Promise<void> {
+  await client.query(
+    `SELECT r.id FROM reservations r JOIN shows s ON s.id = r.show_id
+      WHERE s.event_id = $1 AND r.status = 'ACTIVE' ORDER BY r.id FOR UPDATE`,
+    [eventId]
+  );
+}
+
+export async function lockBookingsToCloseForEvent(client: PoolClient, eventId: string): Promise<void> {
+  await client.query(
+    `SELECT b.id FROM bookings b JOIN shows s ON s.id = b.show_id
+      WHERE s.event_id = $1 AND b.status IN ('PENDING_PAYMENT', 'CONFIRMED') ORDER BY b.id FOR UPDATE`,
+    [eventId]
+  );
+}
+
+export async function lockHeldSeatsForEvent(client: PoolClient, eventId: string): Promise<void> {
+  await client.query(
+    `SELECT ss.id FROM show_seats ss JOIN shows s ON s.id = ss.show_id
+      WHERE s.event_id = $1 AND ss.status = 'HELD' ORDER BY ss.id FOR UPDATE`,
+    [eventId]
+  );
+}
+
+export async function releaseHeldSeatsForEvent(client: PoolClient, eventId: string): Promise<void> {
+  await client.query(
+    `UPDATE show_seats ss SET status = 'AVAILABLE', reservation_id = NULL, held_until = NULL
+       FROM shows s
+      WHERE s.id = ss.show_id AND s.event_id = $1 AND ss.status = 'HELD'`,
+    [eventId]
+  );
+}
+
+export async function releaseActiveReservationsForEvent(client: PoolClient, eventId: string): Promise<void> {
+  await client.query(
+    `UPDATE reservations r SET status = 'RELEASED'
+       FROM shows s
+      WHERE s.id = r.show_id AND s.event_id = $1 AND r.status = 'ACTIVE'`,
+    [eventId]
+  );
+}
+
+export async function cancelPendingBookingsForEvent(client: PoolClient, eventId: string): Promise<void> {
+  await client.query(
+    `UPDATE bookings b SET status = 'CANCELLED', cancelled_at = now()
+       FROM shows s
+      WHERE s.id = b.show_id AND s.event_id = $1 AND b.status = 'PENDING_PAYMENT'`,
+    [eventId]
+  );
+}
+
+export async function markConfirmedBookingsRefundPendingForEvent(client: PoolClient, eventId: string): Promise<void> {
+  await client.query(
+    `UPDATE bookings b SET status = 'REFUND_PENDING'
+       FROM shows s
+      WHERE s.id = b.show_id AND s.event_id = $1 AND b.status = 'CONFIRMED'`,
+    [eventId]
+  );
 }
 
 export async function countShowsForEvent(client: PoolClient, eventId: string): Promise<number> {

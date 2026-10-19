@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { createVenueSchema, bulkSeatsSchema } from './venues.schema';
+import { createVenueSchema, bulkSeatsSchema, venueIdParamSchema } from './venues.schema';
 import * as venuesService from './venues.service';
 import { withTransaction } from '../../db/pool';
 
@@ -20,9 +20,9 @@ export async function createVenue(req: Request, res: Response, next: NextFunctio
 
 export async function bulkCreateSeats(req: Request, res: Response, next: NextFunction) {
   try {
+    const { venueId } = venueIdParamSchema.parse(req.params);
     const data = bulkSeatsSchema.parse(req.body);
     const userId = req.user!.userId;
-    const venueId = req.params.venueId as string;
 
     await withTransaction(async (client) => {
       await venuesService.bulkInsertSeats(client, userId, venueId, data);

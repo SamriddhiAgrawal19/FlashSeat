@@ -1,11 +1,12 @@
 import { z } from 'zod';
+import { uuidParam } from '../../utils/zod';
 
 export const reservationIdParamSchema = z.object({
-  reservationId: z.string().uuid('Invalid reservation ID'),
+  reservationId: uuidParam('Invalid reservation ID'),
 });
 
 export const bookingIdParamSchema = z.object({
-  bookingId: z.string().uuid('Invalid booking ID'),
+  bookingId: uuidParam('Invalid booking ID'),
 });
 
 export const listBookingsQuerySchema = z.object({

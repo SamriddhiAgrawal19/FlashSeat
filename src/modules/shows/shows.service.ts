@@ -13,10 +13,15 @@ async function executeCreateShow(
   eventId: string,
   data: CreateShowRequest
 ) {
-  // 1. Verify event exists and belongs to the organizer
-  const event = await eventRepo.findEventById(client, eventId);
+  // 1. Verify event exists and belongs to the organizer. FOR SHARE (hierarchy
+  // level 1, before the show rows below): a concurrent cancelEvent — which needs
+  // FOR UPDATE on this row — cannot slip in after the status check.
+  const event = await eventRepo.lockEventForShowCreate(client, eventId);
   if (!event || event.organizer_id !== organizerId) {
     throw new NotFoundError('Event not found');
+  }
+  if (event.status === 'CANCELLED') {
+    throw new ConflictError('Event is cancelled', 'EVENT_CANCELLED');
   }
 
   // 2. Verify venue exists and belongs to the organizer

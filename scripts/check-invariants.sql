@@ -59,9 +59,32 @@ SELECT ss.id, ss.booking_id, b.status AS booking_status
  WHERE ss.status = 'BOOKED'
    AND (b.status IS NULL OR b.status NOT IN ('CONFIRMED', 'REFUND_PENDING'));
 
-\echo '--- 6. CONFIRMED reservations without CONFIRMED booking ---'
+\echo '--- 6. CONFIRMED reservations without CONFIRMED (or REFUND_PENDING) booking ---'
 SELECT r.id, r.user_id, r.status AS reservation_status
   FROM reservations r
-  LEFT JOIN bookings b ON b.reservation_id = r.id AND b.status = 'CONFIRMED'
+  -- REFUND_PENDING is healthy: after an event cancel, confirmed bookings move to
+  -- REFUND_PENDING (Phase 3 refund) while the reservation stays CONFIRMED.
+  LEFT JOIN bookings b ON b.reservation_id = r.id AND b.status IN ('CONFIRMED', 'REFUND_PENDING')
  WHERE r.status = 'CONFIRMED'
    AND b.id IS NULL;
+
+\echo '--- 7. HELD seats on a CANCELLED show ---'
+SELECT ss.id, ss.show_id, ss.status, ss.held_until
+  FROM show_seats ss
+  JOIN shows s ON s.id = ss.show_id
+ WHERE ss.status = 'HELD'
+   AND s.status = 'CANCELLED';
+
+\echo '--- 8. ACTIVE reservations on a CANCELLED show ---'
+SELECT r.id, r.user_id, r.show_id, r.expires_at
+  FROM reservations r
+  JOIN shows s ON s.id = r.show_id
+ WHERE r.status = 'ACTIVE'
+   AND s.status = 'CANCELLED';
+
+\echo '--- 9. PENDING_PAYMENT bookings on a CANCELLED show ---'
+SELECT b.id, b.user_id, b.show_id, b.status
+  FROM bookings b
+  JOIN shows s ON s.id = b.show_id
+ WHERE b.status = 'PENDING_PAYMENT'
+   AND s.status = 'CANCELLED';

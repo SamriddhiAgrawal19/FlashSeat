@@ -58,11 +58,22 @@ function formatReservationDetails(rows: repo.ReservationSeatDetailRow[]): Format
   return {
     id: first.id,
     showId: first.show_id,
-    status: first.status,
+    status: first.effective_status,
     expiresAt: new Date(first.expires_at).toISOString(),
     seats,
     totalPricePaise,
   };
+}
+
+// Shared by both replay branches: payload equality first (422), then liveness.
+// A replay only succeeds while the hold is live — after a dead hold the client
+// must use a NEW Idempotency-Key to hold seats again.
+function assertReplayIsLive(existing: { effective_status: string }): void {
+  if (existing.effective_status !== 'ACTIVE') {
+    throw new ConflictError('Reservation is not active', 'RESERVATION_NOT_ACTIVE', {
+      status: existing.effective_status,
+    });
+  }
 }
 
 export async function createReservation(
@@ -88,6 +99,8 @@ export async function createReservation(
             'IDEMPOTENCY_KEY_REUSED'
           );
         }
+
+        assertReplayIsLive(existing);
 
         const details = await repo.getReservationWithSeats(client, userId, existing.id);
         return {
@@ -140,6 +153,8 @@ export async function createReservation(
               'IDEMPOTENCY_KEY_REUSED'
             );
           }
+
+          assertReplayIsLive(concurrentExisting);
 
           const details = await repo.getReservationWithSeats(client, userId, concurrentExisting.id);
           return {
@@ -222,26 +237,37 @@ export async function getReservation(userId: string, reservationId: string): Pro
 
 export async function releaseReservation(userId: string, reservationId: string): Promise<void> {
   await withTransaction(async (client) => {
-    // 1. Lock reservation row FOR UPDATE (owner check)
+    // 0. Plain (non-locking) SELECT of show_id (owner check)
+    const ref = await repo.getReservationOwnerShow(client, userId, reservationId);
+    if (!ref) {
+      throw new NotFoundError('Reservation not found');
+    }
+
+    // 1. Lock the show row FOR SHARE — only to respect the lock hierarchy
+    // (show -> reservation -> booking -> seats); release never requires a
+    // bookable show.
+    await repo.lockShowForRelease(client, ref.show_id);
+
+    // 2. Lock reservation row FOR UPDATE
     const reservation = await repo.getReservationForUpdate(client, userId, reservationId);
     if (!reservation) {
       throw new NotFoundError('Reservation not found');
     }
 
-    // 2. Lock booking row of this reservation FOR UPDATE (enforcing lock hierarchy: reservation -> booking)
+    // 3. Lock booking row of this reservation FOR UPDATE (enforcing lock hierarchy: reservation -> booking)
     const booking = await repo.getBookingByReservationForUpdate(client, reservationId);
 
-    // 3. Paid / confirmed reservations cannot be released this way
+    // 4. Paid / confirmed reservations cannot be released this way
     if (reservation.status === 'CONFIRMED') {
       throw new ConflictError('Cannot release a confirmed reservation', 'CANNOT_RELEASE_CONFIRMED');
     }
 
-    // 4. Status RELEASED or EXPIRED -> return (idempotent 204)
+    // 5. Status RELEASED or EXPIRED -> return (idempotent 204)
     if (reservation.status === 'RELEASED' || reservation.status === 'EXPIRED') {
       return;
     }
 
-    // 5. Status ACTIVE -> lock held seats in ID order, set AVAILABLE, mark reservation RELEASED, cancel pending booking
+    // 6. Status ACTIVE -> lock held seats in ID order, set AVAILABLE, mark reservation RELEASED, cancel pending booking
     if (reservation.status === 'ACTIVE') {
       await repo.lockHeldSeatsForReservation(client, reservationId);
       await repo.releaseHeldSeats(client, reservationId);
@@ -253,7 +279,7 @@ export async function releaseReservation(userId: string, reservationId: string):
       return;
     }
 
-    // 6. Any other status -> ConflictError
+    // 7. Any other status -> ConflictError
     throw new ConflictError(
       `Cannot release a reservation with status ${reservation.status}`,
       'CANNOT_RELEASE_RESERVATION'

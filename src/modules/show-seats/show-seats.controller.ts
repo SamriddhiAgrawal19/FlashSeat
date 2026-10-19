@@ -2,9 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import * as showSeatsService from './show-seats.service';
 import { pool } from '../../db/pool';
+import { uuidParam } from '../../utils/zod';
 
 const showIdParamSchema = z.object({
-  showId: z.string().uuid(),
+  showId: uuidParam('Invalid show ID'),
 });
 
 export async function getSeatMap(req: Request, res: Response, next: NextFunction) {
