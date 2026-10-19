@@ -4,6 +4,7 @@ import { pool } from './db/pool';
 import { authRouter } from './modules/auth/auth.routes';
 import { venuesRouter } from './modules/venues/venues.routes';
 import { eventsRouter } from './modules/events/events.routes';
+import { showSeatsRouter } from './modules/show-seats/show-seats.routes';
 import { requireAuth, requireRole } from './middleware/auth';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -15,6 +16,7 @@ app.use(cookieParser());
 app.use('/auth', authRouter);
 app.use('/venues', venuesRouter);
 app.use('/events', eventsRouter);
+app.use('/shows', showSeatsRouter);
 
 // Protected test route for verification
 app.get('/protected-test', requireAuth, requireRole('ORGANIZER'), (req, res) => {
