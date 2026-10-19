@@ -45,6 +45,14 @@ export async function insertCategoryPrices(
   await client.query(queryText, values);
 }
 
+// Lock order: this per-venue advisory lock is taken right after the event row lock
+// and before inserting the show (see docs/lock-order.md). The no_venue_overlap
+// exclusion-constraint check can deadlock between concurrent createShow inserters
+// (PostgreSQL execIndexing.c); serializing per venue removes the window entirely.
+export async function acquireVenueShowLock(client: PoolClient, venueId: string): Promise<void> {
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1::text))', [venueId]);
+}
+
 export async function findShowById(client: PoolClient, showId: string) {
   const showResult = await client.query(`
     SELECT s.*, v.name as venue_name, v.address as venue_address, v.city as venue_city

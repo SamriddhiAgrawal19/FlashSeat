@@ -33,7 +33,17 @@ export async function register(client: PoolClient, data: RegisterRequest) {
   }
 
   const hashed = await hashPassword(data.password);
-  const user = await repo.createUser(client, data.name, data.email, hashed, data.role);
+  let user;
+  try {
+    user = await repo.createUser(client, data.name, data.email, hashed, data.role);
+  } catch (err: any) {
+    // Lost the registration race against a concurrent same-email register: report
+    // exactly what the pre-check above reports so both paths look identical.
+    if (err?.code === '23505' && err?.constraint === 'users_email_key') {
+      throw new AuthError(409, 'Email already in use');
+    }
+    throw err;
+  }
 
   if (data.role === 'ORGANIZER' && data.organization_name) {
     await repo.createOrganizerProfile(client, user.id, data.organization_name);

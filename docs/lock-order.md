@@ -3,10 +3,20 @@
 To prevent deadlocks across concurrent transactions in the booking engine, all operations that acquire row-level locks on core transactional entities MUST acquire them in this strict, non-negotiable global hierarchy:
 
 1. **`events` row** (`FOR UPDATE` for mutations, `FOR SHARE` for read-then-create checks)
-2. **`shows` row** (`FOR SHARE` on booking paths, `FOR UPDATE` in `cancelEvent`; `ORDER BY id ASC` when locking several)
-3. **`reservations` row** (`FOR UPDATE`; `ORDER BY id ASC` when locking several)
-4. **`bookings` row** (`FOR UPDATE`; `ORDER BY id ASC` when locking several)
-5. **`show_seats` rows** (`ORDER BY id ASC FOR UPDATE`)
+2. **venue show-creation advisory lock** (only `createShow`; see below)
+3. **`shows` row** (`FOR SHARE` on booking paths, `FOR UPDATE` in `cancelEvent`; `ORDER BY id ASC` when locking several)
+4. **`reservations` row** (`FOR UPDATE`; `ORDER BY id ASC` when locking several)
+5. **`bookings` row** (`FOR UPDATE`; `ORDER BY id ASC` when locking several)
+6. **`show_seats` rows** (`ORDER BY id ASC FOR UPDATE`)
+
+## Venue show-creation advisory lock
+
+`createShow` takes a per-venue, transaction-scoped advisory lock
+(`SELECT pg_advisory_xact_lock(hashtext(<venueId>))`) right after the event row lock and
+before inserting the show. Only `createShow` takes it; never take it while holding show,
+reservation, booking or seat locks. It serializes concurrent show creation per venue so
+the `no_venue_overlap` exclusion-constraint check cannot deadlock (observed as `40P01`
+under parallel overlapping `createShow` calls).
 
 ## Principles
 - **No Inverted Ordering**: never lock a lower level before a higher one — no `show_seats` before `reservations`/`bookings`, no `bookings` before `reservations`, no `reservations` before `shows`, no `shows` before `events`.

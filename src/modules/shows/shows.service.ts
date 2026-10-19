@@ -24,6 +24,9 @@ async function executeCreateShow(
     throw new ConflictError('Event is cancelled', 'EVENT_CANCELLED');
   }
 
+  // Per-venue advisory lock: right after the event lock, before any show writes.
+  await repo.acquireVenueShowLock(client, data.venueId);
+
   // 2. Verify venue exists and belongs to the organizer
   const venue = await venueRepo.findVenueById(client, data.venueId);
   if (!venue || venue.owner_id !== organizerId) {
@@ -89,10 +92,10 @@ export async function createShow(
     try {
       return await executeCreateShow(client, organizerId, eventId, data);
     } catch (err: any) {
-      if (err.code === '23P01') {
+      if (err.code === '23P01' && err.constraint === 'no_venue_overlap') {
         throw new ConflictError('This venue is already booked for an overlapping time slot');
       }
-      if (err.code === '23505') {
+      if (err.code === '23505' && err.constraint === 'show_category_prices_pkey') {
         throw new ValidationError('Duplicate category in prices');
       }
       throw err;
@@ -108,10 +111,10 @@ export async function createShow(
       return await executeCreateShow(client, organizerId, eventId, data);
     });
   } catch (err: any) {
-    if (err.code === '23P01') {
+    if (err.code === '23P01' && err.constraint === 'no_venue_overlap') {
       throw new ConflictError('This venue is already booked for an overlapping time slot');
     }
-    if (err.code === '23505') {
+    if (err.code === '23505' && err.constraint === 'show_category_prices_pkey') {
       throw new ValidationError('Duplicate category in prices');
     }
     throw err;

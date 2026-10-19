@@ -1,6 +1,7 @@
 import { app } from './app';
 import { env } from './config/env';
 import { pool } from './db/pool';
+import { lifecycle } from './utils/lifecycle';
 import pino from 'pino';
 
 const logger = pino({ name: 'server' });
@@ -9,14 +10,28 @@ const server = app.listen(env.PORT, () => {
   logger.info(`Server is running on port ${env.PORT}`);
 });
 
-// Graceful shutdown logic
-async function shutdown() {
+server.on('error', (err) => {
+  logger.fatal({ err }, 'HTTP server error');
+  process.exit(1);
+});
+
+async function shutdown(exitCode: number) {
+  if (lifecycle.shuttingDown) return; // ignore repeated signals / crashes
+  lifecycle.shuttingDown = true;
   logger.info('Shutting down server...');
-  
+
+  // Hard deadline: if draining stalls (e.g. a stuck request), force-close and fail.
+  const deadline = setTimeout(() => {
+    logger.error({ timeoutMs: env.SHUTDOWN_TIMEOUT_MS }, 'Shutdown deadline exceeded; forcing exit');
+    server.closeAllConnections();
+    process.exit(1);
+  }, env.SHUTDOWN_TIMEOUT_MS);
+  deadline.unref();
+
+  server.closeIdleConnections();
   server.close(async (err) => {
     if (err) {
       logger.error({ err }, 'Error during server close');
-      process.exitCode = 1;
     } else {
       logger.info('HTTP server closed.');
     }
@@ -26,12 +41,19 @@ async function shutdown() {
       logger.info('Database pool closed.');
     } catch (dbErr) {
       logger.error({ err: dbErr }, 'Error during database pool close');
-      process.exitCode = 1;
     }
 
-    process.exit();
+    process.exit(err ? 1 : exitCode);
   });
 }
 
-process.on('SIGINT', shutdown);
-process.on('SIGTERM', shutdown);
+process.on('SIGINT', () => void shutdown(0));
+process.on('SIGTERM', () => void shutdown(0));
+process.on('unhandledRejection', (err) => {
+  logger.fatal({ err }, 'unhandledRejection');
+  void shutdown(1);
+});
+process.on('uncaughtException', (err) => {
+  logger.fatal({ err }, 'uncaughtException');
+  void shutdown(1);
+});

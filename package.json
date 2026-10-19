@@ -12,6 +12,7 @@
     "db:verify-002": "docker compose exec -T postgres psql -U flashseat -d flashseat -f - < scripts/verify-002.sql",
     "db:backfill-seats": "docker compose exec -T postgres psql -U flashseat -d flashseat -f - < scripts/backfill-show-seats.sql",
     "db:check-invariants": "docker compose exec -T postgres psql -U flashseat -d flashseat -f - < scripts/check-invariants.sql",
+    "db:show-settings": "tsx scripts/show-db-settings.ts",
     "smoke:concurrency": "node scripts/smoke-concurrency.mjs",
     "smoke:checkout": "node scripts/smoke-checkout.mjs"
   },

@@ -12,6 +12,12 @@ const envSchema = z.object({
   REFRESH_TOKEN_EXPIRY_DAYS: z.coerce.number().positive(),
   HOLD_DURATION_SECONDS: z.coerce.number().int().positive().default(600),
   MAX_SEATS_PER_RESERVATION: z.coerce.number().int().positive().default(6),
+  DB_POOL_MAX: z.coerce.number().int().positive().default(10),
+  DB_CONNECTION_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+  DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+  DB_LOCK_TIMEOUT_MS: z.coerce.number().int().positive().default(1000),
+  DB_IDLE_IN_TX_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+  SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
   ENABLE_MOCK_PAYMENT: z
     .preprocess((val) => val === 'true' || val === true, z.boolean())
     .default(false),
