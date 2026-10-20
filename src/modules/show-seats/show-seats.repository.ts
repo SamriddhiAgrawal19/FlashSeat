@@ -6,6 +6,7 @@ export interface ShowForSeatMapRow {
   ends_at: Date;
   status: string;
   event_status: string;
+  not_started: boolean;
 }
 
 export interface SeatMapRow {
@@ -52,7 +53,8 @@ export async function getShowForSeatMap(
   showId: string
 ): Promise<ShowForSeatMapRow | null> {
   const result = await client.query<ShowForSeatMapRow>(
-    `SELECT s.id, s.starts_at, s.ends_at, s.status, e.status AS event_status
+    `SELECT s.id, s.starts_at, s.ends_at, s.status, e.status AS event_status,
+            (s.starts_at > now()) AS not_started
        FROM shows s
        JOIN events e ON e.id = s.event_id
       WHERE s.id = $1`,

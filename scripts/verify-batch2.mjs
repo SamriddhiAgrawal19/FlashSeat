@@ -350,8 +350,8 @@ const scenE = {
       c.expect(`round ${round}: exactly nine 409`, conflicts.length === 9, `got ${conflicts.length}`);
       c.expect(`round ${round}: zero other statuses`, others.length === 0,
         others.map((r) => `${r.status}:${r.bodyText}`).join(' '));
-      c.expect(`round ${round}: 409s use the pre-check message`,
-        conflicts.every((r) => r.data?.error === 'Email already in use'),
+      c.expect(`round ${round}: 409s use the pre-check error (EMAIL_TAKEN)`,
+        conflicts.every((r) => r.data?.error?.code === 'EMAIL_TAKEN' && r.data?.error?.message === 'Email already in use'),
         conflicts.map((r) => r.bodyText).join(' '));
     }
   },

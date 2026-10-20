@@ -42,12 +42,11 @@ export async function getSeatMap(
     throw new NotFoundError('Show not found');
   }
 
-  // 2. Compute bookable flag
-  const isStarted = new Date(show.starts_at).getTime() <= Date.now();
+  // 2. Compute bookable flag from the SQL booleans only (DB clock)
   const bookable =
     show.status === 'SCHEDULED' &&
     show.event_status === 'PUBLISHED' &&
-    !isStarted;
+    show.not_started;
 
   // 3. Fetch flat seat map rows
   const seatRows = await repo.listSeatMap(client, showId);

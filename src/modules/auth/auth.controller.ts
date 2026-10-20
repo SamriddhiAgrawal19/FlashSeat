@@ -1,9 +1,10 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { registerSchema, loginSchema } from './auth.schema';
 import * as authService from './auth.service';
-import { pool, withTransaction } from '../../db/pool';
+import { withTransaction } from '../../db/pool';
+import { AppError, UnauthorizedError } from '../../utils/errors';
 
-const COOKIE_NAME = 'refresh_token';
+const COOKIE_NAME = 'refreshToken';
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
@@ -11,10 +12,10 @@ const COOKIE_OPTIONS = {
   path: '/auth'
 };
 
-export async function register(req: Request, res: Response) {
+export async function register(req: Request, res: Response, next: NextFunction) {
   try {
     const data = registerSchema.parse(req.body);
-    
+
     const result = await withTransaction(async (client) => {
       return await authService.register(client, data);
     });
@@ -24,62 +25,48 @@ export async function register(req: Request, res: Response) {
       user: result.user,
       accessToken: result.accessToken
     });
-  } catch (err: any) {
-    if (err.name === 'ZodError') {
-      res.status(400).json({ error: 'Validation failed', details: err.errors });
-    } else if (err instanceof authService.AuthError) {
-      res.status(err.statusCode).json({ error: err.message });
-    } else {
-      res.status(500).json({ error: 'Internal server error' });
-    }
+  } catch (err) {
+    next(err);
   }
 }
 
-export async function login(req: Request, res: Response) {
+export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const data = loginSchema.parse(req.body);
-    
+
     const result = await withTransaction(async (client) => {
       return await authService.login(client, data);
     });
 
     res.cookie(COOKIE_NAME, result.refreshToken, COOKIE_OPTIONS);
     res.json({ accessToken: result.accessToken });
-  } catch (err: any) {
-    if (err.name === 'ZodError') {
-      res.status(400).json({ error: 'Validation failed', details: err.errors });
-    } else if (err instanceof authService.AuthError) {
-      res.status(err.statusCode).json({ error: err.message });
-    } else {
-      res.status(500).json({ error: 'Internal server error' });
-    }
+  } catch (err) {
+    next(err);
   }
 }
 
-export async function refresh(req: Request, res: Response) {
+export async function refresh(req: Request, res: Response, next: NextFunction) {
   try {
     const token = req.cookies[COOKIE_NAME];
     if (!token) {
-      res.status(401).json({ error: 'No refresh token provided' });
-      return;
+      throw new UnauthorizedError('No refresh token provided', 'UNAUTHORIZED');
     }
 
-    const result = await withTransaction(async (client) => {
-      return await authService.refresh(client, token);
-    });
+    const result = await authService.refresh(token);
 
     res.cookie(COOKIE_NAME, result.refreshToken, COOKIE_OPTIONS);
     res.json({ accessToken: result.accessToken });
-  } catch (err: any) {
-    if (err instanceof authService.AuthError) {
-      res.status(err.statusCode).json({ error: err.message });
-    } else {
-      res.status(500).json({ error: 'Internal server error' });
+  } catch (err) {
+    // Every 401 clears the cookie with the same path/options it was set with.
+    // Transient 5xx failures deliberately keep it: the session may still be valid.
+    if (err instanceof AppError && err.statusCode === 401) {
+      res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
     }
+    next(err);
   }
 }
 
-export async function logout(req: Request, res: Response) {
+export async function logout(req: Request, res: Response, next: NextFunction) {
   try {
     const token = req.cookies[COOKIE_NAME];
     if (token) {
@@ -90,6 +77,6 @@ export async function logout(req: Request, res: Response) {
     res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Internal server error' });
+    next(err);
   }
 }

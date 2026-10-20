@@ -10,29 +10,36 @@ export class AppError extends Error {
   }
 }
 
+export class UnauthorizedError extends AppError {
+  constructor(message = 'Unauthorized', code: string = 'UNAUTHORIZED', details?: any) {
+    super(401, message, code, details);
+    this.name = 'UnauthorizedError';
+  }
+}
+
 export class NotFoundError extends AppError {
-  constructor(message = 'Resource not found', code: string | number = 404, details?: any) {
+  constructor(message = 'Resource not found', code: string | number = 'NOT_FOUND', details?: any) {
     super(404, message, code, details);
     this.name = 'NotFoundError';
   }
 }
 
 export class ForbiddenError extends AppError {
-  constructor(message = 'Forbidden', code: string | number = 403, details?: any) {
+  constructor(message = 'Forbidden', code: string | number = 'FORBIDDEN', details?: any) {
     super(403, message, code, details);
     this.name = 'ForbiddenError';
   }
 }
 
 export class ConflictError extends AppError {
-  constructor(message = 'Conflict', code: string | number = 409, details?: any) {
+  constructor(message = 'Conflict', code: string | number = 'CONFLICT', details?: any) {
     super(409, message, code, details);
     this.name = 'ConflictError';
   }
 }
 
 export class ValidationError extends AppError {
-  constructor(message = 'Validation failed', code: string | number = 400, details?: any) {
+  constructor(message = 'Validation failed', code: string | number = 'VALIDATION_ERROR', details?: any) {
     super(400, message, code, details);
     this.name = 'ValidationError';
   }

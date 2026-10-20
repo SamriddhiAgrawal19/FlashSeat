@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../modules/auth/jwt';
+import { ForbiddenError, UnauthorizedError } from '../utils/errors';
 
 // Augment Express Request type
 declare global {
@@ -13,35 +14,33 @@ declare global {
   }
 }
 
+// Deliberately stateless: no DB lookup per request. Deactivating a user therefore
+// takes effect at their next refresh or login, at most JWT_ACCESS_EXPIRY later.
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Missing or invalid Authorization header' });
-    return;
+    return next(new UnauthorizedError('Missing or invalid Authorization header', 'UNAUTHORIZED'));
   }
 
   const token = authHeader.split(' ')[1];
 
   try {
-    const payload = verifyAccessToken(token);
-    req.user = { userId: payload.userId, role: payload.role };
+    req.user = verifyAccessToken(token); // throws TOKEN_EXPIRED / INVALID_TOKEN
     next();
   } catch (err) {
-    res.status(401).json({ error: 'Invalid or expired access token' });
+    next(err);
   }
 }
 
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      res.status(401).json({ error: 'Not authenticated' });
-      return;
+      return next(new UnauthorizedError('Not authenticated', 'UNAUTHORIZED'));
     }
 
     if (!roles.includes(req.user.role)) {
-      res.status(403).json({ error: 'Forbidden' });
-      return;
+      return next(new ForbiddenError('Forbidden', 'FORBIDDEN'));
     }
 
     next();

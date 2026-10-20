@@ -9,6 +9,14 @@ To prevent deadlocks across concurrent transactions in the booking engine, all o
 5. **`bookings` row** (`FOR UPDATE`; `ORDER BY id ASC` when locking several)
 6. **`show_seats` rows** (`ORDER BY id ASC FOR UPDATE`)
 
+## Auth lock order (`refresh_tokens`)
+
+Refresh-token rotation locks the **token row first** (`lookupRefreshTokenForUpdate`,
+`FOR UPDATE` on the presented token), then, only on reuse detection, the user's **other
+tokens ordered by id** (`revokeAllRefreshTokensForUser` locks in `ORDER BY id` so
+concurrent containment runs cannot deadlock). Auth code never touches booking tables,
+so it is independent of the booking hierarchy above.
+
 ## Venue show-creation advisory lock
 
 `createShow` takes a per-venue, transaction-scoped advisory lock
