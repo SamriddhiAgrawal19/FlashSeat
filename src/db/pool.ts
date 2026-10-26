@@ -10,7 +10,7 @@ export const pool = new Pool({
   // Bounded wait for a pooled client / new connection: requests fail fast instead
   // of queueing forever behind a wedged pool.
   connectionTimeoutMillis: env.DB_CONNECTION_TIMEOUT_MS,
-  application_name: 'flashseat-api',
+  application_name: env.DB_APPLICATION_NAME,
   // Server-side session guards (pg sends these in the startup packet). Deliberately
   // NOT query_timeout: it only abandons the query client-side and leaves it running
   // on the server.

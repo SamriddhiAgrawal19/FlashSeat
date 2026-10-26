@@ -18,6 +18,10 @@ const envSchema = z.object({
   DB_LOCK_TIMEOUT_MS: z.coerce.number().int().positive().default(1000),
   DB_IDLE_IN_TX_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+  SWEEPER_INTERVAL_MS: z.coerce.number().int().positive().default(15000),
+  SWEEPER_BATCH_SIZE: z.coerce.number().int().positive().default(200),
+  SWEEPER_MAX_RUN_MS: z.coerce.number().int().positive().default(10000),
+  DB_APPLICATION_NAME: z.string().default('flashseat-api'),
   ENABLE_MOCK_PAYMENT: z
     .preprocess((val) => val === 'true' || val === true, z.boolean())
     .default(false),

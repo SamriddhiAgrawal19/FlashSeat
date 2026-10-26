@@ -43,7 +43,12 @@ function checkInvariants() {
 }
 
 function deadlockCount() {
-  const out = execFileSync(DOCKER_BIN, ['compose', 'logs', '--no-color', 'postgres'], { encoding: 'utf8', cwd: ROOT });
+  const out = execFileSync(DOCKER_BIN, ['compose', 'logs', '--no-color', 'postgres'], {
+    encoding: 'utf8',
+    cwd: ROOT,
+    // the full container log outgrows execFileSync's 1 MB default (ENOBUFS)
+    maxBuffer: 256 * 1024 * 1024,
+  });
   return (out.match(/deadlock detected/g) || []).length;
 }
 

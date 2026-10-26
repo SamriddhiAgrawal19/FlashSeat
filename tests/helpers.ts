@@ -147,6 +147,17 @@ export async function expireReservation(reservationId: string): Promise<void> {
   await db(`UPDATE show_seats SET held_until = now() - interval '1 minute' WHERE reservation_id = $1`, [reservationId]);
 }
 
+/**
+ * Moves EVERY live hold in the database into the past (test data only). Used by
+ * the sweeper tests before draining: with no live hold left anywhere, none can
+ * reach its real HOLD_DURATION_SECONDS expiry mid-test and be swept along with
+ * the test's own rows.
+ */
+export async function expireAllLiveHolds(): Promise<void> {
+  await db(`UPDATE reservations SET expires_at = now() - interval '1 minute' WHERE status = 'ACTIVE' AND expires_at > now()`);
+  await db(`UPDATE show_seats SET held_until = now() - interval '1 minute' WHERE status = 'HELD' AND held_until > now()`);
+}
+
 /** Moves a single seat's hold deadline into the past (lazy expiry). */
 export async function expireSeatHold(showSeatId: string): Promise<void> {
   await db(`UPDATE show_seats SET held_until = now() - interval '1 minute' WHERE id = $1`, [showSeatId]);
@@ -307,3 +318,37 @@ export const checkout = (u: User, resId: string) => api('POST', `/reservations/$
 export const release = (u: User, resId: string) => api('DELETE', `/reservations/${resId}`, { token: u.token });
 export const confirmMock = (u: User, bId: string) => api('POST', `/bookings/${bId}/confirm-mock`, { token: u.token });
 export const cancelEvent = (org: User, eventId: string) => api('POST', `/events/${eventId}/cancel`, { token: org.token });
+
+
+// ---------------------------------------------------------------------------
+// Sweeper drain helper
+// ---------------------------------------------------------------------------
+
+import { runSweepOnce } from '../src/modules/sweeper/sweeper.service';
+
+/**
+ * Calls runSweepOnce() in a loop until a run reports all zeros (nothing left
+ * to clean). A run rejected by the in-process guard (skippedBecauseRunning) is
+ * not proof of drain: wait briefly and retry. Caps at 20 iterations to avoid
+ * infinite loops.
+ */
+export async function drainSweeper(): Promise<void> {
+  for (let i = 0; i < 20; i++) {
+    const r = await runSweepOnce();
+    if (r.skippedBecauseRunning) {
+      await sleep(250);
+      continue;
+    }
+    if (
+      r.reservationsExpired === 0 &&
+      r.bookingsExpired === 0 &&
+      r.seatsFreed === 0 &&
+      r.skippedShows === 0 &&
+      r.errors === 0 &&
+      r.shows === 0
+    ) {
+      return;
+    }
+  }
+  throw new Error('drainSweeper: sweeper did not drain after 20 iterations');
+}
