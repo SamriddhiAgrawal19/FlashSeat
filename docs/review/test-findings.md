@@ -1,13 +1,17 @@
 # Test findings
 
-Known bugs exposed by the test suite. Each has a test marked `it.fails` (expected to
-fail against the current code). When the bug is fixed, the test starts passing and
-vitest flags it so the `it.fails` marker can be removed.
+Known bugs exposed by the test suite are tracked here with a test marked `it.fails`
+(expected to fail against the current code). When the bug is fixed, the test starts
+passing and vitest flags it so the `it.fails` marker can be removed.
 
-| ID | Test | Bug | Notes |
-|----|------|-----|-------|
-| L-9 | `tests/api-consistency.test.ts` — "L-9: GET /events/:eventId/shows/:showId must 404…" | The nested route `GET /events/:eventId/shows/:showId` ignores `:eventId` entirely (`shows.controller.ts` `getShowDetails` uses only `showId`), so a show id can be read through any event id. No data leak (the endpoint is public anyway) but clients that pre-filter by event are silently wrong. | Review finding L-9. Fix: verify `shows.event_id = :eventId` (404 otherwise) or expose `GET /shows/:showId`. |
-| M-5 | `tests/api-consistency.test.ts` — "M-5: bulk seat creation must reject oversized layouts…" | `venues.repository.ts insertBulkSeats` emits 5 bind params per seat with no cap; >13,107 seats (65,535-param protocol limit) fails inside the driver/server and surfaces as **503 DB_UNAVAILABLE** (SQLSTATE class 08 is mapped as a connection error) instead of a clean client error. Duplicate `rows` entries or a re-run of the same bulk call return generic 409 CONFLICT instead of a validation error. | Review finding M-5 (partial: size cap + clearer duplicate semantics are missing; the 409 path at least no longer 500s). |
+**Open known bugs: none.** The suite has zero `it.fails` tests.
+
+## Fixed (Batch 4)
+
+| ID | Status | Tests (`tests/api-consistency.test.ts`) | Bug | Fix |
+|----|--------|------------------------------------------|-----|-----|
+| L-9 | **Fixed** (Batch 4) | "L-9: GET /events/:eventId/shows/:showId must 404 when the show belongs to another event"; "L-9: the right event id => 200 with the show; a non-existent event id => 404"; "L-9: visibility unchanged — DRAFT event => 404, CANCELLED event => 200" | The nested route `GET /events/:eventId/shows/:showId` ignored `:eventId` entirely (`getShowDetails` used only `showId`), so a show id could be read through any event id. | `shows.repository.ts findShowInEvent` requires `s.id = $1 AND s.event_id = $2`; `getShowDetails` returns 404 NOT_FOUND for a missing/foreign show, a non-existent event, or a DRAFT event (same rule as the seat map); CANCELLED stays readable. |
+| M-5 | **Fixed** (Batch 4) | "M-5: bulk seat creation must reject oversized layouts with 400 VALIDATION_ERROR"; "M-5: 2001 seats in one call => 400 (GRID and GENERAL_ADMISSION); 2000 is accepted"; "M-5: duplicate row labels (exact or case-insensitive) => 400, nothing inserted"; "M-5: invalid row label, section or category => 400"; "M-5: row labels, section and category are trimmed/stored uppercase"; "M-5: same valid payload twice => 201 then 409 SEATS_ALREADY_EXIST, nothing extra inserted"; "M-5: filling a venue to MAX_SEATS_PER_VENUE => 409 VENUE_SEAT_LIMIT past the cap"; "M-5: 10 parallel identical bulk calls on a fresh venue => one 201, nine 409, zero 5xx"; "M-5: parallel bulk calls adding DIFFERENT seats cannot race past MAX_SEATS_PER_VENUE" | `insertBulkSeats` emitted 5 bind params per seat with no cap; >13,107 seats (65,535-param limit) surfaced as **503 DB_UNAVAILABLE**. Duplicate `rows` or a re-run of the same call returned generic 409 CONFLICT. | `venues.schema.ts`: `MAX_SEATS_PER_BULK_CALL` (2000) per call, `seatsPerRow` 1–500, row labels `/^[A-Za-z0-9]{1,4}$/` and unique case-insensitively, section/category trimmed 1–30 chars; all stored uppercase. `venues.service.ts`: venue row `FOR UPDATE` (serializes bulk calls), `MAX_SEATS_PER_VENUE` (20,000) → 409 VENUE_SEAT_LIMIT, unique-constraint 23505 → 409 SEATS_ALREADY_EXIST. |
 
 ## Deliberately not tested here
 

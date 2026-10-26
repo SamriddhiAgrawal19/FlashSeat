@@ -19,11 +19,12 @@ export async function createShow(req: Request, res: Response, next: NextFunction
 
 export async function getShowDetails(req: Request, res: Response, next: NextFunction) {
   try {
+    const { eventId } = eventIdParamSchema.parse(req.params);
     const { showId } = showIdParamSchema.parse(req.params);
-    
+
     const client = await pool.connect();
     try {
-      const result = await showsService.getShowDetails(client, showId);
+      const result = await showsService.getShowDetails(client, eventId, showId);
       res.json(result);
     } finally {
       client.release();

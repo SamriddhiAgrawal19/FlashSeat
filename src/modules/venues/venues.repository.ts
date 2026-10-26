@@ -32,6 +32,21 @@ export async function findVenueById(client: PoolClient, venueId: string): Promis
   return result.rows[0] || null;
 }
 
+// FOR UPDATE: serializes concurrent bulk seat calls on one venue so the
+// per-venue seat cap is checked and enforced atomically.
+export async function lockVenueForUpdate(client: PoolClient, venueId: string): Promise<VenueRow | null> {
+  const result = await client.query('SELECT * FROM venues WHERE id = $1 FOR UPDATE', [venueId]);
+  return result.rows[0] || null;
+}
+
+export async function countVenueSeats(client: PoolClient, venueId: string): Promise<number> {
+  const result = await client.query<{ count: number }>(
+    'SELECT count(*)::int AS count FROM venue_seats WHERE venue_id = $1',
+    [venueId]
+  );
+  return result.rows[0].count;
+}
+
 export async function findVenuesByOwnerId(client: PoolClient, ownerId: string): Promise<VenueWithSeatCountRow[]> {
   const result = await client.query(`
     SELECT v.*, COUNT(s.id)::int as seat_count

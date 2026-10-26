@@ -53,13 +53,16 @@ export async function acquireVenueShowLock(client: PoolClient, venueId: string):
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1::text))', [venueId]);
 }
 
-export async function findShowById(client: PoolClient, showId: string) {
+// Scoped by event: a show requested through another event's URL is "not found".
+export async function findShowInEvent(client: PoolClient, eventId: string, showId: string) {
   const showResult = await client.query(`
-    SELECT s.*, v.name as venue_name, v.address as venue_address, v.city as venue_city
+    SELECT s.*, v.name as venue_name, v.address as venue_address, v.city as venue_city,
+           e.status as event_status
     FROM shows s
     JOIN venues v ON s.venue_id = v.id
-    WHERE s.id = $1
-  `, [showId]);
+    JOIN events e ON e.id = s.event_id
+    WHERE s.id = $1 AND s.event_id = $2
+  `, [showId, eventId]);
   
   if (showResult.rowCount === 0) return null;
   

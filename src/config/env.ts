@@ -12,6 +12,8 @@ const envSchema = z.object({
   REFRESH_TOKEN_EXPIRY_DAYS: z.coerce.number().positive(),
   HOLD_DURATION_SECONDS: z.coerce.number().int().positive().default(600),
   MAX_SEATS_PER_RESERVATION: z.coerce.number().int().positive().default(6),
+  MAX_SEATS_PER_BULK_CALL: z.coerce.number().int().positive().default(2000),
+  MAX_SEATS_PER_VENUE: z.coerce.number().int().positive().default(20000),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
   DB_CONNECTION_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
   DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),

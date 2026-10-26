@@ -121,10 +121,13 @@ export async function createShow(
   }
 }
 
-export async function getShowDetails(client: PoolClient, showId: string) {
-  const show = await repo.findShowById(client, showId);
-  if (!show) {
+export async function getShowDetails(client: PoolClient, eventId: string, showId: string) {
+  const show = await repo.findShowInEvent(client, eventId, showId);
+  // Same visibility rule as the seat map: a DRAFT event's shows are invisible;
+  // CANCELLED events/shows stay readable.
+  if (!show || show.event_status === 'DRAFT') {
     throw new NotFoundError('Show not found');
   }
-  return show;
+  const { event_status: _eventStatus, ...details } = show;
+  return details;
 }
