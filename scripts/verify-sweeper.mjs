@@ -180,7 +180,11 @@ async function main() {
     console.log(`\n--- ${m.id}: ${m.desc} ---`);
     const runs = [];
     try {
-      writeFileSync(TARGET_PATH, m.apply(ORIGINAL.toString('utf8')));
+      // Patterns are written with LF; match on LF-normalized text and write the
+      // mutation back with the file's own line endings (git may check it out CRLF).
+      const text = ORIGINAL.toString('utf8');
+      const mutated = m.apply(text.replace(/\r\n/g, '\n'));
+      writeFileSync(TARGET_PATH, text.includes('\r\n') ? mutated.replace(/\n/g, '\r\n') : mutated);
       console.log(`   mutated (sha256 ${sha256(readFileSync(TARGET_PATH)).slice(0, 12)}…)`);
       for (let i = 1; i <= m.runs; i++) {
         const r = runSweeperTests();
