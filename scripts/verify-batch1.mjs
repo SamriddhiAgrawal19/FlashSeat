@@ -133,6 +133,17 @@ const hold = (u, showId, key, seatIdsArr) =>
   api('POST', `/shows/${showId}/reservations`, { token: u.token, key, body: { seatIds: seatIdsArr } });
 const checkout = (u, resId) => api('POST', `/reservations/${resId}/checkout`, { token: u.token });
 const release = (u, resId) => api('DELETE', `/reservations/${resId}`, { token: u.token });
+
+// Ends a live hold "in the past" the way time would: the reservation's expires_at
+// and its seats' held_until move to the SAME instant (the API always writes them
+// together). Shifting only expires_at would leave seats HELD with a future
+// held_until behind an EXPIRED reservation, a state the real API never produces.
+const backdateHold = (resId) => psql(`
+WITH r AS (
+  UPDATE reservations SET expires_at = now() - interval '1 minute'
+   WHERE id = '${resId}' RETURNING id, expires_at)
+UPDATE show_seats ss SET held_until = r.expires_at
+  FROM r WHERE ss.reservation_id = r.id AND ss.status = 'HELD';`);
 const confirmMock = (u, bId) => api('POST', `/bookings/${bId}/confirm-mock`, { token: u.token });
 const cancelEvent = (org, eventId) => api('POST', `/events/${eventId}/cancel`, { token: org.token });
 
@@ -259,7 +270,7 @@ const scenC = scenario('C', 'M-1: replay of an expired reservation => 409 RESERV
   c.expect('hold 201', h.status === 201, `got ${h.status}`);
   const resId = h.data?.reservation?.id;
 
-  psql(`UPDATE reservations SET expires_at = now() - interval '1 minute' WHERE id = '${resId}';`);
+  backdateHold(resId);
 
   const replay = await hold(s.user, s.showId, key, body.seatIds);
   c.expect('replay 409', replay.status === 409, `got ${replay.status} ${JSON.stringify(replay.data)}`);
@@ -303,7 +314,7 @@ const scenD = scenario('D', 'M-8: checkout replay after release => 409 BOOKING_N
     && typeof pending.data?.booking?.payBefore === 'string',
     JSON.stringify(pending.data?.booking));
 
-  psql(`UPDATE reservations SET expires_at = now() - interval '1 minute' WHERE id = '${resId2}';`);
+  backdateHold(resId2);
 
   const dead = await api('GET', `/bookings/${bId2}`, { token: s.user.token });
   c.expect('dead-hold read reports EXPIRED', dead.data?.booking?.status === 'EXPIRED', `got ${dead.data?.booking?.status}`);

@@ -20,7 +20,14 @@
     "smoke:checkout": "node scripts/smoke-checkout.mjs",
     "sweeper": "tsx src/workers/sweeper.ts",
     "sweeper:once": "tsx src/workers/sweeper-once.ts",
-    "verify:sweeper": "node scripts/verify-sweeper.mjs"
+    "verify:sweeper": "node scripts/verify-sweeper.mjs",
+    "load:seed:contention": "node load/seed.mjs --name contention --shows 1 --seats 100",
+    "load:seed:throughput": "node load/seed.mjs --name throughput --shows 200 --seats 50",
+    "load:register:contention": "node load/register-users.mjs --name contention --count 1200",
+    "load:register:throughput": "node load/register-users.mjs --name throughput --count 10000",
+    "load:contention": "node load/run.mjs contention",
+    "load:throughput": "node load/run.mjs throughput",
+    "load:timeline": "node load/timeline.mjs"
   },
   "keywords": [],
   "author": "",

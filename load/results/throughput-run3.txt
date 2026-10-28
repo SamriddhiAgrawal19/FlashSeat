@@ -1,0 +1,983 @@
+$ k6 run --summary-export C:\Users\Samriddhi Agrawal\Desktop\FlashSeat\load\results\throughput-run3-summary.json --out csv=C:\Users\Samriddhi Agrawal\Desktop\FlashSeat\load\results\throughput-run3.csv.gz -e RUN_ID=1793128866780 C:\Users\Samriddhi Agrawal\Desktop\FlashSeat\load\throughput.k6.js
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: C:\Users\Samriddhi Agrawal\Desktop\FlashSeat\load\throughput.k6.js
+        output: csv (C:\Users\Samriddhi Agrawal\Desktop\FlashSeat\load\results\throughput-run3.csv.gz)
+
+     scenarios: (100.00%) 1 scenario, 10000 max VUs, 3m0s max duration (incl. graceful stop):
+              * throughput: Up to 10000 looping VUs for 2m30s over 3 stages (gracefulRampDown: 40s, gracefulStop: 30s)
+
+
+Init         [  75% ] 07496/10000 VUs initialized
+throughput   [   0% ]
+
+running (0m00.7s), 00113/10000 VUs, 12 complete and 0 interrupted iterations
+throughput   [   0% ] 00113/10000 VUs  0m00.7s/2m30.0s
+
+running (0m01.7s), 00280/10000 VUs, 210 complete and 0 interrupted iterations
+throughput   [   1% ] 00280/10000 VUs  0m01.7s/2m30.0s
+
+running (0m02.7s), 00447/10000 VUs, 459 complete and 0 interrupted iterations
+throughput   [   2% ] 00447/10000 VUs  0m02.7s/2m30.0s
+
+running (0m03.7s), 00614/10000 VUs, 718 complete and 0 interrupted iterations
+throughput   [   2% ] 00614/10000 VUs  0m03.7s/2m30.0s
+
+running (0m04.7s), 00780/10000 VUs, 952 complete and 0 interrupted iterations
+throughput   [   3% ] 00780/10000 VUs  0m04.7s/2m30.0s
+
+running (0m05.7s), 00947/10000 VUs, 1179 complete and 0 interrupted iterations
+throughput   [   4% ] 00947/10000 VUs  0m05.7s/2m30.0s
+
+running (0m06.7s), 01114/10000 VUs, 1429 complete and 0 interrupted iterations
+throughput   [   4% ] 01114/10000 VUs  0m06.7s/2m30.0s
+
+running (0m07.7s), 01280/10000 VUs, 1629 complete and 0 interrupted iterations
+throughput   [   5% ] 01280/10000 VUs  0m07.7s/2m30.0s
+
+running (0m08.7s), 01447/10000 VUs, 1885 complete and 0 interrupted iterations
+throughput   [   6% ] 01447/10000 VUs  0m08.7s/2m30.0s
+
+running (0m09.7s), 01613/10000 VUs, 2142 complete and 0 interrupted iterations
+throughput   [   6% ] 01613/10000 VUs  0m09.7s/2m30.0s
+
+running (0m10.7s), 01780/10000 VUs, 2393 complete and 0 interrupted iterations
+throughput   [   7% ] 01780/10000 VUs  0m10.7s/2m30.0s
+
+running (0m11.7s), 01947/10000 VUs, 2606 complete and 0 interrupted iterations
+throughput   [   8% ] 01947/10000 VUs  0m11.7s/2m30.0s
+
+running (0m12.7s), 02114/10000 VUs, 2862 complete and 0 interrupted iterations
+throughput   [   8% ] 02114/10000 VUs  0m12.7s/2m30.0s
+
+running (0m13.7s), 02280/10000 VUs, 3265 complete and 0 interrupted iterations
+throughput   [   9% ] 02280/10000 VUs  0m13.7s/2m30.0s
+
+running (0m14.7s), 02447/10000 VUs, 3658 complete and 0 interrupted iterations
+throughput   [  10% ] 02447/10000 VUs  0m14.7s/2m30.0s
+
+running (0m15.7s), 02613/10000 VUs, 4086 complete and 0 interrupted iterations
+throughput   [  10% ] 02613/10000 VUs  0m15.7s/2m30.0s
+
+running (0m16.7s), 02780/10000 VUs, 4477 complete and 0 interrupted iterations
+throughput   [  11% ] 02780/10000 VUs  0m16.7s/2m30.0s
+
+running (0m17.7s), 02947/10000 VUs, 4877 complete and 0 interrupted iterations
+throughput   [  12% ] 02947/10000 VUs  0m17.7s/2m30.0s
+
+running (0m18.7s), 03114/10000 VUs, 5416 complete and 0 interrupted iterations
+throughput   [  12% ] 03114/10000 VUs  0m18.7s/2m30.0s
+
+running (0m19.7s), 03280/10000 VUs, 5943 complete and 0 interrupted iterations
+throughput   [  13% ] 03280/10000 VUs  0m19.7s/2m30.0s
+
+running (0m20.7s), 03447/10000 VUs, 6564 complete and 0 interrupted iterations
+throughput   [  14% ] 03447/10000 VUs  0m20.7s/2m30.0s
+
+running (0m21.7s), 03613/10000 VUs, 7087 complete and 0 interrupted iterations
+throughput   [  14% ] 03613/10000 VUs  0m21.7s/2m30.0s
+
+running (0m22.7s), 03780/10000 VUs, 7555 complete and 0 interrupted iterations
+throughput   [  15% ] 03780/10000 VUs  0m22.7s/2m30.0s
+
+running (0m23.7s), 03947/10000 VUs, 8241 complete and 0 interrupted iterations
+throughput   [  16% ] 03947/10000 VUs  0m23.7s/2m30.0s
+
+running (0m24.7s), 04113/10000 VUs, 8848 complete and 0 interrupted iterations
+throughput   [  16% ] 04113/10000 VUs  0m24.7s/2m30.0s
+
+running (0m25.7s), 04280/10000 VUs, 9362 complete and 0 interrupted iterations
+throughput   [  17% ] 04280/10000 VUs  0m25.7s/2m30.0s
+
+running (0m26.7s), 04447/10000 VUs, 10166 complete and 0 interrupted iterations
+throughput   [  18% ] 04447/10000 VUs  0m26.7s/2m30.0s
+
+running (0m27.7s), 04613/10000 VUs, 10759 complete and 0 interrupted iterations
+throughput   [  18% ] 04613/10000 VUs  0m27.7s/2m30.0s
+
+running (0m28.7s), 04780/10000 VUs, 11531 complete and 0 interrupted iterations
+throughput   [  19% ] 04780/10000 VUs  0m28.7s/2m30.0s
+
+running (0m29.7s), 04947/10000 VUs, 12183 complete and 0 interrupted iterations
+throughput   [  20% ] 04947/10000 VUs  0m29.7s/2m30.0s
+
+running (0m30.7s), 05114/10000 VUs, 12917 complete and 0 interrupted iterations
+throughput   [  20% ] 05114/10000 VUs  0m30.7s/2m30.0s
+
+running (0m31.7s), 05280/10000 VUs, 13511 complete and 0 interrupted iterations
+throughput   [  21% ] 05280/10000 VUs  0m31.7s/2m30.0s
+
+running (0m32.7s), 05447/10000 VUs, 14187 complete and 0 interrupted iterations
+throughput   [  22% ] 05447/10000 VUs  0m32.7s/2m30.0s
+
+running (0m33.7s), 05613/10000 VUs, 14935 complete and 0 interrupted iterations
+throughput   [  22% ] 05613/10000 VUs  0m33.7s/2m30.0s
+
+running (0m34.7s), 05780/10000 VUs, 15761 complete and 0 interrupted iterations
+throughput   [  23% ] 05780/10000 VUs  0m34.7s/2m30.0s
+
+running (0m35.7s), 05947/10000 VUs, 16560 complete and 0 interrupted iterations
+throughput   [  24% ] 05947/10000 VUs  0m35.7s/2m30.0s
+
+running (0m36.7s), 06113/10000 VUs, 17351 complete and 0 interrupted iterations
+throughput   [  24% ] 06113/10000 VUs  0m36.7s/2m30.0s
+
+running (0m37.7s), 06280/10000 VUs, 18070 complete and 0 interrupted iterations
+throughput   [  25% ] 06280/10000 VUs  0m37.7s/2m30.0s
+
+running (0m38.7s), 06447/10000 VUs, 19004 complete and 0 interrupted iterations
+throughput   [  26% ] 06447/10000 VUs  0m38.7s/2m30.0s
+
+running (0m39.7s), 06613/10000 VUs, 19799 complete and 0 interrupted iterations
+throughput   [  26% ] 06613/10000 VUs  0m39.7s/2m30.0s
+
+running (0m40.7s), 06780/10000 VUs, 20721 complete and 0 interrupted iterations
+throughput   [  27% ] 06780/10000 VUs  0m40.7s/2m30.0s
+
+running (0m41.7s), 06947/10000 VUs, 21519 complete and 0 interrupted iterations
+throughput   [  28% ] 06947/10000 VUs  0m41.7s/2m30.0s
+
+running (0m42.7s), 07113/10000 VUs, 22161 complete and 0 interrupted iterations
+throughput   [  28% ] 07113/10000 VUs  0m42.7s/2m30.0s
+
+running (0m43.7s), 07280/10000 VUs, 22872 complete and 0 interrupted iterations
+throughput   [  29% ] 07280/10000 VUs  0m43.7s/2m30.0s
+
+running (0m44.7s), 07447/10000 VUs, 23550 complete and 0 interrupted iterations
+throughput   [  30% ] 07447/10000 VUs  0m44.7s/2m30.0s
+
+running (0m45.7s), 07613/10000 VUs, 24147 complete and 0 interrupted iterations
+throughput   [  30% ] 07613/10000 VUs  0m45.7s/2m30.0s
+
+running (0m46.7s), 07780/10000 VUs, 24627 complete and 0 interrupted iterations
+throughput   [  31% ] 07780/10000 VUs  0m46.7s/2m30.0s
+
+running (0m47.7s), 07947/10000 VUs, 25199 complete and 0 interrupted iterations
+throughput   [  32% ] 07947/10000 VUs  0m47.7s/2m30.0s
+
+running (0m48.7s), 08114/10000 VUs, 25779 complete and 0 interrupted iterations
+throughput   [  32% ] 08114/10000 VUs  0m48.7s/2m30.0s
+
+running (0m49.7s), 08280/10000 VUs, 26333 complete and 0 interrupted iterations
+throughput   [  33% ] 08280/10000 VUs  0m49.7s/2m30.0s
+
+running (0m50.7s), 08447/10000 VUs, 26981 complete and 0 interrupted iterations
+throughput   [  34% ] 08447/10000 VUs  0m50.7s/2m30.0s
+
+running (0m51.7s), 08613/10000 VUs, 27494 complete and 0 interrupted iterations
+throughput   [  34% ] 08613/10000 VUs  0m51.7s/2m30.0s
+
+running (0m52.7s), 08780/10000 VUs, 28025 complete and 0 interrupted iterations
+throughput   [  35% ] 08780/10000 VUs  0m52.7s/2m30.0s
+
+running (0m53.7s), 08947/10000 VUs, 28566 complete and 0 interrupted iterations
+throughput   [  36% ] 08947/10000 VUs  0m53.7s/2m30.0s
+
+running (0m54.7s), 09113/10000 VUs, 29231 complete and 0 interrupted iterations
+throughput   [  36% ] 09113/10000 VUs  0m54.7s/2m30.0s
+
+running (0m55.7s), 09280/10000 VUs, 29880 complete and 0 interrupted iterations
+throughput   [  37% ] 09280/10000 VUs  0m55.7s/2m30.0s
+
+running (0m56.7s), 09447/10000 VUs, 30403 complete and 0 interrupted iterations
+throughput   [  38% ] 09447/10000 VUs  0m56.7s/2m30.0s
+
+running (0m57.7s), 09613/10000 VUs, 30960 complete and 0 interrupted iterations
+throughput   [  38% ] 09613/10000 VUs  0m57.7s/2m30.0s
+
+running (0m58.7s), 09780/10000 VUs, 31298 complete and 0 interrupted iterations
+throughput   [  39% ] 09780/10000 VUs  0m58.7s/2m30.0s
+time="2026-10-28T00:52:07+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ba7a2ce0-9d71-456d-943b-44042e86b091/reservations\": request timeout"
+
+running (0m59.7s), 09947/10000 VUs, 31798 complete and 0 interrupted iterations
+throughput   [  40% ] 09947/10000 VUs  0m59.7s/2m30.0s
+time="2026-10-28T00:52:08+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8438b2ef-6782-4f09-b37c-df2dee194b08/reservations\": request timeout"
+time="2026-10-28T00:52:08+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/80070822-3043-4742-9a6b-04062c535534/reservations\": request timeout"
+time="2026-10-28T00:52:08+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ab9fb7f6-4947-4b11-8b67-86edd6a705e7/reservations\": request timeout"
+
+running (1m00.7s), 10000/10000 VUs, 32223 complete and 0 interrupted iterations
+throughput   [  40% ] 10000/10000 VUs  1m00.7s/2m30.0s
+time="2026-10-28T00:52:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/40440e43-d609-45e9-952d-9498d8d22f9c/reservations\": request timeout"
+time="2026-10-28T00:52:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/95d27bc0-d277-42f4-825a-b8a512ef54f2/reservations\": request timeout"
+time="2026-10-28T00:52:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/281a925f-c079-433f-9592-fcc8ee210def/reservations\": request timeout"
+time="2026-10-28T00:52:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/db09c210-038d-4764-b791-ab93cb255818/reservations\": request timeout"
+time="2026-10-28T00:52:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/f0e44b0f-abee-484b-b08c-c24c6edd5df2/reservations\": request timeout"
+time="2026-10-28T00:52:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/53f0d66a-7a91-4c89-a262-15fb844413fc/reservations\": request timeout"
+time="2026-10-28T00:52:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/aec28787-73bf-46f7-abb8-f8444d6eecbe/reservations\": request timeout"
+time="2026-10-28T00:52:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ba86fcfa-1204-4061-8b76-ca9d4ad79d9b/reservations\": request timeout"
+time="2026-10-28T00:52:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/99bbb281-ea13-4597-87af-b5beee44e62a/reservations\": request timeout"
+time="2026-10-28T00:52:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e5ba37cb-9a05-4de2-9d49-8bc3ba18e2b4/reservations\": request timeout"
+
+running (1m01.7s), 10000/10000 VUs, 32602 complete and 0 interrupted iterations
+throughput   [  41% ] 10000/10000 VUs  1m01.7s/2m30.0s
+
+running (1m02.7s), 10000/10000 VUs, 33098 complete and 0 interrupted iterations
+throughput   [  42% ] 10000/10000 VUs  1m02.7s/2m30.0s
+time="2026-10-28T00:52:11+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/99bbb281-ea13-4597-87af-b5beee44e62a/reservations\": request timeout"
+time="2026-10-28T00:52:11+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/7904370e-4e0b-423f-a8bf-ab4a85273cf2/reservations\": request timeout"
+
+running (1m03.7s), 10000/10000 VUs, 33721 complete and 0 interrupted iterations
+throughput   [  42% ] 10000/10000 VUs  1m03.7s/2m30.0s
+time="2026-10-28T00:52:12+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ae8be1bb-fa22-4919-9138-523f9625a6a5/reservations\": request timeout"
+time="2026-10-28T00:52:12+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/0eb73f7e-23fe-437f-8e3e-188e48431e7d/reservations\": request timeout"
+time="2026-10-28T00:52:12+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a09f1199-cd20-43b8-bcea-c4b2f74194ac/reservations\": request timeout"
+time="2026-10-28T00:52:12+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6b7e3b37-079b-40c4-81a7-a53a4fa55883/reservations\": request timeout"
+time="2026-10-28T00:52:12+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a09f1199-cd20-43b8-bcea-c4b2f74194ac/reservations\": request timeout"
+time="2026-10-28T00:52:12+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1029aec5-f42c-4029-a461-835fbd87f457/reservations\": request timeout"
+time="2026-10-28T00:52:12+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e5284b65-ef7c-41d9-bd6b-9d4ac89854fe/reservations\": request timeout"
+time="2026-10-28T00:52:12+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/de0b1b54-8cc2-4a85-831e-1c8077c8670d/reservations\": request timeout"
+
+running (1m04.7s), 10000/10000 VUs, 34489 complete and 0 interrupted iterations
+throughput   [  43% ] 10000/10000 VUs  1m04.7s/2m30.0s
+
+running (1m05.7s), 10000/10000 VUs, 35081 complete and 0 interrupted iterations
+throughput   [  44% ] 10000/10000 VUs  1m05.7s/2m30.0s
+time="2026-10-28T00:52:14+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/3d355f0a-4a12-4bfc-a97f-effd7843bea8/reservations\": request timeout"
+time="2026-10-28T00:52:14+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8cccbeb2-26a5-4cd0-8423-615c21fc130e/reservations\": request timeout"
+time="2026-10-28T00:52:14+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2303f754-a289-43d8-b817-247ba4b46567/reservations\": request timeout"
+time="2026-10-28T00:52:14+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a8c09671-fe98-43a4-bb0a-220ad6f68bdd/reservations\": request timeout"
+time="2026-10-28T00:52:14+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/99bbb281-ea13-4597-87af-b5beee44e62a/reservations\": request timeout"
+
+running (1m06.7s), 10000/10000 VUs, 35786 complete and 0 interrupted iterations
+throughput   [  44% ] 10000/10000 VUs  1m06.7s/2m30.0s
+
+running (1m07.7s), 10000/10000 VUs, 36474 complete and 0 interrupted iterations
+throughput   [  45% ] 10000/10000 VUs  1m07.7s/2m30.0s
+time="2026-10-28T00:52:16+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a8c09671-fe98-43a4-bb0a-220ad6f68bdd/reservations\": request timeout"
+time="2026-10-28T00:52:16+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/fd21b1c0-157a-4f0c-81e8-42c99e7cf5a5/reservations\": request timeout"
+time="2026-10-28T00:52:16+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8eebd02c-6a2d-498d-9201-a214e4b32361/reservations\": request timeout"
+time="2026-10-28T00:52:16+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/594404d8-751e-4301-b73c-52cf0612f999/reservations\": request timeout"
+time="2026-10-28T00:52:16+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/32e67ca1-b80b-49f6-b07b-774dfb58bde3/reservations\": request timeout"
+
+running (1m08.7s), 10000/10000 VUs, 37112 complete and 0 interrupted iterations
+throughput   [  46% ] 10000/10000 VUs  1m08.7s/2m30.0s
+time="2026-10-28T00:52:17+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ba7a2ce0-9d71-456d-943b-44042e86b091/reservations\": request timeout"
+time="2026-10-28T00:52:17+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/9b969357-3940-4a93-ae2e-99d9c38fff5f/reservations\": request timeout"
+
+running (1m09.7s), 10000/10000 VUs, 37775 complete and 0 interrupted iterations
+throughput   [  46% ] 10000/10000 VUs  1m09.7s/2m30.0s
+time="2026-10-28T00:52:18+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/d6a86101-df5c-4f89-8f19-46f8212dfd1d/reservations\": request timeout"
+time="2026-10-28T00:52:18+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/19d01d9d-1b55-4af3-9de9-5fe2a17059ff/reservations\": request timeout"
+time="2026-10-28T00:52:18+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1f93dff8-ed07-4f16-a63d-35e801e07aa2/reservations\": request timeout"
+time="2026-10-28T00:52:18+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1f7e8881-5b54-4ae7-9f2c-72164968ad87/reservations\": request timeout"
+time="2026-10-28T00:52:18+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/bb7d395c-6702-4674-a050-3cc5f72d13b4/reservations\": request timeout"
+time="2026-10-28T00:52:18+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/f384cee8-458c-4628-9844-aecf22adea61/reservations\": request timeout"
+
+running (1m10.7s), 10000/10000 VUs, 38402 complete and 0 interrupted iterations
+throughput   [  47% ] 10000/10000 VUs  1m10.7s/2m30.0s
+
+running (1m11.7s), 10000/10000 VUs, 38918 complete and 0 interrupted iterations
+throughput   [  48% ] 10000/10000 VUs  1m11.7s/2m30.0s
+
+running (1m12.7s), 10000/10000 VUs, 39616 complete and 0 interrupted iterations
+throughput   [  48% ] 10000/10000 VUs  1m12.7s/2m30.0s
+time="2026-10-28T00:52:20+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/86674d6c-0886-42ff-9c98-3698f99afc0c/reservations\": request timeout"
+time="2026-10-28T00:52:21+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e8d8059f-7153-4d17-a975-a027bc0c1b3e/reservations\": request timeout"
+time="2026-10-28T00:52:21+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/dfde5d37-87f1-48d4-aebc-f3e43d1cdb94/reservations\": request timeout"
+time="2026-10-28T00:52:21+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/745dc7dc-a70e-4055-bcf4-94647b91a4e5/reservations\": request timeout"
+time="2026-10-28T00:52:21+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/5df032dc-e232-4390-9e02-f14e0562754a/reservations\": request timeout"
+time="2026-10-28T00:52:21+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6d8d3f94-3930-45f7-8964-0335c2870233/reservations\": request timeout"
+time="2026-10-28T00:52:21+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/4dd3617a-b021-4b28-97fc-8f0bc1081d30/reservations\": request timeout"
+time="2026-10-28T00:52:21+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b787f98e-fbba-44e7-9028-d2005d5b0658/reservations\": request timeout"
+time="2026-10-28T00:52:21+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6a0b2aac-1207-4545-9eff-c49f41c59d5c/reservations\": request timeout"
+time="2026-10-28T00:52:21+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/d6a86101-df5c-4f89-8f19-46f8212dfd1d/reservations\": request timeout"
+time="2026-10-28T00:52:21+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/622e5fc3-eb15-4976-bc15-f0993bcf561d/reservations\": request timeout"
+
+running (1m13.7s), 10000/10000 VUs, 40335 complete and 0 interrupted iterations
+throughput   [  49% ] 10000/10000 VUs  1m13.7s/2m30.0s
+
+running (1m14.7s), 10000/10000 VUs, 40909 complete and 0 interrupted iterations
+throughput   [  50% ] 10000/10000 VUs  1m14.7s/2m30.0s
+
+running (1m15.7s), 10000/10000 VUs, 41491 complete and 0 interrupted iterations
+throughput   [  50% ] 10000/10000 VUs  1m15.7s/2m30.0s
+time="2026-10-28T00:52:24+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b20cc642-c32b-4101-8f56-56ccacb6d8c2/reservations\": request timeout"
+time="2026-10-28T00:52:24+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/973ecfb9-4519-4b36-9230-0fc3a8271c68/reservations\": request timeout"
+
+running (1m16.7s), 10000/10000 VUs, 41953 complete and 0 interrupted iterations
+throughput   [  51% ] 10000/10000 VUs  1m16.7s/2m30.0s
+time="2026-10-28T00:52:25+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a309a1ac-3a2e-4ae7-9d67-4c187229e3e9/reservations\": request timeout"
+
+running (1m17.7s), 10000/10000 VUs, 42482 complete and 0 interrupted iterations
+throughput   [  52% ] 10000/10000 VUs  1m17.7s/2m30.0s
+
+running (1m18.7s), 10000/10000 VUs, 43089 complete and 0 interrupted iterations
+throughput   [  52% ] 10000/10000 VUs  1m18.7s/2m30.0s
+
+running (1m19.7s), 10000/10000 VUs, 43704 complete and 0 interrupted iterations
+throughput   [  53% ] 10000/10000 VUs  1m19.7s/2m30.0s
+
+running (1m20.7s), 10000/10000 VUs, 44292 complete and 0 interrupted iterations
+throughput   [  54% ] 10000/10000 VUs  1m20.7s/2m30.0s
+
+running (1m21.7s), 10000/10000 VUs, 44974 complete and 0 interrupted iterations
+throughput   [  54% ] 10000/10000 VUs  1m21.7s/2m30.0s
+
+running (1m22.7s), 10000/10000 VUs, 45623 complete and 0 interrupted iterations
+throughput   [  55% ] 10000/10000 VUs  1m22.7s/2m30.0s
+time="2026-10-28T00:52:30+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8cccbeb2-26a5-4cd0-8423-615c21fc130e/reservations\": request timeout"
+time="2026-10-28T00:52:30+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c5337086-66e5-430a-a248-c2b6d83de596/reservations\": request timeout"
+time="2026-10-28T00:52:30+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/334d866c-12ae-4914-b51e-75c636015ee8/reservations\": request timeout"
+time="2026-10-28T00:52:30+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ba7a2ce0-9d71-456d-943b-44042e86b091/reservations\": request timeout"
+time="2026-10-28T00:52:30+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a80e59ec-2ba6-4a52-9e44-4ca5ba119af6/reservations\": request timeout"
+time="2026-10-28T00:52:30+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/cac49663-f436-4ac4-a35e-fc87b107a1f2/reservations\": request timeout"
+time="2026-10-28T00:52:30+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/7b6d92db-0eb4-4ca9-bfa2-82b5f90ecc41/reservations\": request timeout"
+time="2026-10-28T00:52:30+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e3ec2274-6476-4225-95b8-f38f04503df5/reservations\": request timeout"
+time="2026-10-28T00:52:30+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2303f754-a289-43d8-b817-247ba4b46567/reservations\": request timeout"
+time="2026-10-28T00:52:31+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/0824a901-cb6f-4f2f-8115-6d88bc3dedfc/reservations\": request timeout"
+time="2026-10-28T00:52:31+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b20cc642-c32b-4101-8f56-56ccacb6d8c2/reservations\": request timeout"
+time="2026-10-28T00:52:31+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/cbd9f1dd-8617-4e98-b6aa-c90eba2e4d26/reservations\": request timeout"
+
+running (1m23.7s), 10000/10000 VUs, 46233 complete and 0 interrupted iterations
+throughput   [  56% ] 10000/10000 VUs  1m23.7s/2m30.0s
+time="2026-10-28T00:52:31+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/527ac7ca-cee1-43d5-b7f1-e21f8fc5760a/reservations\": request timeout"
+time="2026-10-28T00:52:31+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/518fb215-4659-44c4-8a3b-0d19f04ed9f0/reservations\": request timeout"
+time="2026-10-28T00:52:31+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/3476a43f-1b1d-4fe5-a58c-6b5aecd05e5a/reservations\": request timeout"
+
+running (1m24.7s), 10000/10000 VUs, 47010 complete and 0 interrupted iterations
+throughput   [  56% ] 10000/10000 VUs  1m24.7s/2m30.0s
+
+running (1m25.7s), 10000/10000 VUs, 47792 complete and 0 interrupted iterations
+throughput   [  57% ] 10000/10000 VUs  1m25.7s/2m30.0s
+
+running (1m26.7s), 10000/10000 VUs, 48940 complete and 0 interrupted iterations
+throughput   [  58% ] 10000/10000 VUs  1m26.7s/2m30.0s
+
+running (1m27.7s), 10000/10000 VUs, 49954 complete and 0 interrupted iterations
+throughput   [  58% ] 10000/10000 VUs  1m27.7s/2m30.0s
+
+running (1m28.7s), 10000/10000 VUs, 51135 complete and 0 interrupted iterations
+throughput   [  59% ] 10000/10000 VUs  1m28.7s/2m30.0s
+
+running (1m29.7s), 10000/10000 VUs, 52301 complete and 0 interrupted iterations
+throughput   [  60% ] 10000/10000 VUs  1m29.7s/2m30.0s
+
+running (1m30.7s), 10000/10000 VUs, 53273 complete and 0 interrupted iterations
+throughput   [  60% ] 10000/10000 VUs  1m30.7s/2m30.0s
+
+running (1m31.7s), 10000/10000 VUs, 54250 complete and 0 interrupted iterations
+throughput   [  61% ] 10000/10000 VUs  1m31.7s/2m30.0s
+
+running (1m32.7s), 10000/10000 VUs, 54923 complete and 0 interrupted iterations
+throughput   [  62% ] 10000/10000 VUs  1m32.7s/2m30.0s
+
+running (1m33.7s), 10000/10000 VUs, 55767 complete and 0 interrupted iterations
+throughput   [  62% ] 10000/10000 VUs  1m33.7s/2m30.0s
+
+running (1m34.7s), 10000/10000 VUs, 56478 complete and 0 interrupted iterations
+throughput   [  63% ] 10000/10000 VUs  1m34.7s/2m30.0s
+
+running (1m35.7s), 10000/10000 VUs, 57457 complete and 0 interrupted iterations
+throughput   [  64% ] 10000/10000 VUs  1m35.7s/2m30.0s
+
+running (1m36.7s), 10000/10000 VUs, 58403 complete and 0 interrupted iterations
+throughput   [  64% ] 10000/10000 VUs  1m36.7s/2m30.0s
+
+running (1m37.7s), 10000/10000 VUs, 59516 complete and 0 interrupted iterations
+throughput   [  65% ] 10000/10000 VUs  1m37.7s/2m30.0s
+
+running (1m38.7s), 10000/10000 VUs, 59885 complete and 0 interrupted iterations
+throughput   [  66% ] 10000/10000 VUs  1m38.7s/2m30.0s
+
+running (1m39.7s), 10000/10000 VUs, 60167 complete and 0 interrupted iterations
+throughput   [  66% ] 10000/10000 VUs  1m39.7s/2m30.0s
+
+running (1m40.7s), 10000/10000 VUs, 60433 complete and 0 interrupted iterations
+throughput   [  67% ] 10000/10000 VUs  1m40.7s/2m30.0s
+
+running (1m41.7s), 10000/10000 VUs, 60627 complete and 0 interrupted iterations
+throughput   [  68% ] 10000/10000 VUs  1m41.7s/2m30.0s
+
+running (1m42.7s), 10000/10000 VUs, 61012 complete and 0 interrupted iterations
+throughput   [  68% ] 10000/10000 VUs  1m42.7s/2m30.0s
+
+running (1m43.7s), 10000/10000 VUs, 62199 complete and 0 interrupted iterations
+throughput   [  69% ] 10000/10000 VUs  1m43.7s/2m30.0s
+
+running (1m44.7s), 10000/10000 VUs, 63373 complete and 0 interrupted iterations
+throughput   [  70% ] 10000/10000 VUs  1m44.7s/2m30.0s
+
+running (1m45.7s), 10000/10000 VUs, 64252 complete and 0 interrupted iterations
+throughput   [  70% ] 10000/10000 VUs  1m45.7s/2m30.0s
+
+running (1m46.7s), 10000/10000 VUs, 65189 complete and 0 interrupted iterations
+throughput   [  71% ] 10000/10000 VUs  1m46.7s/2m30.0s
+time="2026-10-28T00:52:55+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/aec28787-73bf-46f7-abb8-f8444d6eecbe/reservations\": request timeout"
+
+running (1m47.7s), 10000/10000 VUs, 65874 complete and 0 interrupted iterations
+throughput   [  72% ] 10000/10000 VUs  1m47.7s/2m30.0s
+time="2026-10-28T00:52:56+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e9165837-7c68-41b9-bd5b-4fba7a6fdd72/reservations\": request timeout"
+time="2026-10-28T00:52:56+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/69067bfc-b786-4ed1-abbc-ffd28cd68509/reservations\": request timeout"
+time="2026-10-28T00:52:56+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2dc90265-f363-43a0-9fd9-919c55fa5ff5/reservations\": request timeout"
+time="2026-10-28T00:52:56+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/80070822-3043-4742-9a6b-04062c535534/reservations\": request timeout"
+time="2026-10-28T00:52:56+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/19d01d9d-1b55-4af3-9de9-5fe2a17059ff/reservations\": request timeout"
+time="2026-10-28T00:52:56+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b971ea87-9f24-4a23-9ca3-0379159861e7/reservations\": request timeout"
+time="2026-10-28T00:52:56+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/d6a86101-df5c-4f89-8f19-46f8212dfd1d/reservations\": request timeout"
+time="2026-10-28T00:52:56+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/9cdac418-4bc7-40a2-93e6-d7ddc13a1156/reservations\": request timeout"
+time="2026-10-28T00:52:56+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/99f7b593-faf8-4129-aec3-9bb5517bd464/reservations\": request timeout"
+time="2026-10-28T00:52:56+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/9bf46a8b-d8b5-438e-a37b-40fa7b742673/reservations\": request timeout"
+
+running (1m48.7s), 10000/10000 VUs, 66464 complete and 0 interrupted iterations
+throughput   [  72% ] 10000/10000 VUs  1m48.7s/2m30.0s
+time="2026-10-28T00:52:57+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c1fa59b6-54ab-4dd8-b834-5d2ac7d85093/reservations\": request timeout"
+time="2026-10-28T00:52:57+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8d9b819b-6779-4e5a-8bfb-65940347d2c0/reservations\": request timeout"
+time="2026-10-28T00:52:57+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/de0b1b54-8cc2-4a85-831e-1c8077c8670d/reservations\": request timeout"
+time="2026-10-28T00:52:57+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c8e76115-0ae9-4c9d-aec3-82784171dcf2/reservations\": request timeout"
+time="2026-10-28T00:52:57+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/7b6d92db-0eb4-4ca9-bfa2-82b5f90ecc41/reservations\": request timeout"
+time="2026-10-28T00:52:57+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ccf7b1f6-65bc-4026-aa41-58b76f76dac0/reservations\": request timeout"
+time="2026-10-28T00:52:57+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/4081a99b-204f-47f3-ae36-7055f7d5c5fc/reservations\": request timeout"
+time="2026-10-28T00:52:57+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/622e5fc3-eb15-4976-bc15-f0993bcf561d/reservations\": request timeout"
+time="2026-10-28T00:52:57+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/5f7354fb-1bae-42d4-9ad2-6376f65b913a/reservations\": request timeout"
+
+running (1m49.7s), 10000/10000 VUs, 67086 complete and 0 interrupted iterations
+throughput   [  73% ] 10000/10000 VUs  1m49.7s/2m30.0s
+time="2026-10-28T00:52:58+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/5839e4eb-eeb9-4558-b615-68140dc146fd/reservations\": request timeout"
+time="2026-10-28T00:52:58+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/f4e4847b-0f16-46cc-8c81-adbbd370c4e6/reservations\": request timeout"
+
+running (1m50.7s), 10000/10000 VUs, 67559 complete and 0 interrupted iterations
+throughput   [  74% ] 10000/10000 VUs  1m50.7s/2m30.0s
+time="2026-10-28T00:52:59+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/404cf893-3b15-4357-a9a9-c374fd1903a4/reservations\": request timeout"
+time="2026-10-28T00:52:59+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8967ee1b-ca35-4c99-a41f-7a0b56c9c261/reservations\": request timeout"
+time="2026-10-28T00:52:59+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/0d2ee9ed-170a-49e6-81e5-77a718eb9755/reservations\": request timeout"
+time="2026-10-28T00:52:59+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ccf7b1f6-65bc-4026-aa41-58b76f76dac0/reservations\": request timeout"
+time="2026-10-28T00:52:59+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6f945d61-3898-4e71-9c58-68eaccc76296/reservations\": request timeout"
+time="2026-10-28T00:52:59+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/268a1495-da34-4335-a105-54d815a2ba5d/reservations\": request timeout"
+time="2026-10-28T00:52:59+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/4f3eb1ab-0825-4fda-8d08-d25deb4866a6/reservations\": request timeout"
+time="2026-10-28T00:52:59+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/626ed298-9ddd-41a4-87b0-8e5e68e66dcf/reservations\": request timeout"
+time="2026-10-28T00:52:59+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/cbd9f1dd-8617-4e98-b6aa-c90eba2e4d26/reservations\": request timeout"
+
+running (1m51.7s), 10000/10000 VUs, 68163 complete and 0 interrupted iterations
+throughput   [  74% ] 10000/10000 VUs  1m51.7s/2m30.0s
+time="2026-10-28T00:53:00+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/cac49663-f436-4ac4-a35e-fc87b107a1f2/reservations\": request timeout"
+time="2026-10-28T00:53:00+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e5ba37cb-9a05-4de2-9d49-8bc3ba18e2b4/reservations\": request timeout"
+
+running (1m52.7s), 10000/10000 VUs, 68829 complete and 0 interrupted iterations
+throughput   [  75% ] 10000/10000 VUs  1m52.7s/2m30.0s
+time="2026-10-28T00:53:01+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ec55d251-6b85-4294-bf58-c148b7ea970c/reservations\": request timeout"
+time="2026-10-28T00:53:01+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ce577477-8b4d-47eb-9eab-df5af5dd7618/reservations\": request timeout"
+time="2026-10-28T00:53:01+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c7465922-bdaf-40c5-9bb0-f950735683a2/reservations\": request timeout"
+time="2026-10-28T00:53:01+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/71f18e97-7d9d-487c-b612-ca2cc63a3d9a/reservations\": request timeout"
+
+running (1m53.7s), 10000/10000 VUs, 69634 complete and 0 interrupted iterations
+throughput   [  76% ] 10000/10000 VUs  1m53.7s/2m30.0s
+
+running (1m54.7s), 10000/10000 VUs, 70393 complete and 0 interrupted iterations
+throughput   [  76% ] 10000/10000 VUs  1m54.7s/2m30.0s
+time="2026-10-28T00:53:03+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6f7a7ba6-f8fb-4d1e-a608-ed2a943992eb/reservations\": request timeout"
+
+running (1m55.7s), 10000/10000 VUs, 71034 complete and 0 interrupted iterations
+throughput   [  77% ] 10000/10000 VUs  1m55.7s/2m30.0s
+time="2026-10-28T00:53:04+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/db09c210-038d-4764-b791-ab93cb255818/reservations\": request timeout"
+time="2026-10-28T00:53:04+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2303f754-a289-43d8-b817-247ba4b46567/reservations\": request timeout"
+time="2026-10-28T00:53:04+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a09f1199-cd20-43b8-bcea-c4b2f74194ac/reservations\": request timeout"
+time="2026-10-28T00:53:04+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6d203975-2088-4663-ab24-7a2920a2055b/reservations\": request timeout"
+time="2026-10-28T00:53:04+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/3f51dd89-0285-4cdd-ae39-6adf8face0a5/reservations\": request timeout"
+
+running (1m56.7s), 10000/10000 VUs, 71518 complete and 0 interrupted iterations
+throughput   [  78% ] 10000/10000 VUs  1m56.7s/2m30.0s
+time="2026-10-28T00:53:05+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/4c65c320-4725-4958-894b-2f5357577398/reservations\": request timeout"
+time="2026-10-28T00:53:05+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a42f30ff-2b4a-488b-bfd0-2f33617e1c94/reservations\": request timeout"
+time="2026-10-28T00:53:05+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/80070822-3043-4742-9a6b-04062c535534/reservations\": request timeout"
+time="2026-10-28T00:53:05+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2dd94e3c-76af-435c-8088-1e61b77e1023/reservations\": request timeout"
+time="2026-10-28T00:53:05+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/3c90232a-0bff-4a8e-8a6a-75d58abcd8c4/reservations\": request timeout"
+
+running (1m57.7s), 10000/10000 VUs, 72346 complete and 0 interrupted iterations
+throughput   [  78% ] 10000/10000 VUs  1m57.7s/2m30.0s
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ad58c887-9818-4b24-a912-44062f1aa310/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/71f18e97-7d9d-487c-b612-ca2cc63a3d9a/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/96c583a9-c1c9-475b-8554-f0c3a49321c9/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b76b25b2-8deb-4f17-b7fd-0bfd186cf3ad/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1029aec5-f42c-4029-a461-835fbd87f457/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ad58c887-9818-4b24-a912-44062f1aa310/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a720b189-086d-44c9-a878-ce9346d801d8/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/58d0e66f-4386-46ac-8765-1030514d4264/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ce7f74e6-4384-43dc-8e2c-d5ee82e54193/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8ca730f8-8b95-4583-966e-4e263de87b12/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/866252a9-d2a3-4742-b4f7-4c40b150e3a8/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/99f7b593-faf8-4129-aec3-9bb5517bd464/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/eb69c95e-3f4b-474c-bb91-a48cbc8228a9/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/95d27bc0-d277-42f4-825a-b8a512ef54f2/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/cbd9f1dd-8617-4e98-b6aa-c90eba2e4d26/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a3f525ae-4082-4885-b369-60f5239c0c30/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c46d57f1-c07d-4b6f-a167-14f98a3e2fcb/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e44d41ec-f50f-4750-b3c1-196ba7d90c92/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/3c90232a-0bff-4a8e-8a6a-75d58abcd8c4/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/bb7d395c-6702-4674-a050-3cc5f72d13b4/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/007ed4dd-37bb-4dd1-b920-790e6c5f5313/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/32e67ca1-b80b-49f6-b07b-774dfb58bde3/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/973ecfb9-4519-4b36-9230-0fc3a8271c68/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1ed81cd0-87dc-4447-a5ab-8a2eeecbae8c/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8832c0e9-ef3d-4884-bd7a-866a1d212241/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b7a56f48-6dab-4a4d-ba1e-f6e914871291/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/d8c67174-490f-42d4-aa81-e49129f09928/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b02e9d15-ae54-46eb-86cb-8e806a072731/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a80e59ec-2ba6-4a52-9e44-4ca5ba119af6/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ab9fb7f6-4947-4b11-8b67-86edd6a705e7/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/71f18e97-7d9d-487c-b612-ca2cc63a3d9a/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a7644830-622a-44ae-82aa-3952ba8cdb46/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/f42efd93-3c2d-4ff0-aa41-a6a40a51ac71/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2303f754-a289-43d8-b817-247ba4b46567/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/9cdac418-4bc7-40a2-93e6-d7ddc13a1156/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a190251b-16e0-4fbc-b29a-dcee3f413a80/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ae8be1bb-fa22-4919-9138-523f9625a6a5/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/64bcb0e2-e982-477a-9a95-78b60198b96f/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/9cdac418-4bc7-40a2-93e6-d7ddc13a1156/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/5f7354fb-1bae-42d4-9ad2-6376f65b913a/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/268a1495-da34-4335-a105-54d815a2ba5d/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6d8d3f94-3930-45f7-8964-0335c2870233/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e3ec2274-6476-4225-95b8-f38f04503df5/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/15162a70-25b2-46d0-a94e-db3d8b01c8e2/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/40440e43-d609-45e9-952d-9498d8d22f9c/reservations\": request timeout"
+time="2026-10-28T00:53:06+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b971ea87-9f24-4a23-9ca3-0379159861e7/reservations\": request timeout"
+
+running (1m58.7s), 10000/10000 VUs, 73079 complete and 0 interrupted iterations
+throughput   [  79% ] 10000/10000 VUs  1m58.7s/2m30.0s
+
+running (1m59.7s), 10000/10000 VUs, 73736 complete and 0 interrupted iterations
+throughput   [  80% ] 10000/10000 VUs  1m59.7s/2m30.0s
+
+running (2m00.7s), 09990/10000 VUs, 74527 complete and 0 interrupted iterations
+throughput   [  80% ] 09990/10000 VUs  2m00.7s/2m30.0s
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a7644830-622a-44ae-82aa-3952ba8cdb46/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/462bdee6-88a4-40e4-be59-ee97797b4a13/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/4f3eb1ab-0825-4fda-8d08-d25deb4866a6/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/268a1495-da34-4335-a105-54d815a2ba5d/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/40440e43-d609-45e9-952d-9498d8d22f9c/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a9434461-f65b-4749-9683-24a25247ce07/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/266457e8-57ce-4f07-ae90-d6f95c113d90/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e5284b65-ef7c-41d9-bd6b-9d4ac89854fe/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ad58c887-9818-4b24-a912-44062f1aa310/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ab9fb7f6-4947-4b11-8b67-86edd6a705e7/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e5ba37cb-9a05-4de2-9d49-8bc3ba18e2b4/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1d3c9652-950c-4f14-8914-cb13fa8609be/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b20cc642-c32b-4101-8f56-56ccacb6d8c2/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/d761581d-b5ad-4201-bfbe-d7c95ab6a419/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/56e945d9-b0bb-4643-a52e-cc8e9e1a3910/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/85cba297-a3fc-423f-b1be-f0f87e558650/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c8e76115-0ae9-4c9d-aec3-82784171dcf2/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/404e925a-6ce7-4ea9-a26e-b5a73b8d7ebd/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/58d0e66f-4386-46ac-8765-1030514d4264/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/5839e4eb-eeb9-4558-b615-68140dc146fd/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/d8c67174-490f-42d4-aa81-e49129f09928/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/5b5b4a94-a7f8-4be5-b804-0a3bfcbaf565/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/eb69c95e-3f4b-474c-bb91-a48cbc8228a9/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a42f30ff-2b4a-488b-bfd0-2f33617e1c94/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/bb7d395c-6702-4674-a050-3cc5f72d13b4/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/745dc7dc-a70e-4055-bcf4-94647b91a4e5/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ba86fcfa-1204-4061-8b76-ca9d4ad79d9b/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/32104dcb-35d9-445c-bac3-6778dab18bc9/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/69067bfc-b786-4ed1-abbc-ffd28cd68509/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6d203975-2088-4663-ab24-7a2920a2055b/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e9165837-7c68-41b9-bd5b-4fba7a6fdd72/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/53eaa55c-2e50-4302-ae81-e69442d57511/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/3c90232a-0bff-4a8e-8a6a-75d58abcd8c4/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8ca730f8-8b95-4583-966e-4e263de87b12/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8b5a9f2f-cbd9-43bc-8482-609ca5f5ac13/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2dc90265-f363-43a0-9fd9-919c55fa5ff5/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/075c8cfc-7301-4918-b148-60da3317fc53/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ba86fcfa-1204-4061-8b76-ca9d4ad79d9b/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/bd2bf0e5-a186-4c49-a691-50fdce710438/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/fd21b1c0-157a-4f0c-81e8-42c99e7cf5a5/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ad58c887-9818-4b24-a912-44062f1aa310/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c5337086-66e5-430a-a248-c2b6d83de596/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ce577477-8b4d-47eb-9eab-df5af5dd7618/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/71f18e97-7d9d-487c-b612-ca2cc63a3d9a/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/518fb215-4659-44c4-8a3b-0d19f04ed9f0/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/18fb55e4-c3cf-46eb-b712-e727c6caf974/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/d6a86101-df5c-4f89-8f19-46f8212dfd1d/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/fd21b1c0-157a-4f0c-81e8-42c99e7cf5a5/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/19d01d9d-1b55-4af3-9de9-5fe2a17059ff/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c8e76115-0ae9-4c9d-aec3-82784171dcf2/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/db09c210-038d-4764-b791-ab93cb255818/reservations\": request timeout"
+time="2026-10-28T00:53:09+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/69067bfc-b786-4ed1-abbc-ffd28cd68509/reservations\": request timeout"
+
+running (2m01.7s), 09965/10000 VUs, 74966 complete and 0 interrupted iterations
+throughput   [  81% ] 09965/10000 VUs  2m01.7s/2m30.0s
+
+running (2m02.7s), 09930/10000 VUs, 75485 complete and 0 interrupted iterations
+throughput   [  82% ] 09930/10000 VUs  2m02.7s/2m30.0s
+time="2026-10-28T00:53:11+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8438b2ef-6782-4f09-b37c-df2dee194b08/reservations\": request timeout"
+
+running (2m03.7s), 09874/10000 VUs, 75947 complete and 0 interrupted iterations
+throughput   [  82% ] 09874/10000 VUs  2m03.7s/2m30.0s
+
+running (2m04.7s), 09823/10000 VUs, 76527 complete and 0 interrupted iterations
+throughput   [  83% ] 09823/10000 VUs  2m04.7s/2m30.0s
+time="2026-10-28T00:53:13+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1f7e8881-5b54-4ae7-9f2c-72164968ad87/reservations\": request timeout"
+time="2026-10-28T00:53:13+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/7470dc74-303a-428a-9246-873b172a4b93/reservations\": request timeout"
+
+running (2m05.7s), 09759/10000 VUs, 76998 complete and 0 interrupted iterations
+throughput   [  84% ] 09759/10000 VUs  2m05.7s/2m30.0s
+
+running (2m06.7s), 09685/10000 VUs, 77525 complete and 0 interrupted iterations
+throughput   [  84% ] 09685/10000 VUs  2m06.7s/2m30.0s
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2df8cc6f-3bf6-485c-8eac-3cb97d245d64/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/80070822-3043-4742-9a6b-04062c535534/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ad58c887-9818-4b24-a912-44062f1aa310/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6f945d61-3898-4e71-9c58-68eaccc76296/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/075c8cfc-7301-4918-b148-60da3317fc53/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/973ecfb9-4519-4b36-9230-0fc3a8271c68/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/32104dcb-35d9-445c-bac3-6778dab18bc9/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ba86fcfa-1204-4061-8b76-ca9d4ad79d9b/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/d6a86101-df5c-4f89-8f19-46f8212dfd1d/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c7465922-bdaf-40c5-9bb0-f950735683a2/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/53f0d66a-7a91-4c89-a262-15fb844413fc/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/64556160-1627-4f81-acd4-61ed412b9e6d/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8cccbeb2-26a5-4cd0-8423-615c21fc130e/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/f384cee8-458c-4628-9844-aecf22adea61/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/64556160-1627-4f81-acd4-61ed412b9e6d/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/86674d6c-0886-42ff-9c98-3698f99afc0c/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/4081a99b-204f-47f3-ae36-7055f7d5c5fc/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6863e8d2-a9f2-4959-a636-6b428eeabc50/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a7644830-622a-44ae-82aa-3952ba8cdb46/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/64c46457-ccbb-40d2-983f-f8a62d3773cd/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ac97e63b-3668-437e-bd40-d158838e93cb/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e5284b65-ef7c-41d9-bd6b-9d4ac89854fe/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a309a1ac-3a2e-4ae7-9d67-4c187229e3e9/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/268a1495-da34-4335-a105-54d815a2ba5d/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ad58c887-9818-4b24-a912-44062f1aa310/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2df8cc6f-3bf6-485c-8eac-3cb97d245d64/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/db09c210-038d-4764-b791-ab93cb255818/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/53f0d66a-7a91-4c89-a262-15fb844413fc/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8ca730f8-8b95-4583-966e-4e263de87b12/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/58d0e66f-4386-46ac-8765-1030514d4264/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1f7e8881-5b54-4ae7-9f2c-72164968ad87/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/15b138bc-b7d2-4bfe-9a7e-39f409f37875/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/4f3eb1ab-0825-4fda-8d08-d25deb4866a6/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1d3c9652-950c-4f14-8914-cb13fa8609be/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/5df032dc-e232-4390-9e02-f14e0562754a/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6c4060ad-f090-4e70-b085-9949b15a91b5/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/27e47f6f-cbf8-4ff2-80ff-cc3dfb0bd281/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/7573665c-bbb9-435d-b4ed-b0b0ac330369/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b5e2da83-2af8-4940-9e0f-cabef9723811/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/69067bfc-b786-4ed1-abbc-ffd28cd68509/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/866252a9-d2a3-4742-b4f7-4c40b150e3a8/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a5960e5b-4ec2-48d2-826c-829a23fa52a7/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b02e9d15-ae54-46eb-86cb-8e806a072731/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ddad4825-5973-4153-a09d-d174f5bba0cf/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/fd21b1c0-157a-4f0c-81e8-42c99e7cf5a5/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/40440e43-d609-45e9-952d-9498d8d22f9c/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a3f525ae-4082-4885-b369-60f5239c0c30/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/4f5c0fb6-89c8-47b2-a02e-83cde244dfe7/reservations\": request timeout"
+time="2026-10-28T00:53:15+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ec55d251-6b85-4294-bf58-c148b7ea970c/reservations\": request timeout"
+
+running (2m07.7s), 09593/10000 VUs, 78186 complete and 0 interrupted iterations
+throughput   [  85% ] 09593/10000 VUs  2m07.7s/2m30.0s
+
+running (2m08.7s), 09517/10000 VUs, 78748 complete and 0 interrupted iterations
+throughput   [  86% ] 09517/10000 VUs  2m08.7s/2m30.0s
+time="2026-10-28T00:53:17+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/31947aba-59f2-48a7-8b93-7ce6d5f87eed/reservations\": request timeout"
+time="2026-10-28T00:53:17+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/02383fb8-ace8-425d-9af6-d6c78a9a634f/reservations\": request timeout"
+time="2026-10-28T00:53:17+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/527ac7ca-cee1-43d5-b7f1-e21f8fc5760a/reservations\": request timeout"
+
+running (2m09.7s), 09407/10000 VUs, 79438 complete and 0 interrupted iterations
+throughput   [  86% ] 09407/10000 VUs  2m09.7s/2m30.0s
+
+running (2m10.7s), 09229/10000 VUs, 80076 complete and 0 interrupted iterations
+throughput   [  87% ] 09229/10000 VUs  2m10.7s/2m30.0s
+
+running (2m11.7s), 09099/10000 VUs, 80597 complete and 0 interrupted iterations
+throughput   [  88% ] 09099/10000 VUs  2m11.7s/2m30.0s
+
+running (2m12.7s), 09036/10000 VUs, 81039 complete and 0 interrupted iterations
+throughput   [  88% ] 09036/10000 VUs  2m12.7s/2m30.0s
+
+running (2m13.7s), 08992/10000 VUs, 81377 complete and 0 interrupted iterations
+throughput   [  89% ] 08992/10000 VUs  2m13.7s/2m30.0s
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/32e67ca1-b80b-49f6-b07b-774dfb58bde3/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/f384cee8-458c-4628-9844-aecf22adea61/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/bd2bf0e5-a186-4c49-a691-50fdce710438/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/aec28787-73bf-46f7-abb8-f8444d6eecbe/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/404e925a-6ce7-4ea9-a26e-b5a73b8d7ebd/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c46d57f1-c07d-4b6f-a167-14f98a3e2fcb/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/aff2ebe7-208e-4b87-b586-98bc03ace740/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/d8c67174-490f-42d4-aa81-e49129f09928/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/281a925f-c079-433f-9592-fcc8ee210def/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b20cc642-c32b-4101-8f56-56ccacb6d8c2/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e9165837-7c68-41b9-bd5b-4fba7a6fdd72/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/64bcb0e2-e982-477a-9a95-78b60198b96f/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/745dc7dc-a70e-4055-bcf4-94647b91a4e5/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/32e67ca1-b80b-49f6-b07b-774dfb58bde3/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/00428ddc-f408-4027-b95d-6db32af8fa59/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/334d866c-12ae-4914-b51e-75c636015ee8/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/80070822-3043-4742-9a6b-04062c535534/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ce577477-8b4d-47eb-9eab-df5af5dd7618/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/f4e4847b-0f16-46cc-8c81-adbbd370c4e6/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/5d1d1b40-1679-4d4b-ae3b-912c56da3a91/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1f93dff8-ed07-4f16-a63d-35e801e07aa2/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ba86fcfa-1204-4061-8b76-ca9d4ad79d9b/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c6d2bc61-4931-49b4-b3b7-c2a3684875ff/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ae8be1bb-fa22-4919-9138-523f9625a6a5/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b20cc642-c32b-4101-8f56-56ccacb6d8c2/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8967ee1b-ca35-4c99-a41f-7a0b56c9c261/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b02e9d15-ae54-46eb-86cb-8e806a072731/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/bb7d395c-6702-4674-a050-3cc5f72d13b4/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/db09c210-038d-4764-b791-ab93cb255818/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/3476a43f-1b1d-4fe5-a58c-6b5aecd05e5a/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/85e48d16-53d2-4812-860a-138c807edc67/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c143a320-dac4-4356-8cdd-ad6247dcf4b3/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a7644830-622a-44ae-82aa-3952ba8cdb46/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/64c46457-ccbb-40d2-983f-f8a62d3773cd/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/aad1a587-cfe0-4fa1-911f-434b8e5be542/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2dc90265-f363-43a0-9fd9-919c55fa5ff5/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/5d1d1b40-1679-4d4b-ae3b-912c56da3a91/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1756bd98-0a4e-4928-a33e-c1aa01257741/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/fd726d46-0b58-4a79-ad25-25188534c6cc/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/32104dcb-35d9-445c-bac3-6778dab18bc9/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/80070822-3043-4742-9a6b-04062c535534/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/64556160-1627-4f81-acd4-61ed412b9e6d/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c0594144-7a1f-4f82-b363-5e53349835ca/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/268a1495-da34-4335-a105-54d815a2ba5d/reservations\": request timeout"
+time="2026-10-28T00:53:22+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2303f754-a289-43d8-b817-247ba4b46567/reservations\": request timeout"
+
+running (2m14.7s), 08839/10000 VUs, 82079 complete and 0 interrupted iterations
+throughput   [  90% ] 08839/10000 VUs  2m14.7s/2m30.0s
+time="2026-10-28T00:53:23+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c5337086-66e5-430a-a248-c2b6d83de596/reservations\": request timeout"
+time="2026-10-28T00:53:23+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a7b2a156-20cb-4b68-815a-5469fcf153b2/reservations\": request timeout"
+time="2026-10-28T00:53:23+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ba7a2ce0-9d71-456d-943b-44042e86b091/reservations\": request timeout"
+time="2026-10-28T00:53:23+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/7470dc74-303a-428a-9246-873b172a4b93/reservations\": request timeout"
+time="2026-10-28T00:53:23+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/3fbcd28f-27a9-4b58-8cdb-5056b5adbf6e/reservations\": request timeout"
+time="2026-10-28T00:53:23+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/38116f86-8a95-4139-989b-9c75599e25c8/reservations\": request timeout"
+
+running (2m15.7s), 08727/10000 VUs, 82733 complete and 0 interrupted iterations
+throughput   [  90% ] 08727/10000 VUs  2m15.7s/2m30.0s
+
+running (2m16.7s), 08621/10000 VUs, 83262 complete and 0 interrupted iterations
+throughput   [  91% ] 08621/10000 VUs  2m16.7s/2m30.0s
+
+running (2m17.7s), 08459/10000 VUs, 83894 complete and 0 interrupted iterations
+throughput   [  92% ] 08459/10000 VUs  2m17.7s/2m30.0s
+time="2026-10-28T00:53:26+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/5df032dc-e232-4390-9e02-f14e0562754a/reservations\": request timeout"
+
+running (2m18.7s), 08323/10000 VUs, 84433 complete and 0 interrupted iterations
+throughput   [  92% ] 08323/10000 VUs  2m18.7s/2m30.0s
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/cbd9f1dd-8617-4e98-b6aa-c90eba2e4d26/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/32e67ca1-b80b-49f6-b07b-774dfb58bde3/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/866252a9-d2a3-4742-b4f7-4c40b150e3a8/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a1d4ea41-1718-4b9e-afd5-b6b23d7ac649/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/bd2bf0e5-a186-4c49-a691-50fdce710438/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ba86fcfa-1204-4061-8b76-ca9d4ad79d9b/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6d203975-2088-4663-ab24-7a2920a2055b/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2dd94e3c-76af-435c-8088-1e61b77e1023/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/8cccbeb2-26a5-4cd0-8423-615c21fc130e/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a7b2a156-20cb-4b68-815a-5469fcf153b2/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/4ad0de4b-ecec-45cc-bb44-1d7e7116a96a/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/64c46457-ccbb-40d2-983f-f8a62d3773cd/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/aff2ebe7-208e-4b87-b586-98bc03ace740/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ccf7b1f6-65bc-4026-aa41-58b76f76dac0/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/268a1495-da34-4335-a105-54d815a2ba5d/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/18fb55e4-c3cf-46eb-b712-e727c6caf974/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/32104dcb-35d9-445c-bac3-6778dab18bc9/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/df5988dd-0283-470c-a272-95be0be40b5a/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/df5988dd-0283-470c-a272-95be0be40b5a/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6d8d3f94-3930-45f7-8964-0335c2870233/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a09f1199-cd20-43b8-bcea-c4b2f74194ac/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/0d2ee9ed-170a-49e6-81e5-77a718eb9755/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/db09c210-038d-4764-b791-ab93cb255818/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/075c8cfc-7301-4918-b148-60da3317fc53/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/266457e8-57ce-4f07-ae90-d6f95c113d90/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a42f30ff-2b4a-488b-bfd0-2f33617e1c94/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/d5c913ff-77df-4cf6-8918-578edb7d650f/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a09f1199-cd20-43b8-bcea-c4b2f74194ac/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/7b6d92db-0eb4-4ca9-bfa2-82b5f90ecc41/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/2df8cc6f-3bf6-485c-8eac-3cb97d245d64/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/18fb55e4-c3cf-46eb-b712-e727c6caf974/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b02e9d15-ae54-46eb-86cb-8e806a072731/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a7644830-622a-44ae-82aa-3952ba8cdb46/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/bd2bf0e5-a186-4c49-a691-50fdce710438/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a09f1199-cd20-43b8-bcea-c4b2f74194ac/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/fd464f94-4322-4fb0-99cb-3b877c96d77d/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/404cf893-3b15-4357-a9a9-c374fd1903a4/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/594404d8-751e-4301-b73c-52cf0612f999/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ab9fb7f6-4947-4b11-8b67-86edd6a705e7/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/aad1a587-cfe0-4fa1-911f-434b8e5be542/reservations\": request timeout"
+time="2026-10-28T00:53:27+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/64bcb0e2-e982-477a-9a95-78b60198b96f/reservations\": request timeout"
+
+running (2m19.7s), 08061/10000 VUs, 85021 complete and 0 interrupted iterations
+throughput   [  93% ] 08061/10000 VUs  2m19.7s/2m30.0s
+time="2026-10-28T00:53:28+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/15162a70-25b2-46d0-a94e-db3d8b01c8e2/reservations\": request timeout"
+
+running (2m20.7s), 07832/10000 VUs, 85535 complete and 0 interrupted iterations
+throughput   [  94% ] 07832/10000 VUs  2m20.7s/2m30.0s
+time="2026-10-28T00:53:29+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1756bd98-0a4e-4928-a33e-c1aa01257741/reservations\": request timeout"
+
+running (2m21.7s), 07550/10000 VUs, 86204 complete and 0 interrupted iterations
+throughput   [  94% ] 07550/10000 VUs  2m21.7s/2m30.0s
+
+running (2m22.7s), 07310/10000 VUs, 86663 complete and 0 interrupted iterations
+throughput   [  95% ] 07310/10000 VUs  2m22.7s/2m30.0s
+
+running (2m23.7s), 07076/10000 VUs, 87118 complete and 0 interrupted iterations
+throughput   [  96% ] 07076/10000 VUs  2m23.7s/2m30.0s
+time="2026-10-28T00:53:32+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/eb69c95e-3f4b-474c-bb91-a48cbc8228a9/reservations\": request timeout"
+time="2026-10-28T00:53:32+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/4f5c0fb6-89c8-47b2-a02e-83cde244dfe7/reservations\": request timeout"
+time="2026-10-28T00:53:32+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/58d0e66f-4386-46ac-8765-1030514d4264/reservations\": request timeout"
+
+running (2m24.7s), 06762/10000 VUs, 87666 complete and 0 interrupted iterations
+throughput   [  96% ] 06762/10000 VUs  2m24.7s/2m30.0s
+time="2026-10-28T00:53:33+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/aff2ebe7-208e-4b87-b586-98bc03ace740/reservations\": request timeout"
+time="2026-10-28T00:53:33+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/7573665c-bbb9-435d-b4ed-b0b0ac330369/reservations\": request timeout"
+
+running (2m25.7s), 06418/10000 VUs, 88227 complete and 0 interrupted iterations
+throughput   [  97% ] 06418/10000 VUs  2m25.7s/2m30.0s
+
+running (2m26.7s), 06050/10000 VUs, 88725 complete and 0 interrupted iterations
+throughput   [  98% ] 06050/10000 VUs  2m26.7s/2m30.0s
+
+running (2m27.7s), 05713/10000 VUs, 89199 complete and 0 interrupted iterations
+throughput   [  98% ] 05713/10000 VUs  2m27.7s/2m30.0s
+
+running (2m28.7s), 05302/10000 VUs, 89707 complete and 0 interrupted iterations
+throughput   [  99% ] 05302/10000 VUs  2m28.7s/2m30.0s
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/4ad0de4b-ecec-45cc-bb44-1d7e7116a96a/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ce7f74e6-4384-43dc-8e2c-d5ee82e54193/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a42f30ff-2b4a-488b-bfd0-2f33617e1c94/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1f7e8881-5b54-4ae7-9f2c-72164968ad87/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/b5e2da83-2af8-4940-9e0f-cabef9723811/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/4081a99b-204f-47f3-ae36-7055f7d5c5fc/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6863e8d2-a9f2-4959-a636-6b428eeabc50/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/c5337086-66e5-430a-a248-c2b6d83de596/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6f945d61-3898-4e71-9c58-68eaccc76296/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ad58c887-9818-4b24-a912-44062f1aa310/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/0733aaef-45a3-4286-a27d-ec26afa635da/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6c4060ad-f090-4e70-b085-9949b15a91b5/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/6a0b2aac-1207-4545-9eff-c49f41c59d5c/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ea24b97f-bd0e-4fb8-8886-4012d10118db/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/d761581d-b5ad-4201-bfbe-d7c95ab6a419/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/7470dc74-303a-428a-9246-873b172a4b93/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/ce577477-8b4d-47eb-9eab-df5af5dd7618/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1f7e8881-5b54-4ae7-9f2c-72164968ad87/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/e3a87eb8-77c6-487f-b905-a34cc8911b0c/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/a190251b-16e0-4fbc-b29a-dcee3f413a80/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/53f0d66a-7a91-4c89-a262-15fb844413fc/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/5637b876-ff9e-4bf4-a6d2-033e663780de/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/86674d6c-0886-42ff-9c98-3698f99afc0c/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/bb7d395c-6702-4674-a050-3cc5f72d13b4/reservations\": request timeout"
+time="2026-10-28T00:53:37+05:30" level=warning msg="Request Failed" error="Post \"http://localhost:3000/shows/1d3c9652-950c-4f14-8914-cb13fa8609be/reservations\": request timeout"
+
+running (2m29.7s), 04897/10000 VUs, 90152 complete and 0 interrupted iterations
+throughput   [ 100% ] 04897/10000 VUs  2m29.7s/2m30.0s
+
+running (2m30.7s), 04422/10000 VUs, 90629 complete and 0 interrupted iterations
+throughput ↓ [ 100% ] 04760/10000 VUs  2m30s
+
+running (2m31.7s), 03772/10000 VUs, 91279 complete and 0 interrupted iterations
+throughput ↓ [ 100% ] 04760/10000 VUs  2m30s
+
+running (2m32.7s), 03285/10000 VUs, 91766 complete and 0 interrupted iterations
+throughput ↓ [ 100% ] 04760/10000 VUs  2m30s
+
+running (2m33.7s), 02849/10000 VUs, 92202 complete and 0 interrupted iterations
+throughput ↓ [ 100% ] 04760/10000 VUs  2m30s
+
+running (2m34.7s), 02368/10000 VUs, 92683 complete and 0 interrupted iterations
+throughput ↓ [ 100% ] 04760/10000 VUs  2m30s
+
+running (2m35.7s), 01993/10000 VUs, 93058 complete and 0 interrupted iterations
+throughput ↓ [ 100% ] 04760/10000 VUs  2m30s
+
+running (2m36.7s), 01618/10000 VUs, 93433 complete and 0 interrupted iterations
+throughput ↓ [ 100% ] 04760/10000 VUs  2m30s
+
+running (2m37.7s), 01209/10000 VUs, 93842 complete and 0 interrupted iterations
+throughput ↓ [ 100% ] 04760/10000 VUs  2m30s
+
+running (2m38.7s), 00711/10000 VUs, 94340 complete and 0 interrupted iterations
+throughput ↓ [ 100% ] 04760/10000 VUs  2m30s
+
+running (2m39.7s), 00313/10000 VUs, 94738 complete and 0 interrupted iterations
+throughput ↓ [ 100% ] 04760/10000 VUs  2m30s
+
+running (2m40.6s), 00000/10000 VUs, 95050 complete and 1 interrupted iterations
+throughput ✓ [ 100% ] 00000/10000 VUs  2m30s
+
+
+  █ THRESHOLDS 
+
+    http_req_duration{name:reserve}
+    ✗ 'p(95)<500' p(95)=10.1s
+    ✗ 'p(99)<1000' p(99)=11.09s
+
+    http_req_failed{name:reserve}
+    ✗ 'rate<0.01' rate=98.05%
+
+    reserve_latency
+    ✗ 'p(95)<500' p(95)=11.01s
+    ✗ 'p(99)<1000' p(99)=11.77s
+
+
+  █ TOTAL RESULTS 
+
+    CUSTOM
+    connect_gave_up.........................: 4094   25.497218/s
+    connect_refused_retries.................: 226548 1410.929123/s
+    reserve_201.............................: 4592   28.598736/s
+    reserve_409.............................: 1674   10.425585/s
+    reserve_409_ACTIVE_RESERVATION_EXISTS...: 35     0.217978/s
+    reserve_409_SEATS_UNAVAILABLE...........: 1639   10.207606/s
+    reserve_503.............................: 84293  524.972406/s
+    reserve_5xx.............................: 84293  524.972406/s
+    reserve_attempts........................: 90559  563.996727/s
+    reserve_latency.........................: avg=7.82s  min=247.96ms med=7.93s max=29.99s p(90)=10.81s p(95)=11.01s p(99)=11.77s
+    reserve_other...........................: 4491   27.969714/s
+    reserve_unknown_outcome.................: 397    2.472495/s
+
+    HTTP
+    http_req_duration.......................: avg=2.25s  min=0s       med=0s    max=30.14s p(90)=8.71s  p(95)=10.1s  p(99)=11.09s
+      { expected_response:true }............: avg=4.82s  min=247.96ms med=5.14s max=29.9s  p(90)=7.53s  p(95)=9.24s  p(99)=17.16s
+      { name:reserve }......................: avg=2.25s  min=0s       med=0s    max=30.14s p(90)=8.71s  p(95)=10.1s  p(99)=11.09s
+    http_req_failed.........................: 98.05% 315332 out of 321598
+      { name:reserve }......................: 98.05% 315332 out of 321598
+    http_reqs...............................: 321598 2002.895564/s
+
+    EXECUTION
+    iteration_duration......................: avg=12.35s min=249.08ms med=8.46s max=1m41s  p(90)=15.7s  p(95)=55.13s p(99)=1m9s  
+    iterations..............................: 95050  591.96644/s
+    vus.....................................: 313    min=0                max=10000
+    vus_max.................................: 10000  min=7508             max=10000
+
+    NETWORK
+    data_received...........................: 33 MB  204 kB/s
+    data_sent...............................: 47 MB  293 kB/s
+
+
+
+
+running (2m40.6s), 00000/10000 VUs, 95050 complete and 1 interrupted iterations
+throughput ✓ [ 100% ] 00000/10000 VUs  2m30s
+time="2026-10-28T00:53:49+05:30" level=error msg="thresholds on metrics 'http_req_duration{name:reserve}, http_req_failed{name:reserve}, reserve_latency' have been crossed"
+
+(230642 "connection refused" request warnings suppressed; see connect_refused_retries)
+
+probe (no-DB route, 1/s): n=124 p50=31ms p95=3190ms max=5872ms failed=50 -> C:\Users\Samriddhi Agrawal\Desktop\FlashSeat\load\results\throughput-run3-probe.csv
+
+k6 exit 99: one or more informational thresholds were crossed (see ✗ above).
+
+=== DB verification (200 show(s), 10000 seats) ===
+--- show_seats by status ---
+  status   | count 
+-----------+-------
+ AVAILABLE |  5303
+ HELD      |  4697
+(2 rows)
+
+--- reservations by status ---
+ status | count 
+--------+-------
+ ACTIVE |  4697
+(1 row)
+
+
+HELD/BOOKED seats: 4697   ACTIVE reservations: 4697   k6 successful holds: 4592   unknown-outcome requests: 397
+PASS  k6 201s <= DB ACTIVE reservations <= k6 201s + unknown-outcome requests  (4592 <= 4697 <= 4592 + 397)
+PASS  DB HELD/BOOKED seats == DB ACTIVE reservations  (4697 vs 4697)
+PASS  no seat in more than one ACTIVE reservation  (0 seat(s))
+PASS  every HELD seat belongs to an ACTIVE reservation listing it  (0 seat(s))
+PASS  every ACTIVE reservation holds exactly one HELD seat  (0 reservation(s))
