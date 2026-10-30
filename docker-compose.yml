@@ -1,4 +1,18 @@
-version: '3.8'
+# Whole stack: `docker compose up --build` (needs .env.docker, see README.md).
+# postgres/redis ports stay published so the host workflow (npm run dev, npm test,
+# scripts/) keeps working against the same database and Redis.
+
+# Shared by migrate/api/sweeper: one image, one env file. DATABASE_URL/REDIS_URL are
+# set here (not in .env.docker) because inside the compose network they must use the
+# service names, and they belong next to the services they point at. The host .env
+# keeps its localhost URLs untouched.
+x-app: &app
+  build: .
+  image: flashseat-app:local
+  env_file: .env.docker
+  environment:
+    DATABASE_URL: postgres://flashseat:flashseat@postgres:5432/flashseat
+    REDIS_URL: redis://redis:6379
 
 services:
   postgres:
@@ -30,6 +44,54 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  migrate:
+    <<: *app
+    container_name: flashseat_migrate
+    command: ["npm", "run", "migrate:up"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    container_name: flashseat_api
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # node:22-slim has no curl/wget; Node 22's global fetch does the same job.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # > SHUTDOWN_TIMEOUT_MS (10s): the SIGTERM handler gets to drain requests and
+    # close the pool/Redis before Docker escalates to SIGKILL.
+    stop_grace_period: 15s
+
+  sweeper:
+    <<: *app
+    container_name: flashseat_sweeper
+    command: ["node", "dist/workers/sweeper.js"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # Same reasoning as api: an in-flight sweep is bounded by SHUTDOWN_TIMEOUT_MS.
+    stop_grace_period: 15s
 
 volumes:
   pgdata:

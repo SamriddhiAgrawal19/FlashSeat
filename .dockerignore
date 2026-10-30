@@ -1,0 +1,19 @@
+# Host artifacts: the image installs and compiles its own.
+node_modules
+dist
+coverage
+logs
+*.log
+
+# Secrets / local config: containers get env via env_file at run time, never baked in.
+.env
+.env.*
+
+# Not needed in the image (the build only uses package*.json, tsconfig.json, src/, migrations/).
+.git
+.claude
+.vscode
+tests
+scripts
+load
+docs

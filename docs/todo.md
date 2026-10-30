@@ -58,4 +58,6 @@ and why it was not fixed at the time.
   separate test database the dev sweeper never connects to, or a pre-flight check
   that fails the run if a `flashseat-sweeper` connection is present in
   `pg_stat_activity`.
+- **Partly addressed (Step 9):** `npm run test:docker` stops the `sweeper` container
+  for the duration of `npm test`. It does not stop a host `npm run sweeper`.
 - **Not fixed because:** a workflow rule until `start:test` exists.
