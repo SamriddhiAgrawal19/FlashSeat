@@ -7,9 +7,8 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   api, cookieHeader, db, deactivateUser, email, expireRefreshToken, hasErrorShape, liveRefreshTokens,
-  makeToken, register, refreshCookie, sleep, tokenHash, validPayload,
+  makeToken, register, refreshCookie, tokenHash, validPayload,
 } from './helpers';
-import { env } from '../src/config/env';
 import { redis } from '../src/redis/client';
 
 describe('H-4: refresh rotation and theft containment (strict mode)', () => {
@@ -151,54 +150,53 @@ describe('L-1: one error shape { error: { message, code } }', () => {
 
 describe('L-3: login hardening', () => {
   it('E: failed logins do not leak email existence (timing; can be noisy)', async () => {
-    // With ENABLE_RATE_LIMITING on, RATE_LIMIT_LOGIN_IP_LIMIT binds across every
-    // call below (same source IP) — paced in batches of that size with a full
-    // window's wait in between, so the limiter never turns a timed attempt into
-    // a 401-vs-429 mismatch. The per-email limit is sidestepped by measuring
-    // each "existing account" sample against its own freshly-registered user
-    // (one attempt each) instead of one email repeated 25x — same "real
-    // password hash to compare against" code path, just not re-hitting one key.
-    // Earlier tests in this file (H-4/M-3/L-1) already made a few login calls
-    // from this same IP; clear the counter so it actually starts at 0, matching
-    // the `sinceWait` tracker below (otherwise the real Redis count hits the
-    // limit before this function thinks a batch is full).
-    const loginIpKeys = await redis.keys('ratelimit:login-ip:*');
-    if (loginIpKeys.length) await redis.del(...loginIpKeys);
-    const ipLimit = env.RATE_LIMIT_LOGIN_IP_LIMIT;
-    const ipWindowMs = env.RATE_LIMIT_LOGIN_IP_WINDOW_SECONDS * 1000 + 1000;
-    let sinceWait = 0;
-    const paced = async <T>(fn: () => Promise<T>): Promise<T> => {
-      if (sinceWait >= ipLimit) {
-        await sleep(ipWindowMs);
-        sinceWait = 0;
-      }
-      sinceWait++;
-      return fn();
+    // With ENABLE_RATE_LIMITING on, the login limits (per IP, per email) would
+    // turn some of these ~53 attempts into 429s. The login rate-limit counters are
+    // reset before every call, outside the timed window: the limiter still runs
+    // on every request (same work in both groups), but no sample can become a
+    // 429. This replaces pacing with 61 s sleeps per batch, which depended on the
+    // host clock and the Redis container's clock agreeing within a second, and
+    // once let a 429 through.
+    const resetLoginLimits = async () => {
+      const keys = await redis.keys('ratelimit:login-*');
+      if (keys.length) await redis.del(...keys);
     };
 
     // Warm up argon2/JIT/connections once, off throwaway emails, before timing.
     for (let i = 0; i < 3; i++) {
-      await paced(() => api('POST', '/auth/login', { body: { email: email('warmup'), password: 'warmup' } }));
+      await resetLoginLimits();
+      await api('POST', '/auth/login', { body: { email: email('warmup'), password: 'warmup' } });
     }
 
     const time = async (body: Record<string, unknown>) => {
+      await resetLoginLimits();
       const t0 = process.hrtime.bigint();
-      const r = await paced(() => api('POST', '/auth/login', { body }));
+      const r = await api('POST', '/auth/login', { body });
       expect(r.status).toBe(401);
       return Number(process.hrtime.bigint() - t0) / 1e6;
     };
 
+    // Both groups must be measured under the same conditions. Timing every
+    // existing-email login right after that user's register, and all unknown-email
+    // logins afterwards, made the existing group slower whether or not the email
+    // existed (an unknown email timed right after a register was just as slow).
+    // So: register every user first, then alternate existing/unknown samples,
+    // swapping which goes first on each pair.
+    const users: string[] = [];
+    for (let i = 0; i < 25; i++) users.push((await register(`authE${i}`)).body.email as string);
     const existing: number[] = [];
-    for (let i = 0; i < 25; i++) {
-      const u = await register(`authE${i}`);
-      existing.push(await time({ email: u.body.email, password: 'wrong' }));
-    }
     const unknown: number[] = [];
-    for (let i = 0; i < 25; i++) unknown.push(await time({ email: email('ghost2'), password: 'Passw0rd!123' }));
+    for (let i = 0; i < 25; i++) {
+      const sampleExisting = async () => existing.push(await time({ email: users[i], password: 'wrong' }));
+      const sampleUnknown = async () => unknown.push(await time({ email: email('ghost2'), password: 'Passw0rd!123' }));
+      if (i % 2 === 0) { await sampleExisting(); await sampleUnknown(); }
+      else { await sampleUnknown(); await sampleExisting(); }
+    }
     const median = (a: number[]) => [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
+    console.log(`L-3 E median existing-email: ${median(existing).toFixed(1)} ms | median unknown-email: ${median(unknown).toFixed(1)} ms`);
     const ratio = Math.min(median(existing), median(unknown)) / Math.max(median(existing), median(unknown));
     expect(ratio).toBeGreaterThanOrEqual(0.6);
-  }, 450_000);
+  }, 120_000);
 
   it('F: deactivated user gets the same 401 as a wrong password; refresh dies', async () => {
     const u = await register('authF');

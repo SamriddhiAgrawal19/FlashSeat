@@ -334,35 +334,47 @@ const scenE = {
     redisDelPattern('ratelimit:login-ip:*');
     const ipWindowMs = RATE_LIMIT_LOGIN_IP_WINDOW_SECONDS * 1000 + 1000;
     let sinceWait = 0;
-    const paced = async (fn) => {
+    // Waits out the login-ip window when a batch is full. Called BEFORE the timer
+    // starts, so a pacing sleep is never part of a sample.
+    const pace = async () => {
       if (sinceWait >= RATE_LIMIT_LOGIN_IP_LIMIT) {
         await sleep(ipWindowMs);
         sinceWait = 0;
       }
       sinceWait++;
-      return fn();
     };
 
     // Warm up argon2/JIT/connections once, off throwaway emails, before timing.
     for (let i = 0; i < 3; i++) {
-      await paced(() => api('POST', '/auth/login', { body: { email: email('warmup'), password: 'warmup' } }));
+      await pace();
+      await api('POST', '/auth/login', { body: { email: email('warmup'), password: 'warmup' } });
     }
 
     const timeIt = async (body) => {
+      await pace();
       const t0 = process.hrtime.bigint();
-      const r = await paced(() => api('POST', '/auth/login', { body }));
+      const r = await api('POST', '/auth/login', { body });
       const ms = Number(process.hrtime.bigint() - t0) / 1e6;
       if (r.status !== 401) throw new Error(`expected 401, got ${r.status}`);
       return ms;
     };
 
+    // Both groups must be measured under the same conditions. Timing every
+    // existing-email login right after that user's register, and all unknown-email
+    // logins afterwards, made the existing group ~45 ms slower whether or not the
+    // email existed (an unknown email timed right after a register was just as
+    // slow). So: register every user first, then alternate existing/unknown
+    // samples, swapping which goes first on each pair.
+    const users = [];
+    for (let i = 0; i < 25; i++) users.push((await register(`E${i}`)).body.email);
     const existing = [];
-    for (let i = 0; i < 25; i++) {
-      const u = await register(`E${i}`);
-      existing.push(await timeIt({ email: u.body.email, password: 'wrong-password' }));
-    }
     const unknown = [];
-    for (let i = 0; i < 25; i++) unknown.push(await timeIt({ email: email('ghost'), password: 'Passw0rd!123' }));
+    for (let i = 0; i < 25; i++) {
+      const sampleExisting = async () => existing.push(await timeIt({ email: users[i], password: 'wrong-password' }));
+      const sampleUnknown = async () => unknown.push(await timeIt({ email: email('ghost'), password: 'Passw0rd!123' }));
+      if (i % 2 === 0) { await sampleExisting(); await sampleUnknown(); }
+      else { await sampleUnknown(); await sampleExisting(); }
+    }
 
     const median = (arr) => [...arr].sort((a, b) => a - b)[Math.floor(arr.length / 2)];
     const medExisting = median(existing);
