@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Request, Response, NextFunction } from 'express';
 import pino from 'pino';
 import { redis } from '../redis/client';
@@ -5,7 +6,9 @@ import { env } from '../config/env';
 
 const logger = pino({ name: 'admission-control' });
 
-const INFLIGHT_KEY = 'admission:inflight:booking';
+// A sorted set, under a new key name: the old plain-counter key held a string,
+// and a ZADD on it would fail (WRONGTYPE) until it expired.
+const INFLIGHT_KEY = 'admission:inflight:booking:set';
 
 // This is a cheap, approximate admission gate in front of the hot,
 // write-heavy, lock-sensitive endpoints (create reservation, checkout,
@@ -19,7 +22,7 @@ const INFLIGHT_KEY = 'admission:inflight:booking';
 // concurrent requests this queuing is itself the problem: rejecting doomed
 // requests late and expensively starves the ~390 req/s of real work the pool
 // can actually finish, collapsing goodput to ~1-2/s at 10,000 concurrent.
-// This gate rejects excess requests immediately with a Redis INCR, before
+// This gate rejects excess requests immediately with one Redis script call, before
 // any DB pool checkout is attempted, so the DB layer only ever sees requests
 // that were admitted.
 //
@@ -33,36 +36,58 @@ const INFLIGHT_KEY = 'admission:inflight:booking';
 // not a measured optimum — it has 15x headroom over the 10-connection pool,
 // which should smooth short bursts without ever queuing long enough to risk
 // the same collapse.
-async function incrInflight(): Promise<number> {
-  const pipeline = redis.pipeline();
-  pipeline.incr(INFLIGHT_KEY);
-  // Small TTL as a safety net only: if a response is lost (process crash,
-  // killed connection) the matching decrement in `release()` below never
-  // runs, and without this the counter would drift upward forever.
-  //
-  // Deliberately NOT 'NX' (set-once): the Step 8 load re-run first shipped
-  // with NX here, and under 150s of sustained load at 10,000 concurrent it
-  // made the gate nearly inert (SERVICE_BUSY never fired once in that run).
-  // The reason: NX sets the TTL only on the request that happens to create
-  // the key, so under continuous traffic the key's clock is never pushed
-  // out — it expires on its own schedule, deletes the counter outright, and
-  // the next INCR starts a fresh count from 1, discarding however many
-  // requests were genuinely still in flight. Refreshing the TTL on every
-  // INCR instead means it only truly expires after INFLIGHT_SAFETY_TTL_SECONDS
-  // of no new admission attempts at all — by which point, given the DB pool's
-  // own 5s connectionTimeoutMillis, nothing from before should still be
-  // running, so a reset then is actually safe.
-  pipeline.expire(INFLIGHT_KEY, env.INFLIGHT_SAFETY_TTL_SECONDS);
-  const results = await pipeline.exec();
-  if (!results) throw new Error('Redis pipeline returned null (connection unavailable)');
-  const [incrErr, count] = results[0];
-  if (incrErr) throw incrErr;
-  return count as number;
+// Each in-flight request is its own member of a sorted set, scored by the
+// Redis server time it was admitted at. This replaced a plain INCR/DECR
+// counter, which could leak a slot for good: if an INCR reached Redis but the
+// app never saw the reply (commandTimeout fired, or the command was replayed
+// after a reconnect), the request failed open and never decremented. With
+// steady traffic, the counter's TTL was refreshed by every INCR, so the
+// phantom count never expired (found in the Step 9 Docker battery). Here a
+// lost release can only ever cost one member, and every member drops out on
+// its own INFLIGHT_SAFETY_TTL_SECONDS after it was added, however much
+// traffic follows: the next admission check removes it by score.
+//
+// One Lua script, so drop-stale + count + add is atomic: no two requests can
+// both see the last free slot. Time comes from Redis's own clock (TIME), never
+// the app's, for the same reason the DB clock is used for holds: several app
+// instances share this set, and their clocks need not agree. (TIME before a
+// write is allowed in scripts since Redis 5's effects replication.) The key's
+// own PEXPIRE just cleans up an idle set; per-entry expiry is the ZREMRANGEBYSCORE.
+//
+// INFLIGHT_SAFETY_TTL_SECONDS (10s) must outlast any legitimate request, or a
+// slow one would stop being counted while still running; the DB pool's 5s
+// connectionTimeoutMillis and statement_timeout bound those well below that.
+const ACQUIRE_SCRIPT = `
+local t = redis.call('TIME')
+local nowMs = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
+local ttlMs = tonumber(ARGV[1])
+local limit = tonumber(ARGV[2])
+redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', nowMs - ttlMs)
+local count = redis.call('ZCARD', KEYS[1])
+if count < limit then
+  redis.call('ZADD', KEYS[1], nowMs, ARGV[3])
+  redis.call('PEXPIRE', KEYS[1], ttlMs)
+  return {1, count + 1}
+end
+return {0, count}
+`;
+
+/** Returns whether this request was admitted, and the in-flight count it saw (for logs). */
+async function acquireSlot(requestId: string): Promise<{ admitted: boolean; count: number }> {
+  const [admitted, count] = (await redis.eval(
+    ACQUIRE_SCRIPT,
+    1,
+    INFLIGHT_KEY,
+    env.INFLIGHT_SAFETY_TTL_SECONDS * 1000,
+    env.MAX_INFLIGHT_BOOKING_REQUESTS,
+    requestId
+  )) as [number, number];
+  return { admitted: admitted === 1, count };
 }
 
-function decrInflight(): void {
-  redis.decr(INFLIGHT_KEY).catch((err) => {
-    logger.warn({ err }, 'Redis error decrementing inflight counter; it will self-heal via the safety TTL');
+function releaseSlot(requestId: string): void {
+  redis.zrem(INFLIGHT_KEY, requestId).catch((err) => {
+    logger.warn({ err }, 'Redis error releasing admission slot; it expires on its own after the safety TTL');
   });
 }
 
@@ -78,23 +103,24 @@ function decrInflight(): void {
  * the response: 'finish' covers every response that was actually sent
  * (success or error, since errorHandler always calls res.json/status), and
  * 'close' covers a connection dropped before a response went out. Both are
- * guarded so exactly one decrement happens per admitted request.
+ * guarded so exactly one release happens per admitted request.
  */
 export async function admissionGate(req: Request, res: Response, next: NextFunction) {
-  let count: number;
+  const requestId = randomUUID();
+  let slot: { admitted: boolean; count: number };
   try {
-    count = await incrInflight();
+    slot = await acquireSlot(requestId);
   } catch (err) {
     logger.warn({ err }, 'Redis error in admission gate; failing open');
     return next();
   }
 
-  if (count > env.MAX_INFLIGHT_BOOKING_REQUESTS) {
-    decrInflight(); // this request is not being admitted; undo its own increment
+  if (!slot.admitted) {
+    // Nothing to undo: a rejected request was never added to the set.
     // Logged (like errorHandler's "Mapped database error") so SERVICE_BUSY volume
     // is visible in the logs rather than only inferable by subtracting DB_UNAVAILABLE
     // from the client-observed 503 count — a gap the Step 8 load re-run exposed.
-    logger.warn({ count, limit: env.MAX_INFLIGHT_BOOKING_REQUESTS }, 'Admission gate rejected request: SERVICE_BUSY');
+    logger.warn({ count: slot.count, limit: env.MAX_INFLIGHT_BOOKING_REQUESTS }, 'Admission gate rejected request: SERVICE_BUSY');
     res.setHeader('Retry-After', '1');
     return res.status(503).json({ error: { message: 'Service busy, please retry', code: 'SERVICE_BUSY' } });
   }
@@ -103,7 +129,7 @@ export async function admissionGate(req: Request, res: Response, next: NextFunct
   const release = () => {
     if (released) return;
     released = true;
-    decrInflight();
+    releaseSlot(requestId);
   };
   res.on('finish', release);
   res.on('close', release);

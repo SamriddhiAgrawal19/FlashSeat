@@ -30,7 +30,19 @@ const logger = pino({ name: 'redis' });
 // inside the DB pool's own 5s connectionTimeoutMillis, so a real Redis outage
 // still fails open well before a client would notice, while tolerating the
 // event-loop lag this app can actually produce under load.
+//
+// enableOfflineQueue=false: while the client is not connected (before the first
+// connect at startup, or while reconnecting after an outage) every command is
+// rejected immediately instead of being queued. Every caller fails open on a
+// rejection, so during an outage requests go straight through without waiting
+// out commandTimeout. It also stops a subtle leak: with the default queue, a
+// command whose caller had already given up (commandTimeout fired, request
+// failed open) stayed queued and was replayed against Redis on reconnect. A
+// replayed admission-gate INCR added an in-flight count that nothing would ever
+// decrement (found in the Step 9 Docker battery: the counter sat at baseline+1
+// right after the Redis-outage test).
 export const redis = new Redis(env.REDIS_URL, {
+  enableOfflineQueue: false,
   maxRetriesPerRequest: 1,
   commandTimeout: 2000,
   retryStrategy(times) {
