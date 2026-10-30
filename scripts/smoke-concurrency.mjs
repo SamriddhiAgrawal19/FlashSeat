@@ -106,13 +106,16 @@ async function main() {
   console.log('\n--- Scenario 2 (Deadlock check): 30 rounds of [A,B,C] vs [C,B,A] ---');
   const seatsABC = [availableSeats[0].id, availableSeats[1].id, availableSeats[2].id];
   const seatsCBA = [availableSeats[2].id, availableSeats[1].id, availableSeats[0].id];
-  const user1 = users[0];
-  const user2 = users[1];
 
   let scen2AllRoundsPass = true;
   const scen2AllCodes = [];
 
   for (let round = 1; round <= 30; round++) {
+    // RATE_LIMIT_RESERVATION_USER_LIMIT caps hold() calls per user per window;
+    // 30 rounds on one fixed pair would exceed it, so each round draws from
+    // the pool of 20 already-registered users instead of reusing users[0/1].
+    const user1 = users[(round - 1) % users.length];
+    const user2 = users[(round - 1 + 10) % users.length];
     const req1 = fetch(`${BASE_URL}/shows/${SHOW_ID}/reservations`, {
       method: 'POST',
       headers: {

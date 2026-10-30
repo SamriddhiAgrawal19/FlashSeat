@@ -5,8 +5,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   api, cancelEvent, checkout, confirmMock, createShowAt, db, expireReservation, hold, register,
-  release, setupShow, startShowNow,
+  release, setupShow, sleep, startShowNow,
 } from './helpers';
+import { env } from '../src/config/env';
 
 describe('H-1: confirm re-checks the show', () => {
   it('A: cancel -> confirm-mock => 409 SHOW_NOT_BOOKABLE; pipeline closed', async () => {
@@ -29,6 +30,9 @@ describe('H-1: confirm re-checks the show', () => {
     const r = await api('GET', `/reservations/${resId}`, { token: s.user.token });
     expect(r.data.reservation.status).toBe('RELEASED');
 
+    // ENABLE_SEAT_MAP_CACHE: the map's own GET during setupShow can still be
+    // within its TTL here, so wait past it rather than racing the cache.
+    await sleep(env.SEAT_MAP_CACHE_TTL_MS + 250);
     const seats = (await api('GET', `/shows/${s.showId}/seats`)).data.sections
       .flatMap((x: any) => x.rows.flatMap((y: any) => y.seats));
     for (const id of [s.seatIds[0], s.seatIds[1]]) {
@@ -63,6 +67,9 @@ describe('M-2: event state machine and cancelEvent', () => {
     // confirmed => REFUND_PENDING, seats still BOOKED, tickets still live
     const b1 = await api('GET', `/bookings/${co1.data.booking.id}`, { token: s.user.token });
     expect(b1.data.booking.status).toBe('REFUND_PENDING');
+    // ENABLE_SEAT_MAP_CACHE: wait past the documented staleness window instead
+    // of racing a cache entry warmed by setupShow's own read.
+    await sleep(env.SEAT_MAP_CACHE_TTL_MS + 250);
     const seats = (await api('GET', `/shows/${s.showId}/seats`)).data.sections
       .flatMap((x: any) => x.rows.flatMap((y: any) => y.seats));
     expect(seats.find((z: any) => z.id === s.seatIds[0]).status).toBe('BOOKED');

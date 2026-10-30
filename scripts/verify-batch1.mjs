@@ -23,6 +23,8 @@ import { fileURLToPath } from 'node:url';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const DOCKER_BIN = process.env.DOCKER_BIN || 'docker';
+const SEAT_MAP_CACHE_TTL_MS = Number(process.env.SEAT_MAP_CACHE_TTL_MS) || 2000;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PSQL_ARGS = ['compose', 'exec', '-T', 'postgres', 'psql', '-U', 'flashseat', '-d', 'flashseat'];
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -230,6 +232,9 @@ const scenB = scenario('B', 'M-2: publish/cancel guards, idempotent cancel, CONF
   const b = await api('GET', `/bookings/${bId}`, { token: s.user.token });
   c.expect('booking REFUND_PENDING', b.data?.booking?.status === 'REFUND_PENDING', `got ${b.data?.booking?.status}`);
 
+  // ENABLE_SEAT_MAP_CACHE: wait past the documented staleness window instead
+  // of racing a cache entry warmed by setup()'s own read.
+  await sleep(SEAT_MAP_CACHE_TTL_MS + 250);
   const seatsNow = await api('GET', `/shows/${s.showId}/seats`);
   const seat0 = seatsNow.data.sections.flatMap((x) => x.rows.flatMap((y) => y.seats)).find((z) => z.id === s.seats[0]);
   c.expect('seat still BOOKED', seat0?.status === 'BOOKED', `got ${seat0?.status}`);
@@ -349,13 +354,19 @@ const scenE = scenario('E', 'H-2: uppercase uuid replay => 200 same reservation;
 // F (V-1): cancel in parallel with create/checkout/confirm/release — no 5xx, no deadlocks, invariants hold.
 const scenF = scenario('F', 'V-1: cancel racing create/checkout/confirm/release — only 2xx/409, invariants zero, no deadlocks', async (c) => {
   const org = await register('F_org', 'ORGANIZER');
-  const userA = await register('F_usrA', 'ATTENDEE');
-  const userB = await register('F_usrB', 'ATTENDEE');
+  // RATE_LIMIT_RESERVATION_USER_LIMIT caps hold() calls per user per window;
+  // ROUNDS x one hold each would exceed it on a single reused account (the
+  // race being tested is per-show, not per-user), so each role alternates
+  // between 2 accounts.
+  const userAs = [await register('F_usrA0', 'ATTENDEE'), await register('F_usrA1', 'ATTENDEE')];
+  const userBs = [await register('F_usrB0', 'ATTENDEE'), await register('F_usrB1', 'ATTENDEE')];
   const ROUNDS = 30;
   const deadlocksBefore = deadlockCount();
   const bad = [];
 
   for (let round = 1; round <= ROUNDS; round++) {
+    const userA = userAs[round % 2];
+    const userB = userBs[round % 2];
     const venueId = await createVenue(org, 2);
     const ev = await api('POST', '/events', { token: org.token, body: { title: `F${round}`, category: 'MUSIC' } });
     const eventId = ev.data.id;

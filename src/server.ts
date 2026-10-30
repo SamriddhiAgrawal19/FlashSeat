@@ -1,6 +1,7 @@
 import { app } from './app';
 import { env } from './config/env';
 import { pool } from './db/pool';
+import { redis } from './redis/client';
 import { lifecycle } from './utils/lifecycle';
 import pino from 'pino';
 
@@ -41,6 +42,13 @@ async function shutdown(exitCode: number) {
       logger.info('Database pool closed.');
     } catch (dbErr) {
       logger.error({ err: dbErr }, 'Error during database pool close');
+    }
+
+    try {
+      await redis.quit();
+      logger.info('Redis connection closed.');
+    } catch (redisErr) {
+      logger.error({ err: redisErr }, 'Error during Redis connection close');
     }
 
     process.exit(err ? 1 : exitCode);

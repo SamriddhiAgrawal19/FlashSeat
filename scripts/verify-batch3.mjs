@@ -28,6 +28,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const envFile = readFileSync(join(ROOT, '.env'), 'utf8');
 const JWT_ACCESS_SECRET = envFile.match(/^JWT_ACCESS_SECRET=(.*)$/m)?.[1]?.trim() ?? '';
 const REFRESH_TOKEN_EXPIRY_DAYS = Number(envFile.match(/^REFRESH_TOKEN_EXPIRY_DAYS=(.*)$/m)?.[1]?.trim() ?? '7');
+const RATE_LIMIT_LOGIN_IP_LIMIT = Number(envFile.match(/^RATE_LIMIT_LOGIN_IP_LIMIT=(.*)$/m)?.[1]?.trim() ?? '10');
+const RATE_LIMIT_LOGIN_IP_WINDOW_SECONDS = Number(
+  envFile.match(/^RATE_LIMIT_LOGIN_IP_WINDOW_SECONDS=(.*)$/m)?.[1]?.trim() ?? '60'
+);
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -39,6 +43,13 @@ const email = (tag) => `${tag}_${Date.now()}_${rnd()}@verify.test`;
 
 function psql(sql) {
   return execFileSync(DOCKER_BIN, [...PSQL_ARGS, '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', sql], { encoding: 'utf8' }).trim();
+}
+
+function redisDelPattern(pattern) {
+  const keys = execFileSync(
+    DOCKER_BIN, ['compose', 'exec', '-T', 'redis', 'redis-cli', 'KEYS', pattern], { encoding: 'utf8' }
+  ).split('\n').map((l) => l.trim()).filter(Boolean);
+  for (const k of keys) execFileSync(DOCKER_BIN, ['compose', 'exec', '-T', 'redis', 'redis-cli', 'DEL', k]);
 }
 
 async function api(method, path, { token, body, cookie, key } = {}) {
@@ -312,23 +323,44 @@ const scenE = {
   id: 'E',
   title: 'L-3a: timing oracle — medians of 25 failed logins (existing vs unknown email) within 60%',
   fn: async (c) => {
-    const u = await register('E');
     console.log('   note: timing tests can be noisy on shared machines.');
 
+    // With ENABLE_RATE_LIMITING on, RATE_LIMIT_LOGIN_IP_LIMIT binds across every
+    // call below (same source IP) — paced in batches of that size with a full
+    // window's wait in between. The per-email limit is sidestepped by measuring
+    // each "existing account" sample against its own freshly-registered user
+    // (one attempt each) instead of one email repeated 25x — same "real
+    // password hash to compare against" code path, just not re-hitting one key.
+    redisDelPattern('ratelimit:login-ip:*');
+    const ipWindowMs = RATE_LIMIT_LOGIN_IP_WINDOW_SECONDS * 1000 + 1000;
+    let sinceWait = 0;
+    const paced = async (fn) => {
+      if (sinceWait >= RATE_LIMIT_LOGIN_IP_LIMIT) {
+        await sleep(ipWindowMs);
+        sinceWait = 0;
+      }
+      sinceWait++;
+      return fn();
+    };
+
+    // Warm up argon2/JIT/connections once, off throwaway emails, before timing.
     for (let i = 0; i < 3; i++) {
-      await api('POST', '/auth/login', { body: { email: u.body.email, password: 'wrong-password' } });
+      await paced(() => api('POST', '/auth/login', { body: { email: email('warmup'), password: 'warmup' } }));
     }
 
     const timeIt = async (body) => {
       const t0 = process.hrtime.bigint();
-      const r = await api('POST', '/auth/login', { body });
+      const r = await paced(() => api('POST', '/auth/login', { body }));
       const ms = Number(process.hrtime.bigint() - t0) / 1e6;
       if (r.status !== 401) throw new Error(`expected 401, got ${r.status}`);
       return ms;
     };
 
     const existing = [];
-    for (let i = 0; i < 25; i++) existing.push(await timeIt({ email: u.body.email, password: 'wrong-password' }));
+    for (let i = 0; i < 25; i++) {
+      const u = await register(`E${i}`);
+      existing.push(await timeIt({ email: u.body.email, password: 'wrong-password' }));
+    }
     const unknown = [];
     for (let i = 0; i < 25; i++) unknown.push(await timeIt({ email: email('ghost'), password: 'Passw0rd!123' }));
 

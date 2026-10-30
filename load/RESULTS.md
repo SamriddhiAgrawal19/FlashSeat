@@ -334,3 +334,175 @@ unknown-outcome accounting, warning suppression, and the event-loop probe. The c
 rerun is the run 2 above.
 - **Lesson:** a retry policy is part of the load, and an aggressive one can manufacture
   the collapse it's meant to work around.
+
+---
+
+# Phase 2, Step 8: Redis rate limiting / admission control — Test B re-run
+
+Re-runs Test B (the same `load/throughput.k6.js`, unmodified) now that `POST
+/shows/:showId/reservations` sits behind a per-user rate limiter
+(`RATE_LIMIT_RESERVATION_USER_LIMIT=20/60s`) and a Redis-backed admission gate
+(`MAX_INFLIGHT_BOOKING_REQUESTS=150`) — see `src/middleware/rateLimit.ts` and
+`src/middleware/admissionControl.ts`. `DB_POOL_MAX=10`, unchanged, as instructed.
+Everything else about the methodology (fresh shows via `load/seed.mjs`, fresh
+tokens via `load/register-users.mjs`, the same `ramping-vus` 0→10,000→0 profile,
+the same DB cross-check) is identical to Step 7.
+
+## Implementation bugs this re-run exposed (fixed before the numbers below)
+
+Two bugs in this session's own Redis code made the *first* attempts at this
+re-run meaningless, and are kept on disk for the record rather than deleted:
+
+| Attempt | File prefix | Bug | Symptom |
+|---|---|---|---|
+| 1 | `throughput-run4-attempt1-commandtimeout-bug.*` | `redis` client's `commandTimeout` was 250ms. At 10,000 concurrent requests, Node's own event loop lags past 250ms (the probe measured up to 1.7s) *before* ioredis even gets a turn to read a reply that's already sitting in the socket buffer. Almost every rate-limit/admission check timed out and failed open. | 0 `SERVICE_BUSY` responses logged; everything fell through to the DB pool exactly as in the ungated Step 7 run — worse, in fact (1,043 successful holds vs Step 7's 7,611). |
+| 2 | `throughput-run4-attempt2-ttl-reset-bug.*` | The admission counter's safety-net TTL used `EXPIRE ... NX` (set once). Under continuous load for longer than `INFLIGHT_SAFETY_TTL_SECONDS` (10s), the key's clock was never pushed out, so it expired and reset to 0 on its own schedule — discarding however many requests were genuinely still in flight — roughly every 10s for the whole 150s+ run. | Still 0 real `SERVICE_BUSY` (fewer fail-opens this time, after fixing bug 1, but the gate itself was self-defeating); still far below Step 7's throughput. |
+| 3 | `throughput-run4-attempt3-unlogged-servicebusy.*` | Not a correctness bug: the `SERVICE_BUSY` rejection path never called the logger, so there was no direct way to confirm the (now-fixed) gate was actually firing — only inferable by subtracting logged `DB_UNAVAILABLE` lines from k6's `reserve_503` count. Fixed by adding a `logger.warn` there (matching `errorHandler`'s existing pattern for `Mapped database error`). | Numbers already matched the final run; only observability was missing. |
+| 4 | `throughput-run4-attempt4-stale-fixture.*` | Methodology, not code: this attempt reused attempt 3's already-partially-held shows instead of reseeding. Those shows' 200 holds from ~8 minutes earlier crossed `HOLD_DURATION_SECONDS` (600s) *during* this run and were swept mid-test, so the DB's ACTIVE-reservation count no longer matched k6's 201 count for reasons unrelated to this run. | `load/run.mjs`'s DB cross-check correctly `FAIL`ed (160 vs 207) — a true positive for a dirty fixture, not an oversell. |
+
+Fixes: `commandTimeout` raised from 250ms to 2000ms (still comfortably inside the
+DB pool's own 5s `connectionTimeoutMillis`); the admission counter's `EXPIRE` call
+dropped `NX` so it refreshes on every request instead of only the first; a
+`logger.warn` added to the `SERVICE_BUSY` path. **Attempt 5, with a full fresh
+reseed, is the result below** (`throughput-run4-with-redis.*`).
+
+## Run 4 (attempt 5): rate limiting + admission gate active, `DB_POOL_MAX=10`
+
+| Metric | Run 2 (Step 7, ungated) | Run 4 (Step 8, gated) |
+|---|---|---|
+| Requests that reached the server | 159,645 | 110,158 |
+| Refused TCP connects (retried) / gave up | 56,862 / 801 | 378,982 / 8,220 |
+| 201 Created (holds) | **7,611** | **159** |
+| 409 (all causes) | 6,905 | 1 (`LOCK_TIMEOUT`) |
+| 429 `RATE_LIMITED` | 0 (didn't exist yet) | 10,147 |
+| 503, total | 145,129 | 99,851 |
+| 503 → `SERVICE_BUSY` (admission gate, before the DB pool) | n/a | **96,308 (96.5%)** |
+| 503 → `DB_UNAVAILABLE` (pool checkout timeout, same as Step 7) | 145,129 (100%) | **3,544 (3.5%)** |
+| Reserve latency (server-reached) | p50 6.16s, p95 7.47s, p99 11.29s, max 29.9s | p50 3.52s, p95 7.05s, p99 12.81s, max 29.9s |
+| Event-loop probe (no-DB route) | p50 410ms, p95 2.25s, max 2.52s, 0 failed | p50 1.44s, p95 3.42s, max 3.96s, 0 failed |
+| DB check | 7,611 ≤ 7,612 ≤ 7,612 ✅ | 159 = 159 = 159 ✅ |
+
+Timeline (10s buckets; `load/results/throughput-run4-with-redis-timeline.csv`):
+
+| t (s) | VUs | req/s | p50 ms | p95 ms | p99 ms | 201 | 503 |
+|---|---|---|---|---|---|---|---|
+| 0 | 820 | 206 | 415 | 800 | 1172 | 70 | 1994 |
+| 10 | 2487 | 733 | 1137 | 4840 | 6107 | 10 | 7315 |
+| 30 | 5820 | 744 | 1988 | 6966 | 11570 | 10 | 5842 |
+| 60 | 10000 | 696 | 3432 | 7910 | 10469 | 10 | 5178 |
+| 90 | 10000 | 777 | 4012 | 9276 | 16511 | 10 | 7755 |
+| 120 | 10000 | 704 | 5152 | 10279 | 16837 | 0 | 7043 |
+| 150 | 6187 | 721 | 685 | 2955 | 8267 | 0 | 7208 |
+
+## Reading it: the hypothesis is refuted for overall goodput, confirmed for *where* rejection happens
+
+The question posed going into this re-run was: does latency under overload drop
+and become more predictable, because excess requests are now rejected at Redis
+instead of queuing for a DB connection? **At this exact scale (10,000 closed-model
+concurrent requests on one shared machine), the answer is no for overall
+throughput, and only partly yes for latency:**
+
+1. **The gate's own mechanism works exactly as designed.** 96.5% of this run's
+   503s are `SERVICE_BUSY` — rejected by one Redis `INCR` before any DB pool
+   checkout was attempted — versus 100% `DB_UNAVAILABLE` (a 5-second pool wait
+   before rejection) in Step 7. That is the feature working correctly, and it's
+   real: confirmed directly in the server logs (`count`/`limit` on every
+   rejection) and independently verified by `tests/rate-limit.test.ts`.
+2. **But successful holds collapsed further, not less: 159 vs Step 7's 7,611.**
+   Median latency did improve (3.52s vs 6.16s), but p99 and max did not (12.81s/
+   29.9s vs 11.29s/29.9s), and the event-loop probe — which does no DB work at
+   all — got *worse* (p50 1.44s vs 410ms, max 3.96s vs 2.52s). That is the tell:
+   the bottleneck this run hit is not the DB pool queue Step 7 identified, it's
+   Node's single event loop being asked to accept, parse, authenticate
+   (JWT verify) and now *also* make one-to-two additional Redis round trips
+   (the rate limiter, then the admission gate) for every one of 10,000
+   simultaneously-arriving requests — the large majority of which were always
+   going to be rejected. Rejecting cheaply at Redis instead of expensively at
+   the DB pool is strictly better *per request*, but it does not reduce the
+   fixed cost of *accepting and routing* 10,000 concurrent requests through
+   Express in one Node process, and at this concurrency that fixed cost, not
+   where the eventual rejection happens, is what's actually being measured.
+   Step 7's own framing ("the bottleneck is admission, not the pool size")
+   turns out to be half right: admission is still the bottleneck, but the fix
+   needed is fewer requests ever reaching this Node process at 10,000-at-once
+   concurrency (e.g. a reverse-proxy-level limiter, horizontal scaling, or a
+   cheaper per-request check than a Redis round trip), not a smarter admission
+   decision inside it.
+3. **Correctness is untouched.** The DB cross-check passed exactly (159 = 159 =
+   159, no seat double-held, every invariant clean), same as every prior run.
+   Nothing about this feature risks overselling — it only changes how (and how
+   expensively) excess load is turned away.
+4. **A confound, reported rather than hidden:** this run was the fifth
+   consecutive 10,000-VU k6 run against this machine inside about 40 minutes
+   (the four attempts above). Refused-TCP-connect volume is far higher than
+   Step 7's single run (378,982 vs 56,862) and most plausibly reflects
+   accumulated OS-level socket/backlog pressure from the earlier runs in this
+   session, not a new effect from the admission gate. This affects the
+   absolute "requests that reached the server" and refused-connect numbers;
+   it does not affect the DB-verified correctness result, the direct
+   `SERVICE_BUSY`/`DB_UNAVAILABLE` split (both measured server-side, after a
+   connection was already accepted), or the qualitative finding that overall
+   goodput did not improve.
+
+## Regression battery with Redis in the stack
+
+**Current state (2026-10-30): the whole battery runs with both flags ON.**
+`ENABLE_RATE_LIMITING` and `ENABLE_SEAT_MAP_CACHE` default to `true` in
+`src/config/env.ts` and are on in the local `.env`. `npm test` (8 files,
+including `tests/rate-limit.test.ts`) passed 79/79 that way, and the scripts
+below passed against the same server. Two kinds of pre-existing test were
+adapted to real enforcement against a shared test IP:
+`auth.test.ts`'s login-timing-oracle case paces itself under the login
+limits, and tests that read the seat map right after a mutation account for
+the cache's documented staleness window. The suite registers ~300 users from
+one IP, so the local `.env` raises `RATE_LIMIT_REGISTER_IP_LIMIT` to 400
+(production default: 30/60s; see `.env.example`).
+`tests/rate-limit.test.ts` is what exercises the new behavior end to end,
+including one test that stops the real `redis` container mid-test and
+confirms every request still succeeds (fail-open).
+
+| Suite | Config | Result |
+|---|---|---|
+| `npm test` (vitest, 8 files) | Redis up, both flags on | 79/79 passed (2 of 3 runs; the third failed `sweeper.test.ts` E only because a standalone `npm run sweeper` was running against the same DB, see `docs/todo.md`) |
+| `verify-batch1/2/3.mjs`, `smoke-concurrency.mjs`, `smoke-checkout.mjs`, `verify-sweeper.mjs` | both flags on | all PASS |
+
+The table below is the **earlier** run from this step, kept as a record: at
+that point the main battery ran with both flags off and
+`tests/rate-limit.test.ts` ran separately with both on.
+
+| Suite | Config | Result |
+|---|---|---|
+| `npm test` (vitest, 7 files) | Redis up, both flags off | 72/72 passed |
+| `tests/rate-limit.test.ts` | Redis up, both flags on | 7/7 passed (incl. a real Redis-outage fail-open test) |
+| `verify-batch1.mjs` | flags off | A–F PASS |
+| `verify-batch2.mjs` | flags off | A–F PASS |
+| `verify-batch3.mjs` | flags off | A–H PASS |
+| `smoke-concurrency.mjs` (fresh show) | flags off | 1–3 PASS |
+| `smoke-checkout.mjs` (fresh show) | flags off | A–C PASS |
+| `verify-sweeper.mjs` | flags off | M1/M2/M5 PASS (caught as required), M3/M4 INFO, sweeper invariants PASS |
+
+## What this proves
+
+- **The admission gate measurably changes *where* excess load is rejected** —
+  from a 5-second DB pool wait (Step 7) to a sub-millisecond Redis check
+  (96.5% of this run's 503s) — without weakening any correctness guarantee.
+- **At 10,000 simultaneous arrivals on one Node process, that's not enough to
+  improve overall throughput or tail latency.** The event loop itself,
+  not the DB pool, is the binding constraint at this concurrency; adding
+  Redis round trips to every request (rate limiter + admission gate) adds
+  fixed cost that this run's numbers show outweighing the benefit of
+  avoiding the DB wait, at this exact scale.
+- **Fail-open is real, not just a comment.** A genuine Redis outage
+  (container stopped mid-test, `tests/rate-limit.test.ts`) left every
+  request succeeding, logged as warnings, never blocked.
+
+## What this does not test yet
+
+- A horizontally-scaled or cluster-mode Node deployment, where the event-loop
+  ceiling this run hit would not apply the same way.
+- A cheaper admission check than a Redis round trip (e.g. an in-process
+  semaphore, accepting cross-instance inaccuracy for lower latency).
+- Rate limiting/admission control under Test A's contention profile (single
+  hot show) rather than Test B's spread-load profile.
+- The seat-map cache under load (Step 8 section 4) — not exercised by this
+  k6 script, which only calls the reservation endpoint.

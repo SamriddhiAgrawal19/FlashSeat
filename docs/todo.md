@@ -29,3 +29,33 @@ and why it was not fixed at the time.
   `withTransaction` the same way; consider `UV_THREADPOOL_SIZE` sizing once hashing
   no longer pins connections.
 - **Not fixed because:** out of scope for the load-testing step (no `src/` changes).
+
+## Testing
+
+### Dedicated test server config (`start:test` + `.env.test`)
+
+- **Found in:** Phase 2 Step 8 review (2026-10-30), restoring the production
+  `RATE_LIMIT_REGISTER_IP_LIMIT` default to 30/60s.
+- **Problem:** the integration suite runs against whatever server is started from the
+  local `.env`, so it only passes because that `.env` loosens limits (register-by-IP
+  set to 400 since the suite registers ~300 users from one IP). Tests silently depend
+  on a developer's local config, and a loosened value can leak into a deploy.
+- **Fix:** add a `start:test` script that boots the API with an explicit `.env.test`
+  (e.g. `dotenv -e .env.test -- tsx src/server.ts`, or `DOTENV_CONFIG_PATH`), holding
+  every test-only override with a comment per value. Point vitest/`tests/helpers.ts`
+  at that server, and make the local `.env` match `.env.example` limits.
+- **Not fixed because:** out of scope for Step 8 (config cleanup only).
+
+### Never run a standalone sweeper during the test battery
+
+- **Found in:** Phase 2 Step 8 battery runs (2026-10-30).
+- **Problem:** never run a standalone sweeper (`npm run sweeper`) while running the
+  test battery. The tests drive `runSweepOnce` themselves, and an external sweeper
+  steals their expired rows. Seen as `sweeper.test.ts` E failing with
+  `expected 9 to be 25`: the external worker expired 16 of the test's 25 holds before
+  the test's own sweep ran.
+- **Fix:** the `start:test` setup above should also make this impossible, e.g. a
+  separate test database the dev sweeper never connects to, or a pre-flight check
+  that fails the run if a `flashseat-sweeper` connection is present in
+  `pg_stat_activity`.
+- **Not fixed because:** a workflow rule until `start:test` exists.

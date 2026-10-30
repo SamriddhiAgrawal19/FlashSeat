@@ -7,8 +7,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   api, cancelEvent, checkout, confirmMock, createShowAt, hold, invariantViolations,
-  register, release, setupShow, type User,
+  register, release, setupShow, sleep, type User,
 } from './helpers';
+import { env } from '../src/config/env';
 
 const rnd = () => Math.random().toString(36).slice(2, 8);
 
@@ -23,10 +24,16 @@ function assertOkStatuses(results: Array<{ tag: string; status: number }>) {
 describe('V-1 lock hierarchy under cancellation', () => {
   it('F: 30 rounds of cancel racing create/checkout/confirm/release — only 2xx/409, zero invariant rows', async () => {
     const org = await register('conF_org', { role: 'ORGANIZER' });
-    const userA = await register('conF_A');
-    const userB = await register('conF_B');
+    // RATE_LIMIT_RESERVATION_USER_LIMIT caps hold() calls per user per window;
+    // 30 rounds x one hold each would exceed it on a single reused account (the
+    // race being tested is per-show, not per-user), so each role alternates
+    // between 2 accounts — 15 holds apiece, comfortably under the limit.
+    const userAs = [await register('conF_A0'), await register('conF_A1')];
+    const userBs = [await register('conF_B0'), await register('conF_B1')];
 
     for (let round = 1; round <= 30; round++) {
+      const userA = userAs[round % 2];
+      const userB = userBs[round % 2];
       const venue = await api('POST', '/venues', {
         token: org.token,
         body: { name: `F ${rnd()}`, address: '1 Way', city: 'Ville' },
@@ -94,10 +101,14 @@ describe('smoke: contention and idempotent replay', () => {
 
   it('[A,B,C] vs [C,B,A] seat sets (30 rounds): one winner, one 409, zero 5xx', async () => {
     const s = await setupShow('conOrder', 3);
-    const u1 = await register('conOrder1');
-    const u2 = await register('conOrder2');
+    // Same reasoning as V-1 F: alternate between 2 accounts per role so 30
+    // rounds of one hold each stays under RATE_LIMIT_RESERVATION_USER_LIMIT.
+    const u1s = [await register('conOrder1a'), await register('conOrder1b')];
+    const u2s = [await register('conOrder2a'), await register('conOrder2b')];
     const [a, b, c] = s.seatIds;
     for (let round = 1; round <= 30; round++) {
+      const u1 = u1s[round % 2];
+      const u2 = u2s[round % 2];
       const [r1, r2] = await Promise.all([
         hold(u1, s.showId, `ord1-${round}-${rnd()}`, [a, b, c]),
         hold(u2, s.showId, `ord2-${round}-${rnd()}`, [c, b, a]),
@@ -145,6 +156,9 @@ describe('smoke: checkout and confirmation races', () => {
       expect(r.status).toBe(200);
       expect(r.data.booking.status).toBe('CONFIRMED');
     }
+    // ENABLE_SEAT_MAP_CACHE: wait past the documented staleness window instead
+    // of racing a cache entry warmed by setupShow's own read.
+    await sleep(env.SEAT_MAP_CACHE_TTL_MS + 250);
     const seats = (await api('GET', `/shows/${s.showId}/seats`)).data.sections
       .flatMap((x: any) => x.rows.flatMap((y: any) => y.seats));
     for (const id of s.seatIds) expect(seats.find((z: any) => z.id === id).status).toBe('BOOKED');
@@ -170,6 +184,9 @@ describe('smoke: checkout and confirmation races', () => {
       expect(outcome1 || outcome2, `round ${round}: confirm=${cf.status} delete=${del.status}`).toBe(true);
 
       const b = await api('GET', `/bookings/${bId}`, { token: s.user.token });
+      // ENABLE_SEAT_MAP_CACHE: wait past the documented staleness window
+      // instead of racing a cache entry warmed by setupShow's own read.
+      await sleep(env.SEAT_MAP_CACHE_TTL_MS + 250);
       const seat = (await api('GET', `/shows/${s.showId}/seats`)).data.sections
         .flatMap((x: any) => x.rows.flatMap((y: any) => y.seats))
         .find((z: any) => z.id === s.seatIds[0]);

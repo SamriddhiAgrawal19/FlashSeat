@@ -39,6 +39,7 @@ export interface ApiResult {
   bodyText: string;
   setCookies: string[];
   retryAfter: string | null;
+  xCache: string | null;
 }
 
 export async function api(
@@ -61,7 +62,14 @@ export async function api(
   let data: any = null;
   try { data = JSON.parse(bodyText); } catch { /* non-JSON */ }
   const setCookies = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [];
-  return { status: res.status, data, bodyText, setCookies, retryAfter: res.headers.get('retry-after') };
+  return {
+    status: res.status,
+    data,
+    bodyText,
+    setCookies,
+    retryAfter: res.headers.get('retry-after'),
+    xCache: res.headers.get('x-cache'),
+  };
 }
 
 export interface ParsedCookie {

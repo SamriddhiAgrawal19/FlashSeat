@@ -1,5 +1,7 @@
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const SHOW_ID = process.env.SHOW_ID;
+const SEAT_MAP_CACHE_TTL_MS = Number(process.env.SEAT_MAP_CACHE_TTL_MS) || 2000;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 if (!SHOW_ID) {
   console.error('ERROR: SHOW_ID environment variable is required.');
@@ -128,7 +130,10 @@ async function main() {
   );
   const confirmBookingIds = new Set(confirmResults.map((r) => r.body?.booking?.id).filter(Boolean));
 
-  // Check seat map for those 2 seats
+  // Check seat map for those 2 seats. ENABLE_SEAT_MAP_CACHE: wait past the
+  // documented staleness window instead of racing a cache entry warmed by
+  // the initial availability check above.
+  await sleep(SEAT_MAP_CACHE_TTL_MS + 250);
   const mapAfterConfirm = await (await fetch(`${BASE_URL}/shows/${SHOW_ID}/seats`)).json();
   const mapSeatsA = mapAfterConfirm.sections
     .flatMap((s) => s.rows.flatMap((r) => r.seats))
@@ -218,6 +223,9 @@ async function main() {
       })
     ).json();
 
+    // ENABLE_SEAT_MAP_CACHE: wait past the documented staleness window instead
+    // of racing a cache entry warmed by an earlier read of this show's map.
+    await sleep(SEAT_MAP_CACHE_TTL_MS + 250);
     const currentMap = await (await fetch(`${BASE_URL}/shows/${SHOW_ID}/seats`)).json();
     const currentSeat = currentMap.sections
       .flatMap((s) => s.rows.flatMap((r) => r.seats))

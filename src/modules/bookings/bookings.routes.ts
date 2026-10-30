@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as bookingsController from './bookings.controller';
 import { requireAuth } from '../../middleware/auth';
+import { admissionGate } from '../../middleware/admissionControl';
 
 export const bookingsRouter = Router();
 
@@ -8,6 +9,7 @@ export const bookingsRouter = Router();
 bookingsRouter.post(
   '/reservations/:reservationId/checkout',
   requireAuth,
+  admissionGate,
   bookingsController.checkout
 );
 
@@ -15,6 +17,7 @@ bookingsRouter.post(
 bookingsRouter.post(
   '/bookings/:bookingId/confirm-mock',
   requireAuth,
+  admissionGate,
   bookingsController.confirmMock
 );
 
