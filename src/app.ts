@@ -8,7 +8,6 @@ import { eventsRouter } from './modules/events/events.routes';
 import { showSeatsRouter } from './modules/show-seats/show-seats.routes';
 import { reservationsRouter } from './modules/reservations/reservations.routes';
 import { bookingsRouter } from './modules/bookings/bookings.routes';
-import { requireAuth, requireRole } from './middleware/auth';
 import { errorHandler } from './middleware/errorHandler';
 
 export const app = express();
@@ -22,11 +21,6 @@ app.use('/events', eventsRouter);
 app.use('/shows', showSeatsRouter);
 app.use('/', reservationsRouter);
 app.use('/', bookingsRouter);
-
-// Protected test route for verification
-app.get('/protected-test', requireAuth, requireRole('ORGANIZER'), (req, res) => {
-  res.json({ success: true, message: 'You are an organizer!', user: req.user });
-});
 
 // Health check endpoint to verify DB connection
 app.get('/health', async (req, res, next) => {

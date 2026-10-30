@@ -1,5 +1,6 @@
 import { Pool, PoolClient } from 'pg';
 import { env } from '../config/env';
+import { AppError } from '../utils/errors';
 import pino from 'pino';
 
 const logger = pino({ name: 'db' });
@@ -53,7 +54,14 @@ export async function withTransaction<T>(
   } catch (error) {
     try {
       await client.query('ROLLBACK');
-      logger.error({ err: error }, 'Transaction failed, rolled back.');
+      // An AppError below 500 (SEATS_UNAVAILABLE, INVALID_CREDENTIALS, ...) is an
+      // expected answer to the client, not a fault: debug, so that error-level
+      // lines only ever mean something actually went wrong.
+      if (error instanceof AppError && error.statusCode < 500) {
+        logger.debug({ err: error }, 'Transaction failed, rolled back.');
+      } else {
+        logger.error({ err: error }, 'Transaction failed, rolled back.');
+      }
     } catch (rollbackErr) {
       // The connection is suspect (e.g. the backend was terminated mid-flight):
       // destroy it instead of pooling it, and rethrow the ORIGINAL error below.
