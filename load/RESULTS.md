@@ -366,6 +366,22 @@ dropped `NX` so it refreshes on every request instead of only the first; a
 `logger.warn` added to the `SERVICE_BUSY` path. **Attempt 5, with a full fresh
 reseed, is the result below** (`throughput-run4-with-redis.*`).
 
+> **Current gate design (since commit `1221013`, 2026-10-30).** The run below used the
+> `INCR`/`DECR` counter described above. That counter has since been replaced. The counter
+> could leak a slot permanently: if an `INCR` reached Redis but its reply never reached the
+> app (`commandTimeout` fired, or ioredis replayed the queued command after a reconnect), the
+> request failed open and never decremented, and steady traffic kept refreshing the key's
+> TTL. The regression battery against the Docker stack caught this as an in-flight count
+> stuck one above baseline after the Redis-outage test. The gate is now a Redis **sorted
+> set** (`admission:inflight:booking:set`): each admitted request is a member scored with
+> Redis server time (`TIME`), and **one Lua script** drops members older than
+> `INFLIGHT_SAFETY_TTL_SECONDS`, counts the rest, and adds the new member if under the
+> limit, all atomically. A lost release now costs one slot for at most 10 s, however much
+> traffic follows. The Redis client also runs with `enableOfflineQueue: false`, so nothing is
+> replayed after a reconnect. The admission/rejection behaviour and the 503 `SERVICE_BUSY`
+> + `Retry-After` contract are unchanged. The load test below was not re-run with the new
+> gate. See `src/middleware/admissionControl.ts`.
+
 ## Run 4 (attempt 5): rate limiting + admission gate active, `DB_POOL_MAX=10`
 
 | Metric | Run 2 (Step 7, ungated) | Run 4 (Step 8, gated) |
@@ -403,7 +419,7 @@ concurrent requests on one shared machine), the answer is no for overall
 throughput, and only partly yes for latency:**
 
 1. **The gate's own mechanism works exactly as designed.** 96.5% of this run's
-   503s are `SERVICE_BUSY` — rejected by one Redis `INCR` before any DB pool
+   503s are `SERVICE_BUSY` — rejected by one Redis `INCR` (the counter in use at the time; now a sorted-set Lua script, see above) before any DB pool
    checkout was attempted — versus 100% `DB_UNAVAILABLE` (a 5-second pool wait
    before rejection) in Step 7. That is the feature working correctly, and it's
    real: confirmed directly in the server logs (`count`/`limit` on every
@@ -449,7 +465,9 @@ throughput, and only partly yes for latency:**
 **Current state (2026-10-30): the whole battery runs with both flags ON.**
 `ENABLE_RATE_LIMITING` and `ENABLE_SEAT_MAP_CACHE` default to `true` in
 `src/config/env.ts` and are on in the local `.env`. `npm test` (8 files,
-including `tests/rate-limit.test.ts`) passed 79/79 that way, and the scripts
+including `tests/rate-limit.test.ts`) passed 79/79 that way (80/80 since the
+lost-release regression test was added with the sorted-set gate; `npm run test:docker`,
+2026-10-30), and the scripts
 below passed against the same server. Two kinds of pre-existing test were
 adapted to real enforcement against a shared test IP:
 `auth.test.ts`'s login-timing-oracle case paces itself under the login

@@ -1,5 +1,23 @@
 # Phase 2 Code Review — FlashSeat booking engine
 
+> **Historical record.** This review describes the code as it was *before* the fixes; file
+> and line references point at that version. It is kept unedited. Fixes landed in these
+> commits:
+>
+> - `c75d860`: H-1, H-2, M-1, M-2, M-4, M-8 (booking lifecycle, uuid validation), checked by `scripts/verify-batch1.mjs`.
+> - `8679601`: H-3, M-7, L-8, L-2, M-9, L-5 (robustness), checked by `scripts/verify-batch2.mjs`.
+> - `b09b3ae`: H-4, M-3, L-1, L-3, L-4 (auth), checked by `scripts/verify-batch3.mjs`.
+> - `05ddc0c`: M-5, L-9 (bulk seats, nested show route).
+> - `ea619f5`: M-6 (rate limiting).
+>
+> L-7 is bounded by the M-5 venue seat cap. V-1 is exercised by `tests/concurrency.test.ts`
+> ("V-1 lock hierarchy under cancellation"). L-6 (event search indexing and paging) and V-2
+> (expiry evaluated at transaction start) have no code change.
+>
+> Current state: [test-findings.md](test-findings.md) maps each finding to the tests that
+> guard it, and [../architecture.md](../architecture.md) and
+> [../booking-flow.md](../booking-flow.md) describe the code as it is now.
+
 Scope: migrations 001–002, all of `src/`, `scripts/`, root test scripts. Review is against the
 10 stated design rules (not style). Read-only review; no source file was modified.
 

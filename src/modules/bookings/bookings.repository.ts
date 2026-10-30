@@ -1,12 +1,14 @@
 /**
  * =========================================================================
  * GLOBAL LOCK ORDER
- * Every transaction that locks these entities must lock in this strict order:
+ * Every transaction that locks these entities must lock in this strict order
+ * (docs/lock-order.md is the reference):
  *   1. event row (FOR UPDATE for mutations, FOR SHARE for read-then-create)
- *   2. show row (FOR SHARE on booking paths, FOR UPDATE in cancelEvent)
- *   3. reservation row (FOR UPDATE)
- *   4. booking row (FOR UPDATE)
- *   5. show_seats rows (ORDER BY id ASC FOR UPDATE)
+ *   2. venue show-creation advisory lock (createShow only)
+ *   3. show row (FOR SHARE on booking paths, FOR UPDATE in cancelEvent)
+ *   4. reservation row (FOR UPDATE)
+ *   5. booking row (FOR UPDATE)
+ *   6. show_seats rows (ORDER BY id ASC FOR UPDATE)
  *
  * Never lock in a different order anywhere in the codebase. Checkout, confirm
  * and release only know a reservation/booking id: they first do a plain

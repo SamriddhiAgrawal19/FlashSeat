@@ -4,7 +4,7 @@
  * This file must run with ENABLE_RATE_LIMITING=true and ENABLE_SEAT_MAP_CACHE=true
  * on the server under test (`npm run test:rate-limit`, see package.json). The whole
  * regression battery (`npm test`) now runs with both ON too — their defaults and the
- * local .env — and passed 79/79 that way (2026-10-30). Two kinds of pre-existing
+ * local .env — and passes 80/80 that way (2026-10-30). Two kinds of pre-existing
  * test had to be adapted to real enforcement against a shared test server/IP:
  *   - auth.test.ts's L-3 case E fires many failed logins against one email (to
  *     measure a timing oracle) — exactly the pattern login-by-email rate limiting

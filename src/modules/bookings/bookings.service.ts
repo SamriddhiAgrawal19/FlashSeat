@@ -109,7 +109,7 @@ export async function checkout(
       throw new NotFoundError('Reservation not found');
     }
 
-    // 1. show row FOR SHARE (lock hierarchy level 2)
+    // 1. show row FOR SHARE (lock hierarchy level 3)
     const show = await repo.getShowBookableStatus(client, ref.show_id);
     if (!show || show.event_status === 'DRAFT') {
       throw new NotFoundError('Show not found');
@@ -227,7 +227,7 @@ export async function confirmBookingCore(
     throw new NotFoundError('Booking not found');
   }
 
-  // 2. Lock the show row FOR SHARE (lock hierarchy level 2)
+  // 2. Lock the show row FOR SHARE (lock hierarchy level 3)
   const show = await repo.getShowBookableStatus(client, bookingMeta.show_id);
   if (!show || show.event_status === 'DRAFT') {
     throw new NotFoundError('Show not found');

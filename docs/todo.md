@@ -7,7 +7,7 @@ and why it was not fixed at the time.
 
 ### Hash passwords before acquiring a DB connection (register)
 
-- **Found in:** Phase 2 Step 7 load testing, baseline run 1 (`load/RESULTS.md`, 2026-10-27).
+- **Found in:** the first throughput load test, which registered users inside the measured loop ([load/RESULTS.md](../load/RESULTS.md#run-1-both-tests-registration-inside-the-measured-iteration), 2026-10-27).
 - **Where:** `src/modules/auth/auth.controller.ts` `register` wraps
   `authService.register` in `withTransaction`; `src/modules/auth/auth.service.ts`
   `register` calls `hashPassword` (argon2) *inside* that transaction.
@@ -16,7 +16,7 @@ and why it was not fixed at the time.
   request holds one of the `DB_POOL_MAX` (10) pooled connections, idle in an open
   transaction. Under a sign-up burst the pool turns into an argon2 queue: every other
   request (reservations included) waits behind it and gets 503 `DB_UNAVAILABLE` after
-  `DB_CONNECTION_TIMEOUT_MS`. Test B run 1: 188,847 register 503s, 24.6 successful
+  `DB_CONNECTION_TIMEOUT_MS`. In that run: 188,847 register 503s, 24.6 successful
   registrations/s, and reservations starved to 6.3/s.
 - **Fix options:**
   1. Hash in the controller/service *before* `withTransaction`, so the connection is
@@ -28,13 +28,13 @@ and why it was not fixed at the time.
 - **Related, also deferred:** `login` runs `verifyPassword` (argon2) inside
   `withTransaction` the same way; consider `UV_THREADPOOL_SIZE` sizing once hashing
   no longer pins connections.
-- **Not fixed because:** out of scope for the load-testing step (no `src/` changes).
+- **Not fixed because:** out of scope for the load-testing work (no `src/` changes).
 
 ## Testing
 
 ### Dedicated test server config (`start:test` + `.env.test`)
 
-- **Found in:** Phase 2 Step 8 review (2026-10-30), restoring the production
+- **Found in:** the review of the rate-limiting change (2026-10-30), restoring the production
   `RATE_LIMIT_REGISTER_IP_LIMIT` default to 30/60s.
 - **Problem:** the integration suite runs against whatever server is started from the
   local `.env`, so it only passes because that `.env` loosens limits (register-by-IP
@@ -44,11 +44,11 @@ and why it was not fixed at the time.
   (e.g. `dotenv -e .env.test -- tsx src/server.ts`, or `DOTENV_CONFIG_PATH`), holding
   every test-only override with a comment per value. Point vitest/`tests/helpers.ts`
   at that server, and make the local `.env` match `.env.example` limits.
-- **Not fixed because:** out of scope for Step 8 (config cleanup only).
+- **Not fixed because:** out of scope for that change (config cleanup only).
 
 ### Never run a standalone sweeper during the test battery
 
-- **Found in:** Phase 2 Step 8 battery runs (2026-10-30).
+- **Found in:** regression test runs (2026-10-30).
 - **Problem:** never run a standalone sweeper (`npm run sweeper`) while running the
   test battery. The tests drive `runSweepOnce` themselves, and an external sweeper
   steals their expired rows. Seen as `sweeper.test.ts` E failing with
@@ -58,6 +58,21 @@ and why it was not fixed at the time.
   separate test database the dev sweeper never connects to, or a pre-flight check
   that fails the run if a `flashseat-sweeper` connection is present in
   `pg_stat_activity`.
-- **Partly addressed (Step 9):** `npm run test:docker` stops the `sweeper` container
+- **Partly addressed (Docker setup):** `npm run test:docker` stops the `sweeper` container
   for the duration of `npm test`. It does not stop a host `npm run sweeper`.
 - **Not fixed because:** a workflow rule until `start:test` exists.
+
+## API consistency
+
+### Mixed field casing in requests and responses
+
+- **Found in:** documentation review (2026-10-30).
+- **Problem:** field names mix snake_case and camelCase. Request bodies use
+  `organization_name` (register) but `posterUrl`, `seatIds`, `startsAt`, `pricePaise`
+  elsewhere. Responses that return raw rows (users, venues, events, shows) are snake_case
+  (`owner_id`, `starts_at`), while reservation, booking and seat-map objects are camelCase
+  (`expiresAt`, `totalPaise`). Documented as a known inconsistency in `docs/api.md`.
+- **Fix:** pick one casing (camelCase, the newer endpoints) and map rows explicitly in the
+  services. Accept both spellings of renamed request fields for one deprecation period.
+- **Not fixed because:** changing field names breaks existing clients; needs a versioning
+  decision first.
