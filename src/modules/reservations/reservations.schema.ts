@@ -26,5 +26,3 @@ export const showIdParamSchema = z.object({
 export const reservationIdParamSchema = z.object({
   reservationId: uuidParam('Invalid reservation ID'),
 });
-
-export type CreateReservationBody = z.infer<typeof createReservationBodySchema>;

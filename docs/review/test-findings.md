@@ -31,6 +31,11 @@ passing and vitest flags it so the `it.fails` marker can be removed.
 
 ## Scenarios that exist ONLY in the old scripts (not ported to the suite)
 
+> The root-level scripts `test.js`, `test2.js` and `test-phase2-step2.js` named in items 3–6
+> were deleted on 2026-10-30. They printed responses without asserting anything, and
+> `test-phase2-step2.js` started with `TRUNCATE users CASCADE`. The scenarios they covered are
+> still not ported to the suite; the list below stays as a record of those gaps.
+
 1. **Postgres-log `deadlock detected` grep** (verify-batch2 F tail) — needs
    `docker compose logs`; environment-specific. The suite asserts the observable
    contract instead (1×201 + 1×409 across 50 overlapping `createShow` rounds; the V-1

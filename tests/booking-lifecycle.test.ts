@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  api, cancelEvent, checkout, confirmMock, createShowAt, db, expireReservation, hold, register,
+  api, cancelEvent, checkout, confirmMock, createShowAt, db, expireReservation, hold,
   release, setupShow, sleep, startShowNow,
 } from './helpers';
 import { env } from '../src/config/env';

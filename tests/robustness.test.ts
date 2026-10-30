@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  api, checkout, db, email, hold, holdRowLock, hasErrorShape, invariantViolations,
+  api, checkout, email, hold, holdRowLock, hasErrorShape, invariantViolations,
   register, setupShow, sleep, terminateApiBackends, createShowAt,
 } from './helpers';
 

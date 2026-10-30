@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createShowSchema, eventIdParamSchema, showIdParamSchema } from './shows.schema';
 import * as showsService from './shows.service';
-import { withTransaction, pool } from '../../db/pool';
+import { pool } from '../../db/pool';
 
 export async function createShow(req: Request, res: Response, next: NextFunction) {
   try {

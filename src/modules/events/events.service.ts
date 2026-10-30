@@ -1,7 +1,7 @@
 import { PoolClient } from 'pg';
 import * as repo from './events.repository';
 import { CreateEventRequest, UpdateEventRequest, ListEventsQuery } from './events.schema';
-import { NotFoundError, ForbiddenError, ConflictError } from '../../utils/errors';
+import { NotFoundError, ConflictError } from '../../utils/errors';
 
 export async function createEvent(client: PoolClient, organizerId: string, data: CreateEventRequest) {
   return await repo.createEvent(client, organizerId, data.title, data.description, data.category, data.posterUrl);

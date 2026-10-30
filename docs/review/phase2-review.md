@@ -12,7 +12,8 @@
 >
 > L-7 is bounded by the M-5 venue seat cap. V-1 is exercised by `tests/concurrency.test.ts`
 > ("V-1 lock hierarchy under cancellation"). L-6 (event search indexing and paging) and V-2
-> (expiry evaluated at transaction start) have no code change.
+> (expiry evaluated at transaction start) have no code change. The root test scripts this
+> review mentions (`test.js`, `test2.js`, `test-phase2-step2.js`) were deleted on 2026-10-30.
 >
 > Current state: [test-findings.md](test-findings.md) maps each finding to the tests that
 > guard it, and [../architecture.md](../architecture.md) and

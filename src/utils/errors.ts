@@ -55,5 +55,3 @@ export class UnprocessableEntityError extends AppError {
     this.name = 'UnprocessableEntityError';
   }
 }
-
-export { UnprocessableEntityError as IdempotencyKeyReusedError };
