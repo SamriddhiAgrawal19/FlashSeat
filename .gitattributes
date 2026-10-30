@@ -1,0 +1,4 @@
+# LF line endings for every text file, in the repository and in the working tree,
+# on every OS (overrides core.autocrlf). text=auto keeps git's binary detection,
+# so gzipped load results and other binaries are never touched.
+* text=auto eol=lf
