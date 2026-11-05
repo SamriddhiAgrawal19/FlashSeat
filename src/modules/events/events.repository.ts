@@ -215,9 +215,6 @@ interface SearchRow extends EventRow {
   min_price_paise: number | null;
 }
 
-// "Upcoming" everywhere below = status SCHEDULED and starts_at > now() (database clock).
-const UPCOMING = `s.event_id = e.id AND s.status = 'SCHEDULED' AND s.starts_at > now()`;
-
 export async function searchPublishedEvents(
   client: PoolClient,
   filters: { category?: string; city?: string; dateFrom?: string; dateTo?: string },
@@ -233,9 +230,11 @@ export async function searchPublishedEvents(
     conditions.push(`lower(e.category) = lower($${values.length})`);
   }
 
-  // Show-level filters must all hold for the SAME show, exactly like the previous
-  // LEFT JOIN shows/venues + DISTINCT version (which also matched past and cancelled shows).
-  const showConditions: string[] = [];
+  // A "matching show" is an upcoming one (SCHEDULED, starts_at > now() by the database clock)
+  // that also satisfies every active show filter, all on the SAME show. This one predicate is
+  // used for which events are listed, for total, and for next_show / upcoming_show_count /
+  // min_price_paise, so the card always describes a show that matched the search.
+  const showConditions = [`s.event_id = e.id`, `s.status = 'SCHEDULED'`, `s.starts_at > now()`];
   if (filters.city) {
     values.push(filters.city);
     showConditions.push(`lower(v.city) = lower($${values.length})`);
@@ -248,12 +247,10 @@ export async function searchPublishedEvents(
     values.push(filters.dateTo);
     showConditions.push(`s.ends_at <= $${values.length}`);
   }
-  if (showConditions.length > 0) {
-    conditions.push(
-      `EXISTS (SELECT 1 FROM shows s JOIN venues v ON v.id = s.venue_id
-                WHERE s.event_id = e.id AND ${showConditions.join(' AND ')})`
-    );
-  }
+  const matching = showConditions.join(' AND ');
+
+  // Only events with at least one matching show are listed (no upcoming show, no listing).
+  conditions.push(`EXISTS (SELECT 1 FROM shows s JOIN venues v ON v.id = s.venue_id WHERE ${matching})`);
 
   const where = conditions.join(' AND ');
 
@@ -263,8 +260,9 @@ export async function searchPublishedEvents(
   );
   const total = countResult.rows[0].total;
 
-  // One statement for the page: the upcoming-show info comes from two LATERAL joins
-  // (evaluated per event row inside the query), so there are no per-event follow-up queries.
+  // One statement for the page: the show info comes from two LATERAL joins over the same
+  // matching shows (evaluated per event row inside the query), so there are no per-event
+  // follow-up queries. The $n placeholders of the filters are shared by all three uses.
   const pageValues = [...values, limit, offset];
   const result = await client.query<SearchRow>(
     `SELECT e.*,
@@ -276,7 +274,7 @@ export async function searchPublishedEvents(
               SELECT s.id, s.starts_at, s.ends_at, v.id AS venue_id, v.name AS venue_name, v.city AS venue_city
                 FROM shows s
                 JOIN venues v ON v.id = s.venue_id
-               WHERE ${UPCOMING}
+               WHERE ${matching}
                ORDER BY s.starts_at, s.id
                LIMIT 1
             ) ns ON true
@@ -285,8 +283,9 @@ export async function searchPublishedEvents(
               SELECT count(DISTINCT s.id)::int AS upcoming_show_count,
                      min(p.price_paise)::int AS min_price_paise
                 FROM shows s
+                JOIN venues v ON v.id = s.venue_id
                 LEFT JOIN show_category_prices p ON p.show_id = s.id
-               WHERE ${UPCOMING}
+               WHERE ${matching}
             ) up ON true
       WHERE ${where}
       ORDER BY e.created_at DESC, e.id

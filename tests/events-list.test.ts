@@ -117,20 +117,20 @@ describe('GET /events upcoming-show info', () => {
     expect(events[0].min_price_paise).toBe(70000);
   });
 
-  it('no upcoming shows: next_show null, count 0, min_price_paise null', async () => {
+  it('an event with only past or cancelled shows is not listed', async () => {
     const org = await register('lst_none', { role: 'ORGANIZER' });
     const v = await venue(org, 'Testville');
     const category = `LIST_${uniq()}`.toUpperCase();
     const id = await event(org, category);
-    const s = await show(org, id, v.id, Date.now() + 2 * DAY, 40000, 80000);
+    const past = await show(org, id, v.id, Date.now() + 2 * DAY, 40000, 80000);
+    const cancelled = await show(org, id, v.id, Date.now() + 6 * DAY, 40000, 80000);
     await publish(org, id);
-    await moveToPast(s, 1);
+    await moveToPast(past, 1);
+    await db(`UPDATE shows SET status = 'CANCELLED' WHERE id = $1`, [cancelled]);
 
-    const { events } = await listByCategory(category);
-    expect(events).toHaveLength(1);
-    expect(events[0].next_show).toBeNull();
-    expect(events[0].upcoming_show_count).toBe(0);
-    expect(events[0].min_price_paise).toBeNull();
+    const { events, total } = await listByCategory(category);
+    expect(events).toEqual([]);
+    expect(total).toBe(0);
   });
 });
 
@@ -165,5 +165,95 @@ describe('GET /events case-insensitive filters', () => {
     expect(lower.total).toBe(1);
     // The stored value itself is unchanged.
     expect(lower.events[0].category).toBe(category);
+  });
+});
+
+describe('GET /events filters apply to upcoming shows only, and drive the show info', () => {
+  it('past show in Pune + future show in Mumbai: city=pune does not list it; city=mumbai does, with the Mumbai show', async () => {
+    const org = await register('lst_pm', { role: 'ORGANIZER' });
+    const u = uniq();
+    const pune = await venue(org, `Pune${u}`);
+    const mumbai = await venue(org, `Mumbai${u}`);
+    const category = `LIST_${uniq()}`.toUpperCase();
+    const id = await event(org, category);
+    const punePast = await show(org, id, pune.id, Date.now() + 2 * DAY, 10000, 20000);
+    const mumbaiFuture = await show(org, id, mumbai.id, Date.now() + 8 * DAY, 45000, 90000);
+    await publish(org, id);
+    await moveToPast(punePast, 2);
+
+    const byPune = await api('GET', `/events?city=${encodeURIComponent(`pune${u}`.toLowerCase())}&limit=50`);
+    expect(byPune.status).toBe(200);
+    expect(byPune.data.events).toEqual([]);
+    expect(byPune.data.total).toBe(0);
+
+    const byMumbai = await api('GET', `/events?city=${encodeURIComponent(`mumbai${u}`.toLowerCase())}&limit=50`);
+    expect(byMumbai.status).toBe(200);
+    expect(byMumbai.data.total).toBe(1);
+    const e = byMumbai.data.events[0];
+    expect(e.id).toBe(id);
+    expect(e.next_show.id).toBe(mumbaiFuture);
+    expect(e.next_show.venue.city).toBe(mumbai.city);
+    expect(e.upcoming_show_count).toBe(1);
+    expect(e.min_price_paise).toBe(45000);
+  });
+
+  it('two future shows in different cities: the city filter picks the matching show and its price', async () => {
+    const org = await register('lst_two_city', { role: 'ORGANIZER' });
+    const u = uniq();
+    const pune = await venue(org, `Pune${u}`);
+    const mumbai = await venue(org, `Mumbai${u}`);
+    const category = `LIST_${uniq()}`.toUpperCase();
+    const id = await event(org, category);
+    // Mumbai is sooner and cheaper, so without a filter it wins both next_show and the price.
+    const puneShow = await show(org, id, pune.id, Date.now() + 6 * DAY, 30000, 60000);
+    const mumbaiShow = await show(org, id, mumbai.id, Date.now() + 3 * DAY, 20000, 50000);
+    await publish(org, id);
+
+    const all = await listByCategory(category);
+    expect(all.events[0].next_show.id).toBe(mumbaiShow);
+    expect(all.events[0].upcoming_show_count).toBe(2);
+    expect(all.events[0].min_price_paise).toBe(20000);
+
+    const byPune = await listByCategory(category, `&city=${encodeURIComponent(pune.city.toLowerCase())}`);
+    expect(byPune.total).toBe(1);
+    const e = byPune.events[0];
+    expect(e.next_show.id).toBe(puneShow);
+    expect(e.next_show.venue.city).toBe(pune.city);
+    expect(e.upcoming_show_count).toBe(1);
+    expect(e.min_price_paise).toBe(30000);
+  });
+
+  it('total counts the same filtered set (not the page, not unlisted events)', async () => {
+    const org = await register('lst_total', { role: 'ORGANIZER' });
+    const u = uniq();
+    const pune = await venue(org, `Pune${u}`);
+    const mumbai = await venue(org, `Mumbai${u}`);
+    const category = `LIST_${uniq()}`.toUpperCase();
+
+    const inPune = await event(org, category);
+    await show(org, inPune, pune.id, Date.now() + 4 * DAY, 30000, 60000);
+    await publish(org, inPune);
+
+    const inMumbai = await event(org, category);
+    await show(org, inMumbai, mumbai.id, Date.now() + 5 * DAY, 30000, 60000);
+    await publish(org, inMumbai);
+
+    const pastOnly = await event(org, category);
+    const old = await show(org, pastOnly, pune.id, Date.now() + 7 * DAY, 30000, 60000);
+    await publish(org, pastOnly);
+    await moveToPast(old, 4);
+
+    const all = await listByCategory(category);
+    expect(all.total).toBe(2);
+    expect(all.events.map((e: { id: string }) => e.id).sort()).toEqual([inPune, inMumbai].sort());
+
+    const firstPage = await api('GET', `/events?category=${encodeURIComponent(category)}&limit=1`);
+    expect(firstPage.status).toBe(200);
+    expect(firstPage.data.events).toHaveLength(1);
+    expect(firstPage.data.total).toBe(2);
+
+    const byPune = await listByCategory(category, `&city=${encodeURIComponent(pune.city.toUpperCase())}`);
+    expect(byPune.total).toBe(1);
+    expect(byPune.events.map((e: { id: string }) => e.id)).toEqual([inPune]);
   });
 });

@@ -147,24 +147,32 @@ Errors: 400; 404; 409 `SEATS_ALREADY_EXIST` (any seat already exists, nothing in
 
 ### `GET /events`
 
-No auth. Lists PUBLISHED events, newest first (`created_at` descending, then `id`). Query:
-`category` (exact match, case-insensitive), `city` (a show's venue city, exact match,
-case-insensitive: `pune` matches `Pune`), `dateFrom` (ISO datetime; show `starts_at >=`),
-`dateTo` (show `ends_at <=`), `page` (default 1), `limit` (1–50, default 20). `city`,
-`dateFrom` and `dateTo` must all hold for the same show; they consider every show of the
-event, including past and cancelled ones.
+No auth. Lists PUBLISHED events that have at least one **upcoming** show, newest first
+(`created_at` descending, then `id`). An upcoming show has `status = 'SCHEDULED'` and
+`starts_at > now()` (database clock); events whose shows are all past or cancelled are not
+listed.
+
+Query: `category` (exact match on the event, case-insensitive), `city` (a show's venue city,
+exact match, case-insensitive: `pune` matches `Pune`), `dateFrom` (ISO datetime; show
+`starts_at >=`), `dateTo` (show `ends_at <=`), `page` (default 1), `limit` (1–50, default 20).
+
+`city`, `dateFrom` and `dateTo` apply **only to upcoming shows**, and all of them must hold for
+the same show. The shows that pass are the event's *matching shows*: an event is listed only
+if it has at least one, and `total` counts exactly those events. For example, an event with a
+past show in Pune and a future show in Mumbai is not returned for `city=pune`.
 
 **200** `{ "events": [event rows], "page", "limit", "total" }`. Each event row also carries
-upcoming-show info, where "upcoming" means `status = 'SCHEDULED'` and `starts_at > now()`
-(database clock):
+show info computed over its **matching shows** (so with `city=pune` the card describes the
+next Pune show and the lowest Pune price):
 
 | Field | Meaning |
 |---|---|
-| `next_show` | the earliest upcoming show as `{ id, starts_at, ends_at, venue: { id, name, city } }`, or `null` |
-| `upcoming_show_count` | number of upcoming shows (0 when none) |
-| `min_price_paise` | lowest `price_paise` across the upcoming shows' category prices, or `null` |
+| `next_show` | the earliest matching show as `{ id, starts_at, ends_at, venue: { id, name, city } }` |
+| `upcoming_show_count` | number of matching shows (at least 1 for every listed event) |
+| `min_price_paise` | lowest `price_paise` across the matching shows' category prices (`null` only if those shows have no prices) |
 
-All three come from the same query (two `LEFT JOIN LATERAL`s), not from per-event lookups.
+All three come from the same query (two `LEFT JOIN LATERAL`s over the same matching-show
+condition used for the listing and `total`), not from per-event lookups.
 
 ```json
 {"events":[{"id":"5ecd64f3-…","organizer_id":"a01986c8-…","title":"An Evening of Jazz","description":"","category":"MUSIC","poster_url":null,"status":"PUBLISHED","cancelled_at":null,"created_at":"2026-11-05T09:58:27.624Z","updated_at":"2026-11-05T09:58:27.633Z","upcoming_show_count":1,"min_price_paise":30000,"next_show":{"id":"e84f050f-…","starts_at":"2026-11-10T09:58:27.627Z","ends_at":"2026-11-10T11:58:27.627Z","venue":{"id":"66146c64-…","name":"Main Hall","city":"Pune"}}}],"page":1,"limit":20,"total":1}
