@@ -68,6 +68,20 @@ export interface ReservationSeatDetailRow {
   seat_number: number;
   category: string;
   price_paise: number;
+  event_id: string;
+  event_title: string;
+  show_starts_at: Date;
+  venue_name: string;
+  venue_city: string;
+}
+
+/** Event title, start time and venue of a show (for reservation responses). */
+export interface ShowContextRow {
+  event_id: string;
+  event_title: string;
+  show_starts_at: Date;
+  venue_name: string;
+  venue_city: string;
 }
 
 export interface ReservationForUpdateRow {
@@ -247,16 +261,36 @@ export async function getReservationWithSeats(
     `SELECT r.id, r.user_id, r.show_id, r.status, r.expires_at,
             (CASE WHEN r.status = 'ACTIVE' AND r.expires_at <= now()
                   THEN 'EXPIRED' ELSE r.status::text END) AS effective_status,
-            ss.id AS seat_id, vs.section, vs.row_label, vs.seat_number, vs.category, ss.price_paise
+            ss.id AS seat_id, vs.section, vs.row_label, vs.seat_number, vs.category, ss.price_paise,
+            e.id AS event_id, e.title AS event_title, s.starts_at AS show_starts_at,
+            v.name AS venue_name, v.city AS venue_city
        FROM reservations r
        JOIN reservation_seats rs ON rs.reservation_id = r.id
        JOIN show_seats ss ON ss.id = rs.show_seat_id
        JOIN venue_seats vs ON vs.id = ss.venue_seat_id
+       JOIN shows s ON s.id = r.show_id
+       JOIN events e ON e.id = s.event_id
+       JOIN venues v ON v.id = s.venue_id
       WHERE r.id = $1 AND r.user_id = $2
       ORDER BY vs.section, length(vs.row_label), vs.row_label, vs.seat_number`,
     [reservationId, userId]
   );
   return result.rows;
+}
+
+// 8b. Event and venue of a show, for the freshly created reservation's response (no lock:
+// the show row is already held FOR SHARE by the hold transaction).
+export async function getShowContext(client: PoolClient, showId: string): Promise<ShowContextRow> {
+  const result = await client.query<ShowContextRow>(
+    `SELECT e.id AS event_id, e.title AS event_title, s.starts_at AS show_starts_at,
+            v.name AS venue_name, v.city AS venue_city
+       FROM shows s
+       JOIN events e ON e.id = s.event_id
+       JOIN venues v ON v.id = s.venue_id
+      WHERE s.id = $1`,
+    [showId]
+  );
+  return result.rows[0];
 }
 
 // 9. Lock reservation row for release

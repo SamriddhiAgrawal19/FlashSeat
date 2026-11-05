@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { HoldStatusPanel } from '../components/booking/HoldStatusPanel';
 import { SeatLegend } from '../components/booking/SeatLegend';
 import { SeatMap } from '../components/booking/SeatMap';
@@ -8,13 +8,13 @@ import { SelectionBar } from '../components/booking/SelectionBar';
 import { Arrow, Button, ButtonLink } from '../components/ui/Button';
 import { Container } from '../components/ui/Container';
 import { Eyebrow } from '../components/ui/Section';
-import { ApiError, activeReservationId, seatsUnavailableIds, type EventDetail, type SeatMap as SeatMapData, type ShowDetail } from '../lib/api';
+import { ApiError, activeReservationId, seatsUnavailableIds, type SeatMap as SeatMapData } from '../lib/api';
 import { holdSeatsWithRetry, HOLD_RETRY_DELAYS_MS } from '../lib/booking/holdRequest';
 import { clearPendingHold, newIdempotencyKey, readPendingHold, savePendingHold } from '../lib/booking/idempotency';
 import { serverNow } from '../lib/booking/serverClock';
 import { categoriesOf, indexSeats, joinCodes, MAX_SEATS_PER_HOLD, seatCode, type SeatInfo } from '../lib/booking/seats';
 import { formatShowDate } from '../lib/format';
-import { isNotFound, useEventDetail, useSeatMap, useShowDetail } from '../lib/queries';
+import { isNotFound, useSeatMap } from '../lib/queries';
 import { showToast } from '../lib/toast';
 
 /** The seat map's cache (Redis, 2 s TTL) can briefly show a seat we were just told is taken. */
@@ -27,14 +27,16 @@ type Panel =
   | { kind: 'error'; title: string; body: string };
 
 /**
- * Why the map is read-only, or null when seats can be held. The seat map's `bookable` covers
- * show/event status and start time; sales_open_at only comes from the show detail.
+ * Why the map is read-only, or null when seats can be held. `bookable` is the server's verdict
+ * (status, start time and sales_open_at, by the database clock); the rest only picks the words.
+ * Cancelling an event cancels its shows, so show status covers both.
  */
-function readOnlyReason(map: SeatMapData, event: EventDetail | undefined, show: ShowDetail | undefined, refused: boolean): ReadOnlyReason | null {
-  if (map.show.status === 'CANCELLED' || event?.status === 'CANCELLED' || show?.event_status === 'CANCELLED') return 'cancelled';
-  if (!map.show.bookable) return map.show.status === 'COMPLETED' || Date.parse(map.show.startsAt) <= serverNow() ? 'started' : 'closed';
-  if (show?.sales_open_at && Date.parse(show.sales_open_at) > serverNow()) return 'sales-not-open';
-  return refused ? 'closed' : null;
+function readOnlyReason(map: SeatMapData, refused: boolean): ReadOnlyReason | null {
+  if (map.show.bookable && !refused) return null;
+  if (map.show.status === 'CANCELLED') return 'cancelled';
+  if (map.show.status === 'COMPLETED' || Date.parse(map.show.startsAt) <= serverNow()) return 'started';
+  if (map.show.salesOpenAt && Date.parse(map.show.salesOpenAt) > serverNow()) return 'sales-not-open';
+  return 'closed';
 }
 
 function ReadOnlyBanner({ reason, salesOpenAt }: { reason: ReadOnlyReason; salesOpenAt: string | null }) {
@@ -125,10 +127,9 @@ function MapSkeleton() {
   );
 }
 
-/** /shows/:showId (?event=<eventId> for the header): pick seats and hold them. */
+/** /shows/:showId: pick seats and hold them. (An old ?event= parameter is simply ignored.) */
 export function SeatMapPage() {
   const { showId = '' } = useParams();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -141,20 +142,12 @@ export function SeatMapPage() {
   const [refused, setRefused] = useState(false);
 
   const seatMap = useSeatMap(showId, { paused: holding });
-  // The event id only travels in the URL (the seat map response has no event fields).
-  const eventParam = searchParams.get('event') ?? '';
-  const eventQuery = useEventDetail(eventParam);
-  const showQuery = useShowDetail(eventParam, showId);
-  const eventShow = eventQuery.data?.shows.find((s) => s.id === showId);
-  const event = eventShow ? eventQuery.data : undefined;
-  const showDetail = eventShow ? showQuery.data : undefined;
-  const eventSuffix = event ? `?event=${encodeURIComponent(event.id)}` : '';
-
   const map = seatMap.data;
+  const event = map?.event;
   const seats = useMemo(() => (map ? indexSeats(map) : new Map<string, SeatInfo>()), [map]);
   const categories = useMemo(() => (map ? categoriesOf(map) : []), [map]);
   const tiers = useMemo(() => new Map(categories.map((c) => [c.category, c.tier])), [categories]);
-  const reason = map ? readOnlyReason(map, event, showDetail, refused) : null;
+  const reason = map ? readOnlyReason(map, refused) : null;
   const readOnly = reason !== null;
 
   useEffect(() => {
@@ -232,7 +225,7 @@ export function SeatMapPage() {
         clearPendingHold();
         queryClient.setQueryData(['reservation', reservation.id], reservation);
         void queryClient.invalidateQueries({ queryKey: ['seatMap', showId] });
-        if (mounted.current) navigate(`/reservations/${reservation.id}${eventSuffix}`);
+        if (mounted.current) navigate(`/reservations/${reservation.id}`);
         return;
       } catch (error) {
         // Keep the request only when its outcome is unknown (no response at all), so a reload can
@@ -264,7 +257,6 @@ export function SeatMapPage() {
           case 'SHOW_NOT_BOOKABLE':
             setRefused(true);
             void seatMap.refetch();
-            void showQuery.refetch();
             break;
           case 'NOT_FOUND':
             void seatMap.refetch();
@@ -294,7 +286,7 @@ export function SeatMapPage() {
         }
       }
     },
-    [showId, eventSuffix, seats],
+    [showId, seats],
   );
 
   const onHold = () => {
@@ -320,9 +312,7 @@ export function SeatMapPage() {
   // --- render ---------------------------------------------------------------------------------
   if (seatMap.isError && isNotFound(seatMap.error)) return <ShowNotFound />;
 
-  const startsAt = map?.show.startsAt ?? eventShow?.starts_at;
-  const venue = eventShow ? `${eventShow.venue_name} · ${eventShow.venue_city}` : null;
-  const metaLine = [startsAt ? formatShowDate(startsAt) : null, venue].filter(Boolean).join(' · ');
+  const metaLine = map ? [formatShowDate(map.show.startsAt), `${map.show.venue.name} · ${map.show.venue.city}`].filter(Boolean).join(' · ') : '';
 
   return (
     <>
@@ -343,13 +333,13 @@ export function SeatMapPage() {
           )}
 
           <div className="mt-8 flex flex-col gap-3 empty:hidden">
-            {reason && <ReadOnlyBanner reason={reason} salesOpenAt={showDetail?.sales_open_at ?? null} />}
+            {reason && map && <ReadOnlyBanner reason={reason} salesOpenAt={map.show.salesOpenAt} />}
             {panel?.kind === 'active-hold' && (
               <HoldStatusPanel
                 title="You already have seats held for this show."
                 action={
                   panel.reservationId ? (
-                    <ButtonLink to={`/reservations/${panel.reservationId}${eventSuffix}`}>
+                    <ButtonLink to={`/reservations/${panel.reservationId}`}>
                       Go to your hold <Arrow />
                     </ButtonLink>
                   ) : undefined

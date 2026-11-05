@@ -1,15 +1,16 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { Countdown } from '../components/booking/Countdown';
 import { HoldStatusPanel } from '../components/booking/HoldStatusPanel';
 import { Arrow, Button, ButtonLink } from '../components/ui/Button';
 import { Container } from '../components/ui/Container';
 import { Eyebrow } from '../components/ui/Section';
 import { ApiError, releaseReservation, type Reservation } from '../lib/api';
+import { checkoutWithRetry, HOLD_ENDED_CODES } from '../lib/booking/checkout';
 import { seatCode } from '../lib/booking/seats';
 import { formatCategory, formatPaise, formatShowDate } from '../lib/format';
-import { isNotFound, useEventDetail, useReservation, useSeatMap } from '../lib/queries';
+import { isNotFound, useReservation } from '../lib/queries';
 import { showToast } from '../lib/toast';
 
 function HoldNotFound() {
@@ -64,32 +65,26 @@ function SeatList({ reservation }: { reservation: Reservation }) {
 
 type ReleaseState = 'idle' | 'confirm' | 'releasing';
 
-/** /reservations/:reservationId (?event=<eventId> for the header): the countdown and next steps. */
+/** /reservations/:reservationId: the countdown and next steps. (An old ?event= parameter is ignored.) */
 export function ReservationPage() {
   const { reservationId = '' } = useParams();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const query = useReservation(reservationId);
   const reservation = query.data;
-
-  const eventParam = searchParams.get('event') ?? '';
-  const eventQuery = useEventDetail(eventParam);
-  const eventShow = reservation ? eventQuery.data?.shows.find((s) => s.id === reservation.showId) : undefined;
-  const event = eventShow ? eventQuery.data : undefined;
-  // Without the event, the seat map still gives the show's start time (one request, no polling).
-  const fallbackMap = useSeatMap(reservation?.showId ?? '', { paused: true, enabled: !!reservation && !eventParam });
-  const startsAt = eventShow?.starts_at ?? fallbackMap.data?.show.startsAt;
+  const event = reservation?.event;
 
   const [expiredHere, setExpiredHere] = useState(false);
   const [release, setRelease] = useState<ReleaseState>('idle');
   const [releaseError, setReleaseError] = useState<string | null>(null);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<'ended' | 'not-found' | 'busy' | 'failed' | null>(null);
 
   useEffect(() => {
     document.title = event ? `Your hold · ${event.title} · FlashSeat` : 'Your hold · FlashSeat';
   }, [event]);
 
-  if (query.isError && isNotFound(query.error)) return <HoldNotFound />;
+  if ((query.isError && isNotFound(query.error)) || checkoutError === 'not-found') return <HoldNotFound />;
 
   if (query.isPending) {
     return (
@@ -127,13 +122,36 @@ export function ReservationPage() {
     );
   }
 
-  const eventSuffix = event ? `?event=${encodeURIComponent(event.id)}` : '';
-  const seatMapUrl = `/shows/${reservation.showId}${eventSuffix}`;
+  const seatMapUrl = `/shows/${reservation.showId}`;
   // The countdown reaching zero on the server clock means EXPIRED, even before a refetch says so.
   const status = reservation.status === 'ACTIVE' && expiredHere ? 'EXPIRED' : reservation.status;
-  const metaLine = [startsAt ? formatShowDate(startsAt) : null, eventShow ? `${eventShow.venue_name} · ${eventShow.venue_city}` : null]
+  const metaLine = [formatShowDate(reservation.show.startsAt), `${reservation.show.venue.name} · ${reservation.show.venue.city}`]
     .filter(Boolean)
     .join(' · ');
+
+  // Idempotent on the server (one booking per reservation), so retries resend the same request.
+  async function onCheckout() {
+    if (!reservation || checkingOut) return;
+    setCheckingOut(true);
+    setCheckoutError(null);
+    try {
+      const booking = await checkoutWithRetry(reservation.id);
+      queryClient.setQueryData(['booking', booking.id], booking);
+      navigate(`/pay/${booking.id}`);
+    } catch (error) {
+      setCheckingOut(false);
+      if (error instanceof ApiError && HOLD_ENDED_CODES.has(error.code)) {
+        setCheckoutError('ended');
+        void query.refetch();
+      } else if (error instanceof ApiError && error.status === 404) {
+        setCheckoutError('not-found');
+      } else if (error instanceof ApiError && (error.status === 503 || error.status === 429)) {
+        setCheckoutError('busy');
+      } else {
+        setCheckoutError('failed');
+      }
+    }
+  }
 
   async function onRelease() {
     if (!reservation) return;
@@ -183,10 +201,14 @@ export function ReservationPage() {
                   These seats are yours until the timer runs out. Check out before then to book them.
                 </p>
                 <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <ButtonLink to={`/checkout/${reservation.id}${eventSuffix}`} size="lg">
-                    Continue to checkout <Arrow />
-                  </ButtonLink>
-                  {release === 'idle' && (
+                  <Button size="lg" onClick={() => void onCheckout()} disabled={checkingOut || release !== 'idle'} aria-busy={checkingOut}>
+                    {checkingOut ? 'Starting checkout…' : (
+                      <>
+                        Continue to checkout <Arrow />
+                      </>
+                    )}
+                  </Button>
+                  {release === 'idle' && !checkingOut && (
                     <button
                       type="button"
                       onClick={() => setRelease('confirm')}
@@ -254,6 +276,25 @@ export function ReservationPage() {
                 }
               >
                 These seats are yours. Your tickets are in your bookings.
+              </HoldStatusPanel>
+            )}
+
+            {checkoutError === 'ended' && (
+              <HoldStatusPanel
+                className="mt-8"
+                tone="error"
+                role="alert"
+                title="Your hold ended before checkout. Your seats may have been taken."
+                action={
+                  <ButtonLink to={seatMapUrl} variant="secondary">
+                    Back to the seat map <Arrow />
+                  </ButtonLink>
+                }
+              />
+            )}
+            {(checkoutError === 'busy' || checkoutError === 'failed') && (
+              <HoldStatusPanel className="mt-8" tone="error" role="alert" title={checkoutError === 'busy' ? "We're very busy right now." : "We couldn't start checkout."}>
+                Your seats are still held. Please try again in a moment.
               </HoldStatusPanel>
             )}
 

@@ -7,8 +7,19 @@ export interface SeatMapResponse {
     id: string;
     startsAt: string;
     endsAt: string;
+    /** When ticket sales open; null = open as soon as the event is published. */
+    salesOpenAt: string | null;
     status: string;
     bookable: boolean;
+    venue: {
+      name: string;
+      city: string;
+    };
+  };
+  /** Same shape as the booking responses' `event`. */
+  event: {
+    id: string;
+    title: string;
   };
   summary: {
     total: number;
@@ -42,11 +53,13 @@ export async function getSeatMap(
     throw new NotFoundError('Show not found');
   }
 
-  // 2. Compute bookable flag from the SQL booleans only (DB clock)
+  // 2. Compute bookable flag from the SQL booleans only (DB clock). Same rule as
+  // the hold (reservations.service.ts), including sales_open_at.
   const bookable =
     show.status === 'SCHEDULED' &&
     show.event_status === 'PUBLISHED' &&
-    show.not_started;
+    show.not_started &&
+    show.sales_open;
 
   // 3. Fetch flat seat map rows
   const seatRows = await repo.listSeatMap(client, showId);
@@ -96,8 +109,17 @@ export async function getSeatMap(
       id: show.id,
       startsAt: new Date(show.starts_at).toISOString(),
       endsAt: new Date(show.ends_at).toISOString(),
+      salesOpenAt: show.sales_open_at ? new Date(show.sales_open_at).toISOString() : null,
       status: show.status,
       bookable,
+      venue: {
+        name: show.venue_name,
+        city: show.venue_city,
+      },
+    },
+    event: {
+      id: show.event_id,
+      title: show.event_title,
     },
     summary,
     sections,

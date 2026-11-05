@@ -1,16 +1,19 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { domAnimation, LazyMotion } from 'motion/react';
-import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
+import { createBrowserRouter, Navigate, Outlet, RouterProvider, useParams } from 'react-router';
 import { Layout } from './components/layout/Layout';
 import { GuestOnly } from './components/routing/GuestOnly';
 import { RequireAuth } from './components/routing/RequireAuth';
 import { RequireRole } from './components/routing/RequireRole';
 import { AuthProvider } from './lib/auth/AuthProvider';
+import { BookingPage } from './pages/BookingPage';
 import { ComingSoon } from './pages/ComingSoon';
 import { EventDetailPage } from './pages/EventDetailPage';
 import { EventsPage } from './pages/EventsPage';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
+import { MyBookingsPage } from './pages/MyBookingsPage';
+import { PayPage } from './pages/PayPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ReservationPage } from './pages/ReservationPage';
 import { SeatMapPage } from './pages/SeatMapPage';
@@ -23,6 +26,12 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+/** The old checkout placeholder: checkout now starts from the hold page. */
+function CheckoutRedirect() {
+  const { reservationId = '' } = useParams();
+  return <Navigate to={`/reservations/${reservationId}`} replace />;
+}
 
 /** The session lives inside the router so it can redirect (expired session -> /login?next=...). */
 function AuthRoot() {
@@ -59,11 +68,20 @@ const router = createBrowserRouter([
               </RequireAuth>
             ),
           },
+          { path: 'checkout/:reservationId', element: <CheckoutRedirect /> },
           {
-            path: 'checkout/:reservationId',
+            path: 'pay/:bookingId',
             element: (
               <RequireAuth>
-                <ComingSoon title="Checkout" message="Payment is the next step we're building. Your seats stay held until the timer runs out." />
+                <PayPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: 'bookings/:bookingId',
+            element: (
+              <RequireAuth>
+                <BookingPage />
               </RequireAuth>
             ),
           },
@@ -97,7 +115,7 @@ const router = createBrowserRouter([
             path: 'bookings',
             element: (
               <RequireAuth>
-                <ComingSoon title="My bookings" />
+                <MyBookingsPage />
               </RequireAuth>
             ),
           },

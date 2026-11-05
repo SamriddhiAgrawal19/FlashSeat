@@ -249,13 +249,16 @@ event is DRAFT.
 No auth. Headers: `Cache-Control: no-store`, and `X-Cache: HIT|MISS` (Redis cache, TTL
 `SEAT_MAP_CACHE_TTL_MS` = 2000 ms).
 
-**200** `{ show: { id, startsAt, endsAt, status, bookable }, summary: { total, available,
-held, booked, unavailable }, sections: [{ section, rows: [{ row, seats: [{ id, number,
-category, pricePaise, status }] }] }] }`.
+**200** `{ show: { id, startsAt, endsAt, salesOpenAt, status, bookable, venue: { name, city } },
+event: { id, title }, summary: { total, available, held, booked, unavailable }, sections:
+[{ section, rows: [{ row, seats: [{ id, number, category, pricePaise, status }] }] }] }`.
 
 - Seat `status` is `AVAILABLE`, `HELD`, `BOOKED` or `UNAVAILABLE`. A hold past `held_until`
   shows as `AVAILABLE`.
-- `bookable` means SCHEDULED, PUBLISHED and not started.
+- `bookable` means SCHEDULED, PUBLISHED, not started and sales open (`sales_open_at` null or
+  past), all by the database clock: the same rule the hold applies.
+- `salesOpenAt` is the show's `sales_open_at` (ISO) or `null`. `event` has the same shape as
+  on bookings.
 - The map is advisory and can be up to 2 s stale; holds always re-check under row locks.
 
 Errors: 404 for unknown shows or DRAFT events.
@@ -272,7 +275,8 @@ then the admission gate.
 
 **201** new hold, or **200** replay of the same key:
 `{ "reservation": { id, showId, status, expiresAt, seats: [{ id, section, row, number,
-category, pricePaise }], totalPricePaise } }`. The hold lasts `HOLD_DURATION_SECONDS`
+category, pricePaise }], totalPricePaise, event: { id, title }, show: { id, startsAt, venue:
+{ name, city } } } }`. `event` and `show` have the same shapes as on bookings. The hold lasts `HOLD_DURATION_SECONDS`
 (600 s).
 
 Errors:
@@ -309,7 +313,7 @@ User, owner. Admission-gated. No body and no idempotency header: one booking per
 makes it idempotent.
 
 **201** new booking or **200** replay:
-`{ "booking": { id, status: "PENDING_PAYMENT", totalPaise, createdAt, confirmedAt: null,
+`{ "booking": { id, reservationId, status: "PENDING_PAYMENT", totalPaise, createdAt, confirmedAt: null,
 event: { id, title }, show: { id, startsAt, venue: { name, city } }, seats: [...],
 payBefore } }`. `payBefore` is the hold's `expires_at`.
 

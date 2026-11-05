@@ -11,11 +11,11 @@ function priceRange(prices: Array<{ price_paise: number }>): string | null {
   return formatPriceRange(Math.min(...values), Math.max(...values));
 }
 
-function Action({ state, showId, eventId }: { state: ShowState; showId: string; eventId: string }) {
+function Action({ state, showId }: { state: ShowState; showId: string }) {
   switch (state.kind) {
     case 'bookable':
       return (
-        <ButtonLink to={`/shows/${showId}?event=${encodeURIComponent(eventId)}`} size="md" className="w-full sm:w-auto">
+        <ButtonLink to={`/shows/${showId}`} size="md" className="w-full sm:w-auto">
           Select seats <Arrow />
         </ButtonLink>
       );
@@ -74,7 +74,7 @@ export function ShowRow({ eventId, eventStatus, show }: { eventId: string; event
       </div>
 
       <div className="col-span-2 sm:col-span-1 sm:justify-self-end">
-        <Action state={state} showId={show.id} eventId={eventId} />
+        <Action state={state} showId={show.id} />
       </div>
     </li>
   );

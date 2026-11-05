@@ -181,3 +181,85 @@ describe('H-2: uuids are case-insensitive for clients', () => {
     expect(JSON.stringify(dup.data)).toContain('Duplicate seat IDs are not allowed');
   });
 });
+
+describe('sales_open_at: holds and the seat map agree (DB clock)', () => {
+  it('sales open in the future => map not bookable + salesOpenAt, hold 409 SHOW_NOT_BOOKABLE; once open => hold works', async () => {
+    const s = await setupShow('salesOpen', 2);
+    await db(`UPDATE shows SET sales_open_at = now() + interval '1 day' WHERE id = $1`, [s.showId]);
+    const [{ sales_open_at }] = await db<{ sales_open_at: Date }>('SELECT sales_open_at FROM shows WHERE id = $1', [s.showId]);
+
+    // setupShow's own read may still be cached; wait past the TTL.
+    await sleep(env.SEAT_MAP_CACHE_TTL_MS + 250);
+    const before = await api('GET', `/shows/${s.showId}/seats`);
+    expect(before.data.show.bookable).toBe(false);
+    expect(before.data.show.salesOpenAt).toBe(new Date(sales_open_at).toISOString());
+
+    const early = await hold(s.user, s.showId, `salesOpen-1-${Date.now()}`, [s.seatIds[0]]);
+    expect(early.status).toBe(409);
+    expect(early.data.error.code).toBe('SHOW_NOT_BOOKABLE');
+    const [seat] = await db<{ status: string }>('SELECT status FROM show_seats WHERE id = $1', [s.seatIds[0]]);
+    expect(seat.status).toBe('AVAILABLE');
+
+    await db(`UPDATE shows SET sales_open_at = now() - interval '1 minute' WHERE id = $1`, [s.showId]);
+    await sleep(env.SEAT_MAP_CACHE_TTL_MS + 250);
+    const after = await api('GET', `/shows/${s.showId}/seats`);
+    expect(after.data.show.bookable).toBe(true);
+
+    const open = await hold(s.user, s.showId, `salesOpen-2-${Date.now()}`, [s.seatIds[0]]);
+    expect(open.status).toBe(201);
+  });
+
+  it('no sales_open_at => salesOpenAt null and bookable', async () => {
+    const s = await setupShow('salesNull', 1);
+    const map = await api('GET', `/shows/${s.showId}/seats`);
+    expect(map.data.show.salesOpenAt).toBeNull();
+    expect(map.data.show.bookable).toBe(true);
+  });
+});
+
+describe('event context on seat map, reservation and booking responses', () => {
+  it('seat map, hold (201 and 200 replay), GET reservation and bookings carry event title, start time and venue', async () => {
+    const s = await setupShow('ctx', 2);
+    const [ctx] = await db<{ title: string; starts_at: Date; name: string; city: string }>(
+      `SELECT e.title, s.starts_at, v.name, v.city
+         FROM shows s JOIN events e ON e.id = s.event_id JOIN venues v ON v.id = s.venue_id
+        WHERE s.id = $1`,
+      [s.showId]
+    );
+    const event = { id: s.eventId, title: ctx.title };
+    const show = { id: s.showId, startsAt: new Date(ctx.starts_at).toISOString(), venue: { name: ctx.name, city: ctx.city } };
+
+    const map = await api('GET', `/shows/${s.showId}/seats`);
+    expect(map.data.event).toEqual(event);
+    expect(map.data.show.venue).toEqual(show.venue);
+    expect(map.data.show.startsAt).toBe(show.startsAt);
+
+    const key = `ctx-${Date.now()}`;
+    const h = await hold(s.user, s.showId, key, [s.seatIds[0]]);
+    expect(h.status).toBe(201);
+    expect(h.data.reservation.event).toEqual(event);
+    expect(h.data.reservation.show).toEqual(show);
+    expect(h.data.reservation.showId).toBe(s.showId); // existing field kept
+
+    const replay = await hold(s.user, s.showId, key, [s.seatIds[0]]);
+    expect(replay.status).toBe(200);
+    expect(replay.data.reservation.event).toEqual(event);
+    expect(replay.data.reservation.show).toEqual(show);
+
+    const g = await api('GET', `/reservations/${h.data.reservation.id}`, { token: s.user.token });
+    expect(g.data.reservation.event).toEqual(event);
+    expect(g.data.reservation.show).toEqual(show);
+
+    const co = await checkout(s.user, h.data.reservation.id);
+    expect(co.status).toBe(201);
+    expect(co.data.booking.reservationId).toBe(h.data.reservation.id);
+    expect(co.data.booking.event).toEqual(event);
+    expect(co.data.booking.show).toEqual(show);
+
+    const cf = await confirmMock(s.user, co.data.booking.id);
+    expect(cf.data.booking.reservationId).toBe(h.data.reservation.id);
+    const mine = await api('GET', '/bookings/mine', { token: s.user.token });
+    expect(mine.data.bookings[0].reservationId).toBe(h.data.reservation.id);
+    expect(mine.data.bookings[0].show).toEqual(show);
+  });
+});

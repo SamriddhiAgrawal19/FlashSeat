@@ -4,9 +4,16 @@ export interface ShowForSeatMapRow {
   id: string;
   starts_at: Date;
   ends_at: Date;
+  sales_open_at: Date | null;
   status: string;
+  event_id: string;
+  event_title: string;
   event_status: string;
+  venue_name: string;
+  venue_city: string;
   not_started: boolean;
+  /** sales_open_at IS NULL OR sales_open_at <= now() (DB clock) */
+  sales_open: boolean;
 }
 
 export interface SeatMapRow {
@@ -53,10 +60,14 @@ export async function getShowForSeatMap(
   showId: string
 ): Promise<ShowForSeatMapRow | null> {
   const result = await client.query<ShowForSeatMapRow>(
-    `SELECT s.id, s.starts_at, s.ends_at, s.status, e.status AS event_status,
-            (s.starts_at > now()) AS not_started
+    `SELECT s.id, s.starts_at, s.ends_at, s.sales_open_at, s.status,
+            e.id AS event_id, e.title AS event_title, e.status AS event_status,
+            v.name AS venue_name, v.city AS venue_city,
+            (s.starts_at > now()) AS not_started,
+            (s.sales_open_at IS NULL OR s.sales_open_at <= now()) AS sales_open
        FROM shows s
        JOIN events e ON e.id = s.event_id
+       JOIN venues v ON v.id = s.venue_id
       WHERE s.id = $1`,
     [showId]
   );

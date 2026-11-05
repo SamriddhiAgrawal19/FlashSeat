@@ -59,6 +59,7 @@ export interface LockedSeatForCheckoutRow {
 export interface BookingDetailRow {
   id: string;
   user_id: string;
+  reservation_id: string;
   status: string;
   total_amount_paise: number;
   created_at: Date;
@@ -295,7 +296,7 @@ export async function getBookingDetailById(
   bookingId: string
 ): Promise<BookingDetailRow | null> {
   const result = await client.query<BookingDetailRow>(
-    `SELECT b.id, b.user_id, b.status, b.total_amount_paise, b.created_at, b.confirmed_at,
+    `SELECT b.id, b.user_id, b.reservation_id, b.status, b.total_amount_paise, b.created_at, b.confirmed_at,
             r.expires_at AS reservation_expires_at,
             (r.status = 'ACTIVE' AND r.expires_at > now()) AS reservation_active,
             e.id AS event_id, e.title AS event_title,
@@ -339,7 +340,7 @@ export async function listUserBookings(
   offset: number
 ): Promise<{ rows: BookingDetailRow[]; total: number }> {
   const result = await client.query<BookingDetailRow>(
-    `SELECT b.id, b.user_id, b.status, b.total_amount_paise, b.created_at, b.confirmed_at,
+    `SELECT b.id, b.user_id, b.reservation_id, b.status, b.total_amount_paise, b.created_at, b.confirmed_at,
             r.expires_at AS reservation_expires_at,
             (r.status = 'ACTIVE' AND r.expires_at > now()) AS reservation_active,
             e.id AS event_id, e.title AS event_title,

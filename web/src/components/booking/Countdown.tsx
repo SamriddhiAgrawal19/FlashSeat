@@ -21,13 +21,17 @@ function mmss(total: number): string {
 interface CountdownProps {
   expiresAt: string;
   onExpire: () => void;
+  /** Label above the digits (the last minute always reads "Less than a minute left"). */
+  label?: string;
+  /** 'lg' for the hold page, 'md' inside the payment panel. */
+  size?: 'lg' | 'md';
 }
 
 /**
  * Large mm:ss to the hold's expiry. It counts on the estimated server clock (lib/booking/serverClock),
  * so a wrong device clock doesn't change the deadline. Lime for the last minute.
  */
-export function Countdown({ expiresAt, onExpire }: CountdownProps) {
+export function Countdown({ expiresAt, onExpire, label = 'Held for you', size = 'lg' }: CountdownProps) {
   const [left, setLeft] = useState(() => secondsLeft(expiresAt));
   const onExpireRef = useRef(onExpire);
   onExpireRef.current = onExpire;
@@ -50,13 +54,14 @@ export function Countdown({ expiresAt, onExpire }: CountdownProps) {
   const warning = left > 0 && left <= 60;
   return (
     <div>
-      <p className="label-mono text-text-2">{warning ? 'Less than a minute left' : 'Held for you'}</p>
+      <p className="label-mono text-text-2">{warning ? 'Less than a minute left' : label}</p>
       <p
         role="timer"
         aria-label={`${Math.floor(left / 60)} minutes ${left % 60} seconds left`}
         data-seconds-left={left}
         className={cn(
-          'mt-2 font-mono text-[clamp(4rem,11vw,8.5rem)] leading-none font-medium tracking-[-0.06em] tabular-nums transition-colors duration-500',
+          'mt-2 font-mono leading-none font-medium tracking-[-0.06em] tabular-nums transition-colors duration-500',
+          size === 'lg' ? 'text-[clamp(4rem,11vw,8.5rem)]' : 'text-[clamp(2.75rem,5vw,3.75rem)]',
           warning ? 'text-lime' : 'text-text',
         )}
       >

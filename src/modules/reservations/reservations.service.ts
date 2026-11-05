@@ -25,6 +25,30 @@ export interface FormattedReservation {
     pricePaise: number;
   }>;
   totalPricePaise: number;
+  /** Same shapes as the booking responses' `event` and `show`. */
+  event: {
+    id: string;
+    title: string;
+  };
+  show: {
+    id: string;
+    startsAt: string;
+    venue: {
+      name: string;
+      city: string;
+    };
+  };
+}
+
+function formatContext(showId: string, ctx: repo.ShowContextRow): Pick<FormattedReservation, 'event' | 'show'> {
+  return {
+    event: { id: ctx.event_id, title: ctx.event_title },
+    show: {
+      id: showId,
+      startsAt: new Date(ctx.show_starts_at).toISOString(),
+      venue: { name: ctx.venue_name, city: ctx.venue_city },
+    },
+  };
 }
 
 export interface CreateReservationResult {
@@ -65,6 +89,7 @@ function formatReservationDetails(rows: repo.ReservationSeatDetailRow[]): Format
     expiresAt: new Date(first.expires_at).toISOString(),
     seats,
     totalPricePaise,
+    ...formatContext(first.show_id, first),
   };
 }
 
@@ -226,6 +251,8 @@ export async function createReservation(
       };
     });
 
+    const context = await repo.getShowContext(client, showId);
+
     return {
       reservation: {
         id: res.id,
@@ -234,6 +261,7 @@ export async function createReservation(
         expiresAt: new Date(res.expires_at).toISOString(),
         seats,
         totalPricePaise,
+        ...formatContext(showId, context),
       },
       replayed: false,
     };

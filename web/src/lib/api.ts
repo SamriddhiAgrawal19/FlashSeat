@@ -289,10 +289,14 @@ export interface SeatMap {
     id: string;
     startsAt: string;
     endsAt: string;
+    /** When ticket sales open (ISO); null = open since publishing. */
+    salesOpenAt: string | null;
     status: ShowStatus;
-    /** SCHEDULED + event PUBLISHED + not started. Does NOT include sales_open_at. */
+    /** SCHEDULED + event PUBLISHED + not started + sales open, by the database clock. */
     bookable: boolean;
+    venue: VenueRef;
   };
+  event: EventRef;
   summary: { total: number; available: number; held: number; booked: number; unavailable: number };
   sections: SeatMapSection[];
 }
@@ -300,6 +304,24 @@ export interface SeatMap {
 /** No auth. 404 for unknown shows and DRAFT events. */
 export function getSeatMap(showId: string, signal?: AbortSignal): Promise<SeatMap> {
   return request<SeatMap>(`/shows/${encodeURIComponent(showId)}/seats`, { signal });
+}
+
+/** `event` on seat map, reservation and booking responses. */
+export interface EventRef {
+  id: string;
+  title: string;
+}
+
+export interface VenueRef {
+  name: string;
+  city: string;
+}
+
+/** `show` on reservation and booking responses. */
+export interface ShowRef {
+  id: string;
+  startsAt: string;
+  venue: VenueRef;
 }
 
 /** Reads EXPIRED once past expiresAt, even before the sweeper runs. */
@@ -321,6 +343,8 @@ export interface Reservation {
   expiresAt: string;
   seats: ReservationSeat[];
   totalPricePaise: number;
+  event: EventRef;
+  show: ShowRef;
 }
 
 /** `details` of 409 SEATS_UNAVAILABLE. */
@@ -367,4 +391,63 @@ export function seatsUnavailableIds(error: ApiError): string[] {
 export function activeReservationId(error: ApiError): string | null {
   const details = error.details as Partial<ActiveReservationDetails> | undefined;
   return typeof details?.reservationId === 'string' ? details.reservationId : null;
+}
+
+// ---------------------------------------------------------------------------
+// Bookings (docs/api.md "Bookings")
+// ---------------------------------------------------------------------------
+
+/**
+ * PENDING_PAYMENT reads as EXPIRED once its hold is dead. REFUND_PENDING follows a cancelled
+ * event. PAYMENT_FAILED and REFUNDED exist in the schema but nothing sets them yet.
+ */
+export type BookingStatus = 'PENDING_PAYMENT' | 'CONFIRMED' | 'CANCELLED' | 'EXPIRED' | 'PAYMENT_FAILED' | 'REFUND_PENDING' | 'REFUNDED';
+
+export interface BookingSeat extends ReservationSeat {
+  /** Only on CONFIRMED bookings. */
+  ticketCode?: string;
+}
+
+export interface Booking {
+  id: string;
+  reservationId: string;
+  status: BookingStatus;
+  totalPaise: number;
+  createdAt: string;
+  confirmedAt: string | null;
+  /** The hold's expiresAt; only while PENDING_PAYMENT. */
+  payBefore?: string;
+  event: EventRef;
+  show: ShowRef;
+  seats: BookingSeat[];
+}
+
+export interface BookingsPage {
+  bookings: Booking[];
+  page: number;
+  limit: number;
+  total: number;
+}
+
+/** 201 new PENDING_PAYMENT booking, 200 replay (one booking per reservation). Admission-gated. */
+export async function checkoutReservation(reservationId: string, signal?: AbortSignal): Promise<Booking> {
+  const data = await request<{ booking: Booking }>(`/reservations/${encodeURIComponent(reservationId)}/checkout`, { method: 'POST', signal });
+  return data.booking;
+}
+
+/** Mock payment (ENABLE_MOCK_PAYMENT). 200 for the first call and for replays. 404 "Endpoint not available" when disabled. */
+export async function confirmMockPayment(bookingId: string, signal?: AbortSignal): Promise<Booking> {
+  const data = await request<{ booking: Booking }>(`/bookings/${encodeURIComponent(bookingId)}/confirm-mock`, { method: 'POST', signal });
+  return data.booking;
+}
+
+/** Owner only; 404 otherwise. */
+export async function getBooking(bookingId: string, signal?: AbortSignal): Promise<Booking> {
+  const data = await request<{ booking: Booking }>(`/bookings/${encodeURIComponent(bookingId)}`, { signal });
+  return data.booking;
+}
+
+/** Newest first. `limit` 1–50. */
+export function getMyBookings(page: number, limit: number, signal?: AbortSignal): Promise<BookingsPage> {
+  return request<BookingsPage>('/bookings/mine', { query: { page, limit }, signal });
 }

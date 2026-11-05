@@ -13,6 +13,8 @@ const logger = pino({ name: 'bookings-service' });
 
 export interface FormattedBookingResponse {
   id: string;
+  /** The hold this booking pays for (DELETE /reservations/:id cancels a pending booking). */
+  reservationId: string;
   status: string;
   totalPaise: number;
   createdAt: string;
@@ -64,6 +66,7 @@ function formatBooking(row: repo.BookingDetailRow): FormattedBookingResponse {
 
   const resObj: FormattedBookingResponse = {
     id: row.id,
+    reservationId: row.reservation_id,
     status: reportedStatus,
     totalPaise: Number(row.total_amount_paise),
     createdAt: new Date(row.created_at).toISOString(),

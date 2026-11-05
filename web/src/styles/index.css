@@ -84,6 +84,12 @@
   }
 }
 
+/* A rule drawing itself left to right (booking success). */
+@keyframes draw-line {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 /* Small uppercase mono meta label: dates, cities, prices, section numbers. */
 @utility label-mono {
   font-family: var(--font-mono);

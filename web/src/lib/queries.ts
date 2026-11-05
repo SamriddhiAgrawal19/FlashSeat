@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ApiError, getEvent, getEvents, getReservation, getSeatMap, getShow, type GetEventsParams } from './api';
+import { ApiError, getBooking, getEvent, getEvents, getMyBookings, getReservation, getSeatMap, getShow, type GetEventsParams } from './api';
 
 export const UPCOMING_LIMIT = 10;
 export const EVENTS_PAGE_SIZE = 20;
@@ -75,5 +75,42 @@ export function useReservation(reservationId: string) {
     staleTime: 0,
     refetchOnWindowFocus: true,
     retry: retryUnlessNotFound,
+  });
+}
+
+export function useBooking(bookingId: string) {
+  return useQuery({
+    queryKey: ['booking', bookingId],
+    queryFn: ({ signal }) => getBooking(bookingId, signal),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    retry: retryUnlessNotFound,
+  });
+}
+
+/** API maximum page size for /bookings/mine. */
+const BOOKINGS_PAGE_LIMIT = 50;
+/** Safety cap: 10 pages = 500 bookings. */
+const BOOKINGS_MAX_PAGES = 10;
+
+/**
+ * All of the user's bookings. The tabs (Upcoming / Pending / Past / Cancelled) need status and
+ * show time together, which the API can't filter by, so this walks the pages (usually one).
+ */
+export function useMyBookings() {
+  return useQuery({
+    queryKey: ['bookings', 'mine'],
+    queryFn: async ({ signal }) => {
+      const first = await getMyBookings(1, BOOKINGS_PAGE_LIMIT, signal);
+      const bookings = [...first.bookings];
+      const pages = Math.min(Math.ceil(first.total / BOOKINGS_PAGE_LIMIT), BOOKINGS_MAX_PAGES);
+      for (let page = 2; page <= pages; page++) {
+        bookings.push(...(await getMyBookings(page, BOOKINGS_PAGE_LIMIT, signal)).bookings);
+      }
+      return { bookings, total: first.total };
+    },
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    retry: 1,
   });
 }
