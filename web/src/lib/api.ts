@@ -1,6 +1,7 @@
 // Small fetch wrapper for the FlashSeat API. In dev every call goes through the
 // Vite proxy at /api (see vite.config.ts), because the API has no CORS.
 import { getAccessToken, handleSessionExpired, refreshSession } from './auth/session';
+import { observeServerDate } from './booking/serverClock';
 
 export const API_BASE = '/api';
 
@@ -72,17 +73,20 @@ interface RequestOptions {
   query?: Query;
   body?: unknown;
   signal?: AbortSignal;
+  /** Extra request headers (e.g. Idempotency-Key). */
+  headers?: Record<string, string>;
 }
 
 /** Sends one request; also reports which access token (if any) it carried. */
 async function send(path: string, options: RequestOptions): Promise<{ response: Response; token: string | null }> {
   const { method = 'GET', query, body, signal } = options;
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { Accept: 'application/json', ...options.headers };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const token = getAccessToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
   try {
+    const sentAt = Date.now();
     const response = await fetch(buildUrl(path, query), {
       method,
       headers,
@@ -91,6 +95,8 @@ async function send(path: string, options: RequestOptions): Promise<{ response: 
       credentials: 'include',
       signal,
     });
+    // Every API response carries the server's Date header; it keeps the server clock estimate tight.
+    observeServerDate(response.headers.get('Date'), sentAt, Date.now());
     return { response, token };
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === 'AbortError') throw cause;
@@ -250,4 +256,115 @@ export function getEvent(eventId: string, signal?: AbortSignal): Promise<EventDe
 /** One show of an event, with its category prices. No auth. */
 export function getShow(eventId: string, showId: string, signal?: AbortSignal): Promise<ShowDetail> {
   return request<ShowDetail>(`/events/${encodeURIComponent(eventId)}/shows/${encodeURIComponent(showId)}`, { signal });
+}
+
+// ---------------------------------------------------------------------------
+// Seat map and holds (camelCase, see docs/api.md "Seat map" and "Reservations")
+// ---------------------------------------------------------------------------
+
+/** A HELD seat past its held_until already reads as AVAILABLE; UNAVAILABLE is a blocked seat. */
+export type SeatStatus = 'AVAILABLE' | 'HELD' | 'BOOKED' | 'UNAVAILABLE';
+
+export interface SeatMapSeat {
+  id: string;
+  number: number;
+  category: string;
+  pricePaise: number;
+  status: SeatStatus;
+}
+
+export interface SeatMapRow {
+  row: string;
+  seats: SeatMapSeat[];
+}
+
+export interface SeatMapSection {
+  section: string;
+  rows: SeatMapRow[];
+}
+
+/** GET /shows/:showId/seats. Advisory and up to 2 s stale (Redis cache); holds re-check under row locks. */
+export interface SeatMap {
+  show: {
+    id: string;
+    startsAt: string;
+    endsAt: string;
+    status: ShowStatus;
+    /** SCHEDULED + event PUBLISHED + not started. Does NOT include sales_open_at. */
+    bookable: boolean;
+  };
+  summary: { total: number; available: number; held: number; booked: number; unavailable: number };
+  sections: SeatMapSection[];
+}
+
+/** No auth. 404 for unknown shows and DRAFT events. */
+export function getSeatMap(showId: string, signal?: AbortSignal): Promise<SeatMap> {
+  return request<SeatMap>(`/shows/${encodeURIComponent(showId)}/seats`, { signal });
+}
+
+/** Reads EXPIRED once past expiresAt, even before the sweeper runs. */
+export type ReservationStatus = 'ACTIVE' | 'EXPIRED' | 'RELEASED' | 'CONFIRMED';
+
+export interface ReservationSeat {
+  id: string;
+  section: string;
+  row: string;
+  number: number;
+  category: string;
+  pricePaise: number;
+}
+
+export interface Reservation {
+  id: string;
+  showId: string;
+  status: ReservationStatus;
+  expiresAt: string;
+  seats: ReservationSeat[];
+  totalPricePaise: number;
+}
+
+/** `details` of 409 SEATS_UNAVAILABLE. */
+export interface SeatsUnavailableDetails {
+  unavailableSeatIds: string[];
+}
+
+/** `details` of 409 ACTIVE_RESERVATION_EXISTS: the caller's own live hold on this show. */
+export interface ActiveReservationDetails {
+  reservationId: string;
+}
+
+/**
+ * POST /shows/:showId/reservations. 201 new hold, 200 replay of the same Idempotency-Key.
+ * Send the SAME key and seatIds on every retry of one attempt.
+ */
+export async function createReservation(showId: string, seatIds: string[], idempotencyKey: string, signal?: AbortSignal): Promise<Reservation> {
+  const data = await request<{ reservation: Reservation }>(`/shows/${encodeURIComponent(showId)}/reservations`, {
+    method: 'POST',
+    body: { seatIds },
+    headers: { 'Idempotency-Key': idempotencyKey },
+    signal,
+  });
+  return data.reservation;
+}
+
+/** Owner only; 404 otherwise. */
+export async function getReservation(reservationId: string, signal?: AbortSignal): Promise<Reservation> {
+  const data = await request<{ reservation: Reservation }>(`/reservations/${encodeURIComponent(reservationId)}`, { signal });
+  return data.reservation;
+}
+
+/** 204, also when already RELEASED or EXPIRED. 409 CANNOT_RELEASE_CONFIRMED. */
+export async function releaseReservation(reservationId: string): Promise<void> {
+  await request<null>(`/reservations/${encodeURIComponent(reservationId)}`, { method: 'DELETE' });
+}
+
+/** Narrowing helpers for error `details` (typed as unknown on ApiError). */
+export function seatsUnavailableIds(error: ApiError): string[] {
+  const details = error.details as Partial<SeatsUnavailableDetails> | undefined;
+  return Array.isArray(details?.unavailableSeatIds) ? details.unavailableSeatIds.filter((id): id is string => typeof id === 'string') : [];
+}
+
+export function activeReservationId(error: ApiError): string | null {
+  const details = error.details as Partial<ActiveReservationDetails> | undefined;
+  return typeof details?.reservationId === 'string' ? details.reservationId : null;
 }

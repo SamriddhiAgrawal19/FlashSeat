@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router';
+import { Toaster } from '../ui/Toaster';
 import { Footer } from './Footer';
 import { Navbar } from './Navbar';
 
@@ -32,6 +33,7 @@ export function Layout() {
         <Outlet />
       </main>
       <Footer />
+      <Toaster />
     </div>
   );
 }

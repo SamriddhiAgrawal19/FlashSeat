@@ -153,6 +153,21 @@ export async function expireStaleActiveReservations(
   );
 }
 
+// 3b. The user's own live hold on this show (for ACTIVE_RESERVATION_EXISTS details)
+export async function findActiveReservationId(
+  client: PoolClient,
+  userId: string,
+  showId: string
+): Promise<string | null> {
+  const result = await client.query<{ id: string }>(
+    `SELECT id FROM reservations
+      WHERE user_id = $1 AND show_id = $2 AND status = 'ACTIVE' AND expires_at > now()
+      LIMIT 1`,
+    [userId, showId]
+  );
+  return result.rows[0]?.id ?? null;
+}
+
 // 4. Insert reservation row using DB clock (make_interval)
 export async function insertReservation(
   client: PoolClient,

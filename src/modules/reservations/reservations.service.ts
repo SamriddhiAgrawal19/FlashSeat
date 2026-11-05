@@ -171,7 +171,13 @@ export async function createReservation(
         if (twin) return replayExisting(client, userId, showId, seatIds, twin);
         if (attempt < KEY_RECHECK_ATTEMPTS) await sleep(KEY_RECHECK_DELAY_MS);
       }
-      throw new ConflictError('Finish or release your current hold for this show first', 'ACTIVE_RESERVATION_EXISTS');
+      // Point the client at the hold that blocks this one (always the caller's own).
+      const activeId = await repo.findActiveReservationId(client, userId, showId);
+      throw new ConflictError(
+        'Finish or release your current hold for this show first',
+        'ACTIVE_RESERVATION_EXISTS',
+        activeId ? { reservationId: activeId } : undefined
+      );
     }
 
     if (!res) {

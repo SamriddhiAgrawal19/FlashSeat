@@ -9,7 +9,7 @@
  * Observed as ~2.5% of same-key retries (smoke-concurrency Scenario 3).
  */
 import { describe, expect, it } from 'vitest';
-import { db, hold, register, setupShow } from './helpers';
+import { api, db, hold, register, setupShow } from './helpers';
 
 const rnd = () => Math.random().toString(36).slice(2, 8);
 
@@ -52,6 +52,11 @@ describe('hold idempotency under concurrency', () => {
     const second = await hold(s.user, s.showId, `idemOther-2-${rnd()}`, [s.seatIds[1]]);
     expect(second.status).toBe(409);
     expect(second.data.error.code).toBe('ACTIVE_RESERVATION_EXISTS');
+    // details point at the caller's existing hold, which the caller can open
+    expect(second.data.error.details).toEqual({ reservationId: first.data.reservation.id });
+    const existing = await api('GET', `/reservations/${second.data.error.details.reservationId}`, { token: s.user.token });
+    expect(existing.status).toBe(200);
+    expect(existing.data.reservation.status).toBe('ACTIVE');
 
     const [seat] = await db<{ status: string }>('SELECT status FROM show_seats WHERE id = $1', [s.seatIds[1]]);
     expect(seat.status).toBe('AVAILABLE');

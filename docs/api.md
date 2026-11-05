@@ -22,7 +22,8 @@ Base URL in the Docker stack: `http://localhost:3000`. Every route here comes fr
   { "error": { "message": "Selected seats are no longer available", "code": "SEATS_UNAVAILABLE", "details": { "unavailableSeatIds": ["..."] } } }
   ```
 
-  `details` appears only on some errors (Zod issues, `unavailableSeatIds`, a `status`).
+  `details` appears only on some errors (Zod issues, `unavailableSeatIds`, a `status`, a
+  `reservationId`).
 
 > **Known inconsistency: field casing is mixed.** Requests use `organization_name` on
 > register but camelCase elsewhere (`posterUrl`, `seatIds`, `startsAt`). Responses that
@@ -281,7 +282,7 @@ Errors:
 | 400 | `VALIDATION_ERROR` | missing/invalid key, bad seat ids, duplicates, too many seats, or seats from another show |
 | 404 | `NOT_FOUND` | unknown show, or DRAFT event |
 | 409 | `SHOW_NOT_BOOKABLE` | show cancelled or started, event not published, or sales not open |
-| 409 | `ACTIVE_RESERVATION_EXISTS` | you already have an ACTIVE hold on this show under another key |
+| 409 | `ACTIVE_RESERVATION_EXISTS` | you already have an ACTIVE hold on this show under another key; `details.reservationId` is that hold's id (always your own) |
 | 409 | `SEATS_UNAVAILABLE` | a seat is held or booked; `details.unavailableSeatIds` |
 | 409 | `RESERVATION_NOT_ACTIVE` | replay of a key whose hold is no longer live; `details.status` |
 | 422 | `IDEMPOTENCY_KEY_REUSED` | key already used for a different show or seat set |

@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { domAnimation, LazyMotion } from 'motion/react';
-import { createBrowserRouter, Outlet, RouterProvider, useParams } from 'react-router';
+import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
 import { Layout } from './components/layout/Layout';
 import { GuestOnly } from './components/routing/GuestOnly';
 import { RequireAuth } from './components/routing/RequireAuth';
@@ -12,6 +12,8 @@ import { EventsPage } from './pages/EventsPage';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ReservationPage } from './pages/ReservationPage';
+import { SeatMapPage } from './pages/SeatMapPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,12 +23,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-/** Placeholder for the seat map (next step), so "Select seats" lands somewhere real. */
-function ShowPlaceholder() {
-  const { showId = '' } = useParams();
-  return <ComingSoon title="Seat selection" message={`The seat map for show ${showId} is coming next.`} />;
-}
 
 /** The session lives inside the router so it can redirect (expired session -> /login?next=...). */
 function AuthRoot() {
@@ -51,7 +47,23 @@ const router = createBrowserRouter([
             path: 'shows/:showId',
             element: (
               <RequireAuth>
-                <ShowPlaceholder />
+                <SeatMapPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: 'reservations/:reservationId',
+            element: (
+              <RequireAuth>
+                <ReservationPage />
+              </RequireAuth>
+            ),
+          },
+          {
+            path: 'checkout/:reservationId',
+            element: (
+              <RequireAuth>
+                <ComingSoon title="Checkout" message="Payment is the next step we're building. Your seats stay held until the timer runs out." />
               </RequireAuth>
             ),
           },

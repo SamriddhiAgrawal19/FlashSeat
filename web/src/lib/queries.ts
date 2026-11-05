@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ApiError, getEvent, getEvents, getShow, type GetEventsParams } from './api';
+import { ApiError, getEvent, getEvents, getReservation, getSeatMap, getShow, type GetEventsParams } from './api';
 
 export const UPCOMING_LIMIT = 10;
 export const EVENTS_PAGE_SIZE = 20;
@@ -37,6 +37,7 @@ export function useEventDetail(eventId: string) {
   return useQuery({
     queryKey: ['event', eventId],
     queryFn: ({ signal }) => getEvent(eventId, signal),
+    enabled: eventId !== '',
     retry: retryUnlessNotFound,
   });
 }
@@ -45,7 +46,34 @@ export function useShowDetail(eventId: string, showId: string) {
   return useQuery({
     queryKey: ['show', eventId, showId],
     queryFn: ({ signal }) => getShow(eventId, showId, signal),
+    enabled: eventId !== '' && showId !== '',
     staleTime: 60_000,
+    retry: retryUnlessNotFound,
+  });
+}
+
+/** The seat map refreshes every 5 s while the tab is visible, and when it regains focus. */
+export const SEAT_MAP_REFRESH_MS = 5000;
+
+export function useSeatMap(showId: string, { paused = false, enabled = true }: { paused?: boolean; enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: ['seatMap', showId],
+    queryFn: ({ signal }) => getSeatMap(showId, signal),
+    enabled: enabled && showId !== '',
+    staleTime: 0,
+    // refetchInterval only runs while the document is visible (refetchIntervalInBackground: false).
+    refetchInterval: paused ? false : SEAT_MAP_REFRESH_MS,
+    refetchOnWindowFocus: !paused,
+    retry: retryUnlessNotFound,
+  });
+}
+
+export function useReservation(reservationId: string) {
+  return useQuery({
+    queryKey: ['reservation', reservationId],
+    queryFn: ({ signal }) => getReservation(reservationId, signal),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
     retry: retryUnlessNotFound,
   });
 }
