@@ -1,0 +1,523 @@
+/*
+ * /login and /register (docs/auth-page-design.html). Prefixed au-; tokens from
+ * styles/theme-v2.css. Full-bleed: Layout renders no site header or footer on these routes.
+ */
+
+@layer components {
+  .au-page {
+    min-height: 100vh;
+    display: flex;
+    position: relative;
+  }
+  .v2 .au-logo {
+    position: absolute;
+    top: 32px;
+    left: 40px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  /* ---------------------------------------------------------- left: photo wall */
+  .au-aside {
+    flex: 1 1 520px;
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .au-wall {
+    position: absolute;
+    inset: -12% -18%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    transform: rotate(-9deg);
+  }
+  .au-col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: au-up 60s linear infinite;
+  }
+  .au-col.au-down {
+    animation: au-down 70s linear infinite;
+  }
+  .au-col.au-slow {
+    animation-duration: 80s;
+  }
+  .au-tile {
+    position: relative;
+    border-radius: var(--r-16);
+    overflow: hidden;
+    flex: none;
+    border: 1px solid var(--line);
+  }
+  .au-tile img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(0.9) brightness(0.85);
+  }
+  .au-tile-shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 50%, rgba(8, 8, 10, 0.75));
+  }
+  .au-tile-cap {
+    position: absolute;
+    left: 14px;
+    bottom: 12px;
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: #e4e4e7;
+  }
+  .au-badge {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(8, 8, 10, 0.7);
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    animation: au-hl 9s ease-in-out infinite;
+  }
+  .au-badge i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+  }
+  .au-scrim {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 70% at 50% 45%, rgba(8, 8, 10, 0.15) 0%, rgba(8, 8, 10, 0.55) 70%),
+      linear-gradient(180deg, rgba(8, 8, 10, 0.85) 0%, rgba(8, 8, 10, 0) 18%, rgba(8, 8, 10, 0) 55%, rgba(8, 8, 10, 0.96) 88%);
+  }
+  .au-aside-foot {
+    position: relative;
+    padding: 0 40px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .au-pitch {
+    margin: 0;
+    font-size: 30px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    max-width: 440px;
+  }
+  .au-ticker-wrap {
+    overflow: hidden;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    padding-top: 16px;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  }
+  .au-ticker {
+    display: flex;
+    gap: 40px;
+    width: max-content;
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: #d4d4d8;
+    white-space: nowrap;
+    animation: au-tick 40s linear infinite;
+  }
+
+  /* ---------------------------------------------------------- right: forms */
+  .au-main {
+    flex: 1 1 480px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 32px;
+  }
+  .au-card {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  /* segmented control */
+  .au-seg {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-12);
+    padding: 4px;
+  }
+  .au-seg-ind {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc(50% - 4px);
+    border-radius: var(--r-9);
+    background: var(--text);
+    transition: transform 0.35s var(--ease-out);
+  }
+  .au-seg[data-mode='signup'] .au-seg-ind {
+    transform: translateX(100%);
+  }
+  .au-seg-tab {
+    position: relative;
+    z-index: 1;
+    background: none;
+    border: 0;
+    border-radius: var(--r-9);
+    padding: 10px;
+    font: 500 14px var(--ff-sans);
+    cursor: pointer;
+    color: var(--text-2);
+    transition: color 0.3s ease;
+  }
+  .au-seg-tab[aria-selected='true'] {
+    color: var(--bg);
+  }
+
+  .au-form {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    animation: au-swap 0.45s var(--ease-out) both;
+  }
+  .au-form-signup {
+    gap: 20px;
+  }
+  .au-head {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .au-h1 {
+    margin: 0;
+    font-size: 44px;
+    line-height: 1.02;
+    font-weight: 600;
+    letter-spacing: -0.045em;
+    text-wrap: initial;
+  }
+  .au-w {
+    display: inline-block;
+    animation: au-rise 0.8s var(--ease-out) both;
+  }
+
+  /* fields */
+  .au-fieldwrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .au-field {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--r-12);
+    padding: 12px 14px;
+    background: var(--surface);
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  .au-field:focus-within {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: #131317;
+  }
+  .au-field.is-invalid {
+    border-color: rgba(255, 107, 74, 0.55);
+  }
+  .au-field.is-invalid:focus-within {
+    border-color: var(--accent);
+  }
+  .au-field label {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    cursor: text;
+  }
+  .au-label {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted-mono);
+  }
+  .au-input {
+    background: none;
+    border: 0;
+    outline: none;
+    color: var(--text);
+    font: 400 16px var(--ff-sans);
+    padding: 0;
+    width: 100%;
+    min-width: 0;
+  }
+  .au-input::placeholder {
+    color: #52525b;
+  }
+  /* Autofill would otherwise paint a light box inside the dark field. */
+  .au-input:-webkit-autofill {
+    -webkit-text-fill-color: var(--text);
+    -webkit-box-shadow: 0 0 0 40px var(--surface) inset;
+    caret-color: var(--text);
+  }
+  .au-eye {
+    background: none;
+    border: 0;
+    color: var(--text-2);
+    font: 500 12px var(--ff-mono);
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .au-eye:hover {
+    color: var(--text);
+  }
+  .au-error {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #ff8a6e;
+  }
+  .au-reveal {
+    animation: au-reveal 0.4s var(--ease-out) both;
+  }
+
+  /* strength */
+  .au-meter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .au-meter-track {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: #27272a;
+    overflow: hidden;
+  }
+  .au-meter-fill {
+    display: block;
+    height: 100%;
+    transition: width 0.3s ease, background 0.3s ease;
+  }
+  .au-hint {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+  }
+
+  /* role cards */
+  .au-roles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .au-role {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    text-align: left;
+    padding: 16px;
+    border-radius: var(--r-12);
+    font-family: var(--ff-sans);
+    color: var(--text);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--surface);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  .au-role:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  .au-role[aria-checked='true'] {
+    border-color: var(--accent);
+    background: rgba(255, 107, 74, 0.07);
+  }
+
+  /* submit, alert, footnote */
+  .au-submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--text);
+    color: var(--bg);
+    border: 0;
+    border-radius: var(--r-12);
+    padding: 15px;
+    font: 600 15px var(--ff-sans);
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .au-submit:hover {
+    background: #e4e4e7;
+  }
+  .au-submit:disabled {
+    cursor: progress;
+    opacity: 0.85;
+  }
+  .au-submit .site-arr {
+    margin-left: -2px;
+  }
+  .au-submit:hover .site-arr {
+    transform: translateX(4px);
+  }
+  .au-spin {
+    animation: au-spin 0.8s linear infinite;
+  }
+  .au-alert {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    border-radius: var(--r-12);
+    border: 1px solid rgba(255, 107, 74, 0.35);
+    background: rgba(255, 107, 74, 0.08);
+    font-size: 14px;
+    line-height: 1.5;
+    color: #ffb4a3;
+  }
+  .au-alert i {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    margin-top: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .v2 .au-alert a {
+    color: var(--text);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .au-foot {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-2);
+    text-align: center;
+  }
+  .v2 .au-foot a {
+    color: var(--text);
+  }
+  .v2 .au-foot a:hover {
+    color: var(--accent);
+  }
+
+  /* focus rings (white, as in the design) */
+  .au-seg-tab:focus-visible,
+  .au-role:focus-visible,
+  .au-eye:focus-visible,
+  .au-submit:focus-visible,
+  .au-alert:focus-visible,
+  .v2 .au-foot a:focus-visible,
+  .v2 .au-alert a:focus-visible,
+  .v2 .au-logo:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+  }
+
+  /* ---------------------------------------------------------- < 1024px */
+  @media (max-width: 1023px) {
+    .au-page {
+      flex-direction: column;
+    }
+    .au-aside {
+      flex: none;
+      min-height: 0;
+      height: 220px;
+    }
+    .au-wall {
+      inset: 0 -4%;
+      transform: none;
+    }
+    .au-aside-foot {
+      display: none;
+    }
+    .au-scrim {
+      background: linear-gradient(180deg, rgba(8, 8, 10, 0.7) 0%, rgba(8, 8, 10, 0.15) 40%, rgba(8, 8, 10, 0.35) 70%, var(--bg) 100%);
+    }
+    .v2 .au-logo {
+      top: 20px;
+      left: var(--gutter);
+    }
+    .au-main {
+      flex: none;
+      padding: 32px var(--gutter) 56px;
+    }
+  }
+  @media (max-width: 420px) {
+    .au-h1 {
+      font-size: 38px;
+    }
+    .au-role {
+      padding: 14px 12px;
+    }
+  }
+
+  /* Paused while the browser tab is hidden. */
+  .au-paused,
+  .au-paused * {
+    animation-play-state: paused !important;
+  }
+}
+
+@keyframes au-up {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+@keyframes au-down {
+  from { transform: translateY(-50%); }
+  to { transform: translateY(0); }
+}
+@keyframes au-hl {
+  0%, 100% { opacity: 0; }
+  40%, 60% { opacity: 1; }
+}
+@keyframes au-tick {
+  to { transform: translateX(-50%); }
+}
+@keyframes au-rise {
+  from { opacity: 0; transform: translateY(0.4em); filter: blur(8px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes au-swap {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes au-reveal {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes au-spin {
+  to { transform: rotate(360deg); }
+}
+/* Reduced motion: the global rule (styles/index.css) stops every animation and transition, so the
+   wall and ticker stand still and the "SEAT D9 · YOURS" badge stays visible (its resting state). */

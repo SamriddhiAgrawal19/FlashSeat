@@ -5,15 +5,14 @@ import { GuestOnly } from './components/routing/GuestOnly';
 import { RequireAuth } from './components/routing/RequireAuth';
 import { RequireRole } from './components/routing/RequireRole';
 import { AuthProvider } from './lib/auth/AuthProvider';
+import { AuthPage } from './pages/AuthPage';
 import { BookingPage } from './pages/BookingPage';
 import { ComingSoon } from './pages/ComingSoon';
 import { EventDetailPage } from './pages/EventDetailPage';
 import { EventsPage } from './pages/EventsPage';
 import { LandingPage } from './pages/LandingPage';
-import { LoginPage } from './pages/LoginPage';
 import { MyBookingsPage } from './pages/MyBookingsPage';
 import { PayPage } from './pages/PayPage';
-import { RegisterPage } from './pages/RegisterPage';
 import { ReservationPage } from './pages/ReservationPage';
 import { SeatMapPage } from './pages/SeatMapPage';
 import { OrganizerShell } from './components/organizer/Sidebar';
@@ -94,8 +93,9 @@ const router = createBrowserRouter([
           {
             path: 'login',
             element: (
+              // Same element as /register: the page stays mounted when the tab switches the URL.
               <GuestOnly>
-                <LoginPage />
+                <AuthPage />
               </GuestOnly>
             ),
           },
@@ -103,7 +103,7 @@ const router = createBrowserRouter([
             path: 'register',
             element: (
               <GuestOnly>
-                <RegisterPage />
+                <AuthPage />
               </GuestOnly>
             ),
           },

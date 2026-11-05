@@ -23,10 +23,12 @@ function useScrollOnNavigate() {
 export function Layout() {
   useScrollOnNavigate();
   // Pages on the v2 look (styles/theme-v2.css) get the v2 header and footer inside the .v2 scope;
-  // the landing also gets its own .lp scope. Every other page keeps the old Navbar and Footer.
+  // the landing also gets its own .lp scope. /login and /register are v2 and full-bleed (no header
+  // or footer). Every other page keeps the old Navbar and Footer.
   const { pathname } = useLocation();
   const isLanding = pathname === '/';
-  const isV2 = isLanding || pathname === '/events' || pathname.startsWith('/events/');
+  const isAuth = pathname === '/login' || pathname === '/register';
+  const isV2 = isLanding || isAuth || pathname === '/events' || pathname.startsWith('/events/');
 
   return (
     <div className={cn('flex min-h-dvh flex-col', isV2 && 'v2', isLanding && 'lp')}>
@@ -36,11 +38,11 @@ export function Layout() {
       >
         Skip to content
       </a>
-      {isV2 ? <SiteHeader /> : <Navbar />}
+      {isAuth ? null : isV2 ? <SiteHeader /> : <Navbar />}
       <main id="main" className="flex-1">
         <Outlet />
       </main>
-      {isV2 ? <SiteFooter /> : <Footer />}
+      {isAuth ? null : isV2 ? <SiteFooter /> : <Footer />}
       <Toaster />
     </div>
   );

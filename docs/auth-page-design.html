@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FlashSeat · Log in and sign up</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@1&amp;display=swap">
+<style>
+body{margin:0;background:#08080A}
+a{color:#FAFAFA}a:hover{color:#FF6B4A}
+.i-hero{background-image:url(/_blob/3e8feb9942eaeb1ac55951ca46b7ce1d)}
+.i-th{background-image:url(/_blob/7df0742ca1cea4320eb6d405433566d1)}
+.i-cm{background-image:url(/_blob/cff78853c76ba89e65dbc34c0e4cd426)}
+.i-mu{background-image:url(/_blob/25985d709fc2a660a03f2f42a80fd413)}
+.i-fe{background-image:url(/_blob/d5caedd3920c1bf023577a013b8deb0a)}
+.i-sp{background-image:url(/_blob/af18746400ff6b952a7082c5f8e9ca51)}
+.i-ws{background-image:url(/_blob/229fc09061a22a93b75c8941d9efabd8)}
+.wall{position:absolute;inset:-12% -18%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;transform:rotate(-9deg)}
+.col{display:flex;flex-direction:column;gap:16px;animation:up 60s linear infinite}
+.col.down{animation:down 70s linear infinite}
+.col.slow{animation-duration:80s}
+@keyframes up{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+@keyframes down{from{transform:translateY(-50%)}to{transform:translateY(0)}}
+.tile{position:relative;border-radius:16px;overflow:hidden;flex:none;border:1px solid rgba(255,255,255,.08)}
+.tile .img{position:absolute;inset:0;filter:saturate(.9) brightness(.85)}
+.hl{animation:hl 9s ease-in-out infinite}
+@keyframes hl{0%,100%{opacity:0}40%,60%{opacity:1}}
+.img{background-size:cover;background-position:center}
+.kb{animation:kb 24s ease-in-out infinite alternate}
+@keyframes kb{from{transform:scale(1.02)}to{transform:scale(1.1) translateX(-1.5%)}}
+.float{animation:float 7s ease-in-out infinite}
+@keyframes float{0%,100%{transform:rotate(-4deg) translateY(0)}50%{transform:rotate(-2.5deg) translateY(-10px)}}
+.float2{animation:float2 8s ease-in-out infinite}
+@keyframes float2{0%,100%{transform:rotate(5deg) translateY(0)}50%{transform:rotate(3.5deg) translateY(8px)}}
+.scan{position:absolute;left:0;right:0;top:0;height:2px;background:#FF6B4A;box-shadow:0 0 14px 2px rgba(255,107,74,.7);animation:scan 3.2s ease-in-out infinite alternate}
+@keyframes scan{to{transform:translateY(176px)}}
+.tick{display:flex;gap:40px;width:max-content;animation:tick 40s linear infinite}
+@keyframes tick{to{transform:translateX(-50%)}}
+.w{display:inline-block;animation:rise .8s cubic-bezier(.2,.7,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(.4em);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+.swap{animation:swap .45s cubic-bezier(.2,.7,.2,1) both}
+@keyframes swap{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.seg-ind{transition:transform .35s cubic-bezier(.2,.7,.2,1)}
+.field{transition:border-color .2s ease,background .2s ease}
+.field:focus-within{border-color:rgba(255,255,255,.4);background:#131317}
+.role{transition:border-color .2s ease,background .2s ease;cursor:pointer}
+.role:hover{border-color:rgba(255,255,255,.3)}
+.role:focus-visible,.seg:focus-visible,.eye:focus-visible{outline:2px solid #FAFAFA;outline-offset:2px}
+.btn .arr{display:inline-block;transition:transform .25s ease}.btn:hover .arr{transform:translateX(4px)}
+.btn-w{transition:background .2s ease}.btn-w:hover{background:#E4E4E7}
+.hint{transition:color .2s ease}
+.reveal{animation:reveal .4s cubic-bezier(.2,.7,.2,1) both}
+@keyframes reveal{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #08080A; color: #FAFAFA; font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif; display: flex; flex-wrap: wrap">
+
+<aside aria-hidden="true" style="flex: 1 1 520px; min-height: 960px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between">
+<div class="wall">
+<sc-for list="{{cols}}" as="col" hint-placeholder-count="3">
+<div class="{{col.cls}}">
+<sc-for list="{{col.tiles}}" as="t" hint-placeholder-count="8">
+<div class="tile" style="{{t.h}}">
+<div class="{{t.img}}"></div>
+<div style="position: absolute; inset: 0; background: linear-gradient(180deg, transparent 50%, rgba(8,8,10,0.75))"></div>
+<span style="position: absolute; left: 14px; bottom: 12px; font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #E4E4E7">{{t.cap}}</span>
+<sc-if value="{{t.live}}" hint-placeholder-val="{{ false }}"><span class="hl" style="position: absolute; right: 12px; top: 12px; display: flex; align-items: center; gap: 6px; background: rgba(8,8,10,0.7); border-radius: 999px; padding: 5px 10px; font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: #FAFAFA"><i style="width: 6px; height: 6px; border-radius: 50%; background: #FF6B4A; display: inline-block"></i>SEAT D9 · YOURS</span></sc-if>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+<div style="position: absolute; inset: 0; background: radial-gradient(ellipse 80% 70% at 50% 45%, rgba(8,8,10,0.15) 0%, rgba(8,8,10,0.55) 70%), linear-gradient(180deg, rgba(8,8,10,0.85) 0%, rgba(8,8,10,0) 18%, rgba(8,8,10,0) 55%, rgba(8,8,10,0.96) 88%)"></div>
+<div style="position: relative; padding: 32px 40px; display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FAFAFA" stroke-width="1.6"><path d="M3 7a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4z"></path><path d="M9 5v14" stroke-dasharray="2 2"></path></svg>FlashSeat
+</div>
+
+<div style="position: relative; flex: 1"></div>
+
+<div style="position: relative; padding: 0 40px 36px; display: flex; flex-direction: column; gap: 22px">
+<p style="margin: 0; font-size: 30px; line-height: 1.15; font-weight: 600; letter-spacing: -0.035em; max-width: 440px">Concerts, comedy, theatre and fests. <span style="color: #A1A1AA">Pick the exact seat, every time.</span></p>
+<div style="overflow: hidden; border-top: 1px solid rgba(255,255,255,0.14); padding-top: 16px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent)">
+<div class="tick" style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #D4D4D8">
+<sc-for list="{{ticker}}" as="t" hint-placeholder-count="12"><span style="white-space: nowrap">{{t}}</span></sc-for>
+</div>
+</div>
+</div>
+</aside>
+
+<main style="flex: 1 1 480px; display: flex; align-items: center; justify-content: center; padding: 48px 32px">
+<div style="width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 28px">
+
+<div role="tablist" aria-label="Account" style="position: relative; display: grid; grid-template-columns: 1fr 1fr; background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 4px">
+<span class="seg-ind" aria-hidden="true" style="{{indStyle}}"></span>
+<button type="button" role="tab" class="seg" aria-selected="{{loginSel}}" onClick="{{toLogin}}" style="{{loginTab}}">Log in</button>
+<button type="button" role="tab" class="seg" aria-selected="{{signupSel}}" onClick="{{toSignup}}" style="{{signupTab}}">Sign up</button>
+</div>
+
+<sc-if value="{{isLogin}}" hint-placeholder-val="{{ true }}">
+<form class="swap" style="display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8B8B94">WELCOME BACK</span>
+<h1 style="margin: 0; font-size: 44px; line-height: 1.02; font-weight: 600; letter-spacing: -0.045em"><span class="w">Your</span> <span class="w" style="animation-delay: .06s">seat</span> <span class="w" style="animation-delay: .12s">is</span> <span class="w" style="animation-delay: .18s; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: #FF6B4A">waiting.</span></h1>
+</div>
+<label class="field" style="display: flex; flex-direction: column; gap: 6px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 14px; background: #0F0F12">
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">EMAIL</span>
+<input type="email" autocomplete="email" placeholder="you@example.com" style="background: none; border: 0; outline: none; color: #FAFAFA; font: 400 16px 'Geist', sans-serif; padding: 0">
+</label>
+<div class="field" style="display: flex; align-items: flex-end; gap: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 14px; background: #0F0F12">
+<label style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">PASSWORD</span>
+<input type="{{pwType}}" autocomplete="current-password" placeholder="Your password" style="background: none; border: 0; outline: none; color: #FAFAFA; font: 400 16px 'Geist', sans-serif; padding: 0">
+</label>
+<button type="button" class="eye" aria-label="{{eyeLabel}}" onClick="{{toggleEye}}" style="background: none; border: 0; color: #A1A1AA; font: 500 12px 'Geist Mono', monospace; letter-spacing: 0.08em; cursor: pointer; padding: 4px">{{eyeText}}</button>
+</div>
+<button type="button" class="btn btn-w" style="background: #FAFAFA; color: #08080A; border: 0; border-radius: 12px; padding: 15px; font: 600 15px 'Geist', sans-serif; cursor: pointer">Log in <span class="arr">→</span></button>
+<p style="margin: 0; font-size: 14px; color: #A1A1AA; text-align: center">New to FlashSeat? <a href="#" onClick="{{toSignup}}" style="color: #FAFAFA">Create an account</a></p>
+</form>
+</sc-if>
+
+<sc-if value="{{isSignup}}" hint-placeholder-val="{{ false }}">
+<form class="swap" style="display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8B8B94">JOIN FLASHSEAT</span>
+<h1 style="margin: 0; font-size: 44px; line-height: 1.02; font-weight: 600; letter-spacing: -0.045em"><span class="w">Your</span> <span class="w" style="animation-delay: .06s">next</span> <span class="w" style="animation-delay: .12s">night</span> <span class="w" style="animation-delay: .18s; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: #FF6B4A">starts here.</span></h1>
+</div>
+<div role="radiogroup" aria-label="I want to" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+<button type="button" role="radio" class="role" aria-checked="{{attendSel}}" onClick="{{pickAttend}}" style="{{attendStyle}}">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4z"></path></svg>
+<span style="font-size: 15px; font-weight: 600">Attend events</span>
+<span style="font-size: 12px; color: #A1A1AA; line-height: 1.4">Book seats, keep tickets</span>
+</button>
+<button type="button" role="radio" class="role" aria-checked="{{hostSel}}" onClick="{{pickHost}}" style="{{hostStyle}}">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 20V10l8-6 8 6v10"></path><path d="M9 20v-6h6v6"></path></svg>
+<span style="font-size: 15px; font-weight: 600">Host events</span>
+<span style="font-size: 12px; color: #A1A1AA; line-height: 1.4">Venues, shows, sales</span>
+</button>
+</div>
+<label class="field" style="display: flex; flex-direction: column; gap: 6px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 14px; background: #0F0F12">
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">YOUR NAME</span>
+<input autocomplete="name" placeholder="Asha Kulkarni" style="background: none; border: 0; outline: none; color: #FAFAFA; font: 400 16px 'Geist', sans-serif; padding: 0">
+</label>
+<sc-if value="{{isHost}}" hint-placeholder-val="{{ false }}">
+<label class="field reveal" style="display: flex; flex-direction: column; gap: 6px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 14px; background: #0F0F12">
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">ORGANIZATION</span>
+<input autocomplete="organization" placeholder="Your company, club or college society" style="background: none; border: 0; outline: none; color: #FAFAFA; font: 400 16px 'Geist', sans-serif; padding: 0">
+</label>
+</sc-if>
+<label class="field" style="display: flex; flex-direction: column; gap: 6px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 14px; background: #0F0F12">
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">EMAIL</span>
+<input type="email" autocomplete="email" placeholder="you@example.com" style="background: none; border: 0; outline: none; color: #FAFAFA; font: 400 16px 'Geist', sans-serif; padding: 0">
+</label>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div class="field" style="display: flex; align-items: flex-end; gap: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 14px; background: #0F0F12">
+<label style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">PASSWORD</span>
+<input type="{{pwType}}" autocomplete="new-password" placeholder="At least 8 characters" onInput="{{onPw}}" style="background: none; border: 0; outline: none; color: #FAFAFA; font: 400 16px 'Geist', sans-serif; padding: 0">
+</label>
+<button type="button" class="eye" aria-label="{{eyeLabel}}" onClick="{{toggleEye}}" style="background: none; border: 0; color: #A1A1AA; font: 500 12px 'Geist Mono', monospace; letter-spacing: 0.08em; cursor: pointer; padding: 4px">{{eyeText}}</button>
+</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="flex: 1; height: 3px; border-radius: 2px; background: #27272A; overflow: hidden"><span style="{{meter}}"></span></span>
+<span class="hint" style="{{hintStyle}}">{{hint}}</span>
+</div>
+</div>
+<button type="button" class="btn btn-w" style="background: #FAFAFA; color: #08080A; border: 0; border-radius: 12px; padding: 15px; font: 600 15px 'Geist', sans-serif; cursor: pointer">{{cta}} <span class="arr">→</span></button>
+<p style="margin: 0; font-size: 14px; color: #A1A1AA; text-align: center">Already have an account? <a href="#" onClick="{{toLogin}}" style="color: #FAFAFA">Log in</a></p>
+</form>
+</sc-if>
+
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var mode = st.mode || 'login';
+    var role = st.role || 'ATTENDEE';
+    var show = !!st.show;
+    var len = st.len || 0;
+    var isLogin = mode === 'login';
+    var tab = function (on) {
+      return 'position: relative; z-index: 1; background: none; border: 0; border-radius: 9px; padding: 10px; font: 500 14px Geist, sans-serif; cursor: pointer; color: ' + (on ? '#08080A' : '#A1A1AA') + '; transition: color .3s ease;';
+    };
+    var roleStyle = function (on) {
+      return 'display: flex; flex-direction: column; align-items: flex-start; gap: 8px; text-align: left; padding: 16px; border-radius: 12px; font-family: Geist, sans-serif; color: #FAFAFA; border: 1px solid ' + (on ? '#FF6B4A' : 'rgba(255,255,255,0.12)') + '; background: ' + (on ? 'rgba(255,107,74,0.07)' : '#0F0F12') + ';';
+    };
+    var pct = Math.min(100, Math.round(len / 12 * 100));
+    var ok = len >= 8;
+    return {
+      isLogin: isLogin, isSignup: !isLogin, isHost: role === 'ORGANIZER',
+      loginSel: isLogin ? 'true' : 'false', signupSel: isLogin ? 'false' : 'true',
+      loginTab: tab(isLogin), signupTab: tab(!isLogin),
+      indStyle: 'position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 9px; background: #FAFAFA; transform: translateX(' + (isLogin ? '0' : '100%') + ');',
+      toLogin: function (e) { if (e && e.preventDefault) e.preventDefault(); self.setState({ mode: 'login' }); },
+      toSignup: function (e) { if (e && e.preventDefault) e.preventDefault(); self.setState({ mode: 'signup' }); },
+      attendSel: role === 'ATTENDEE' ? 'true' : 'false', hostSel: role === 'ORGANIZER' ? 'true' : 'false',
+      attendStyle: roleStyle(role === 'ATTENDEE'), hostStyle: roleStyle(role === 'ORGANIZER'),
+      pickAttend: function () { self.setState({ role: 'ATTENDEE' }); },
+      pickHost: function () { self.setState({ role: 'ORGANIZER' }); },
+      pwType: show ? 'text' : 'password', eyeText: show ? 'HIDE' : 'SHOW', eyeLabel: show ? 'Hide password' : 'Show password',
+      toggleEye: function () { self.setState({ show: !show }); },
+      onPw: function (e) { self.setState({ len: (e && e.target && e.target.value || '').length }); },
+      meter: 'display: block; height: 100%; width: ' + pct + '%; background: ' + (ok ? '#22C55E' : '#FF6B4A') + '; transition: width .3s ease, background .3s ease;',
+      hint: len === 0 ? '8+ characters' : ok ? 'Looks good' : (8 - len) + ' more to go',
+      hintStyle: 'font-family: Geist Mono, monospace; font-size: 11px; white-space: nowrap; color: ' + (len === 0 ? '#8B8B94' : ok ? '#4ADE80' : '#FF8A6E') + ';',
+      cta: role === 'ORGANIZER' ? 'Create organizer account' : 'Create account',
+      cols: (function () {
+        var mk = function (list) { return list.concat(list).map(function (t) { return { img: 'img ' + t[0], cap: t[1], h: 'height: ' + t[2] + 'px', live: !!t[3] }; }); };
+        return [
+          { cls: 'col', tiles: mk([['i-mu', 'MUSIC · BENGALURU', 300], ['i-th', 'THEATRE · PUNE', 220, true], ['i-sp', 'SPORTS · HYDERABAD', 260], ['i-cm', 'COMEDY · MUMBAI', 240]]) },
+          { cls: 'col down', tiles: mk([['i-fe', 'FEST · HYDERABAD', 240], ['i-hero', 'LIVE · THIS WEEKEND', 320], ['i-ws', 'WORKSHOP · DELHI', 220], ['i-th', 'THEATRE · PUNE', 280]]) },
+          { cls: 'col slow', tiles: mk([['i-cm', 'COMEDY · MUMBAI', 260], ['i-sp', 'SPORTS · HYDERABAD', 220], ['i-mu', 'MUSIC · DELHI', 300], ['i-fe', 'FEST · HYDERABAD', 240]]) }
+        ];
+      })(),
+      ticker: ['MUSIC · MONSOON RAGAS · BENGALURU', 'COMEDY · OVERTHINKERS ANONYMOUS · MUMBAI', 'THEATRE · THE LAST TRAIN TO LONAVALA · PUNE', 'FEST · LEHAR 2026 · HYDERABAD', 'SPORTS · BASKETBALL FINALS · HYDERABAD', 'WORKSHOP · TABLA CIRCLE · DELHI',
+               'MUSIC · MONSOON RAGAS · BENGALURU', 'COMEDY · OVERTHINKERS ANONYMOUS · MUMBAI', 'THEATRE · THE LAST TRAIN TO LONAVALA · PUNE', 'FEST · LEHAR 2026 · HYDERABAD', 'SPORTS · BASKETBALL FINALS · HYDERABAD', 'WORKSHOP · TABLA CIRCLE · DELHI']
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -45,7 +45,8 @@ export function useReveal<T extends Element>(): { ref: RefObject<T | null>; clas
   return { ref, className: shown ? 'lp-reveal is-in' : 'lp-reveal' };
 }
 
-function useTabVisible(): boolean {
+/** False while the browser tab is hidden (document.visibilityState). */
+export function useTabVisible(): boolean {
   return useSyncExternalStore(
     (onChange) => {
       document.addEventListener('visibilitychange', onChange);
