@@ -18,9 +18,11 @@ export interface AuthContextValue {
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
-function currentUser(): SessionUser {
+/** Store the new token, load the user from GET /auth/me, and return that user. */
+async function establish(accessToken: string): Promise<SessionUser> {
+  const ok = await session.setAccessToken(accessToken);
   const { user } = session.getSnapshot();
-  if (!user) throw new Error('Session was not established');
+  if (!ok || !user) throw new Error('Session was not established');
   return user;
 }
 
@@ -51,14 +53,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const { accessToken } = await loginRequest(email, password);
-    session.setAccessToken(accessToken, { email });
-    return currentUser();
+    return establish(accessToken);
   }, []);
 
   const register = useCallback(async (body: RegisterBody) => {
-    const { user: created, accessToken } = await registerRequest(body);
-    session.setAccessToken(accessToken, { name: created.name, email: created.email });
-    return currentUser();
+    const { accessToken } = await registerRequest(body);
+    return establish(accessToken);
   }, []);
 
   const logout = useCallback(async () => {

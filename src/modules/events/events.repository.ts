@@ -189,51 +189,122 @@ export async function findEventsByOrganizer(client: PoolClient, organizerId: str
   return result.rows;
 }
 
+/** The earliest upcoming SCHEDULED show of an event, as returned by GET /events. */
+export interface NextShow {
+  id: string;
+  starts_at: Date;
+  ends_at: Date;
+  venue: { id: string; name: string; city: string };
+}
+
+/** A GET /events row: the event row unchanged, plus upcoming-show info. */
+export interface PublicEventRow extends EventRow {
+  next_show: NextShow | null;
+  upcoming_show_count: number;
+  min_price_paise: number | null;
+}
+
+interface SearchRow extends EventRow {
+  ns_id: string | null;
+  ns_starts_at: Date | null;
+  ns_ends_at: Date | null;
+  ns_venue_id: string | null;
+  ns_venue_name: string | null;
+  ns_venue_city: string | null;
+  upcoming_show_count: number;
+  min_price_paise: number | null;
+}
+
+// "Upcoming" everywhere below = status SCHEDULED and starts_at > now() (database clock).
+const UPCOMING = `s.event_id = e.id AND s.status = 'SCHEDULED' AND s.starts_at > now()`;
+
 export async function searchPublishedEvents(
   client: PoolClient,
   filters: { category?: string; city?: string; dateFrom?: string; dateTo?: string },
   limit: number,
   offset: number
-) {
-  let queryText = `
-    SELECT DISTINCT e.*
-    FROM events e
-    LEFT JOIN shows s ON e.id = s.event_id
-    LEFT JOIN venues v ON s.venue_id = v.id
-    WHERE e.status = 'PUBLISHED'
-  `;
-  const values: any[] = [];
-  let paramIndex = 1;
+): Promise<{ events: PublicEventRow[]; total: number }> {
+  const values: unknown[] = [];
+  const conditions = [`e.status = 'PUBLISHED'`];
 
+  // Case-insensitive on both sides; stored values are not changed.
   if (filters.category) {
-    queryText += ` AND e.category = $${paramIndex++}`;
     values.push(filters.category);
+    conditions.push(`lower(e.category) = lower($${values.length})`);
   }
+
+  // Show-level filters must all hold for the SAME show, exactly like the previous
+  // LEFT JOIN shows/venues + DISTINCT version (which also matched past and cancelled shows).
+  const showConditions: string[] = [];
   if (filters.city) {
-    queryText += ` AND v.city = $${paramIndex++}`;
     values.push(filters.city);
+    showConditions.push(`lower(v.city) = lower($${values.length})`);
   }
   if (filters.dateFrom) {
-    queryText += ` AND s.starts_at >= $${paramIndex++}`;
     values.push(filters.dateFrom);
+    showConditions.push(`s.starts_at >= $${values.length}`);
   }
   if (filters.dateTo) {
-    queryText += ` AND s.ends_at <= $${paramIndex++}`;
     values.push(filters.dateTo);
+    showConditions.push(`s.ends_at <= $${values.length}`);
+  }
+  if (showConditions.length > 0) {
+    conditions.push(
+      `EXISTS (SELECT 1 FROM shows s JOIN venues v ON v.id = s.venue_id
+                WHERE s.event_id = e.id AND ${showConditions.join(' AND ')})`
+    );
   }
 
-  // Count total matches
-  const countQuery = `SELECT COUNT(*) as total FROM (${queryText}) as matches`;
-  const countResult = await client.query(countQuery, values);
-  const total = parseInt(countResult.rows[0].total, 10);
+  const where = conditions.join(' AND ');
 
-  // Get paginated results
-  queryText += ` ORDER BY e.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
-  values.push(limit, offset);
+  const countResult = await client.query<{ total: number }>(
+    `SELECT count(*)::int AS total FROM events e WHERE ${where}`,
+    values
+  );
+  const total = countResult.rows[0].total;
 
-  const result = await client.query(queryText, values);
+  // One statement for the page: the upcoming-show info comes from two LATERAL joins
+  // (evaluated per event row inside the query), so there are no per-event follow-up queries.
+  const pageValues = [...values, limit, offset];
+  const result = await client.query<SearchRow>(
+    `SELECT e.*,
+            ns.id AS ns_id, ns.starts_at AS ns_starts_at, ns.ends_at AS ns_ends_at,
+            ns.venue_id AS ns_venue_id, ns.venue_name AS ns_venue_name, ns.venue_city AS ns_venue_city,
+            up.upcoming_show_count, up.min_price_paise
+       FROM events e
+       LEFT JOIN LATERAL (
+              SELECT s.id, s.starts_at, s.ends_at, v.id AS venue_id, v.name AS venue_name, v.city AS venue_city
+                FROM shows s
+                JOIN venues v ON v.id = s.venue_id
+               WHERE ${UPCOMING}
+               ORDER BY s.starts_at, s.id
+               LIMIT 1
+            ) ns ON true
+       LEFT JOIN LATERAL (
+              -- DISTINCT: the price join yields one row per (show, category).
+              SELECT count(DISTINCT s.id)::int AS upcoming_show_count,
+                     min(p.price_paise)::int AS min_price_paise
+                FROM shows s
+                LEFT JOIN show_category_prices p ON p.show_id = s.id
+               WHERE ${UPCOMING}
+            ) up ON true
+      WHERE ${where}
+      ORDER BY e.created_at DESC, e.id
+      LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+    pageValues
+  );
 
-  return { events: result.rows, total };
+  const events = result.rows.map(
+    ({ ns_id, ns_starts_at, ns_ends_at, ns_venue_id, ns_venue_name, ns_venue_city, ...row }): PublicEventRow => ({
+      ...row,
+      next_show:
+        ns_id && ns_starts_at && ns_ends_at && ns_venue_id && ns_venue_name !== null && ns_venue_city !== null
+          ? { id: ns_id, starts_at: ns_starts_at, ends_at: ns_ends_at, venue: { id: ns_venue_id, name: ns_venue_name, city: ns_venue_city } }
+          : null,
+    })
+  );
+
+  return { events, total };
 }
 
 export async function findShowsForEvent(client: PoolClient, eventId: string) {

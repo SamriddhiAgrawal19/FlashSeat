@@ -117,6 +117,17 @@ export async function refresh(rawToken: string) {
   throw new UnauthorizedError('Invalid refresh token', 'INVALID_REFRESH_TOKEN');
 }
 
+// The access token is verified statelessly by requireAuth; this re-reads the user so a deleted
+// or deactivated account stops resolving immediately. Same 401 code the auth middleware uses
+// for a token that no longer represents a valid session.
+export async function getMe(client: PoolClient, userId: string) {
+  const row = await repo.findMeById(client, userId);
+  if (!row || !row.is_active) {
+    throw new UnauthorizedError('Invalid access token', 'INVALID_TOKEN');
+  }
+  return { ...row, organization_name: row.role === 'ORGANIZER' ? row.organization_name : null };
+}
+
 export async function logout(client: PoolClient, refreshToken: string) {
   const hash = createHash('sha256').update(refreshToken).digest('hex');
   await repo.revokeRefreshToken(client, hash);

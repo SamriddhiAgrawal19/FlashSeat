@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { registerSchema, loginSchema } from './auth.schema';
 import * as authService from './auth.service';
-import { withTransaction } from '../../db/pool';
+import { pool, withTransaction } from '../../db/pool';
 import { AppError, UnauthorizedError } from '../../utils/errors';
 
 const COOKIE_NAME = 'refreshToken';
@@ -62,6 +62,21 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
     if (err instanceof AppError && err.statusCode === 401) {
       res.clearCookie(COOKIE_NAME, COOKIE_OPTIONS);
     }
+    next(err);
+  }
+}
+
+export async function me(req: Request, res: Response, next: NextFunction) {
+  try {
+    // A single read: no transaction needed (same pattern as GET /events).
+    const client = await pool.connect();
+    try {
+      const user = await authService.getMe(client, req.user!.userId);
+      res.json({ user });
+    } finally {
+      client.release();
+    }
+  } catch (err) {
     next(err);
   }
 }

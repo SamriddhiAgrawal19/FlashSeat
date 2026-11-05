@@ -155,9 +155,28 @@ export interface EventRow {
   updated_at: string;
 }
 
+/** The earliest upcoming SCHEDULED show of an event, as returned by GET /events. */
+export interface NextShow {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  venue: { id: string; name: string; city: string };
+}
+
+/**
+ * A GET /events row: the event row plus upcoming-show info ("upcoming" = SCHEDULED and
+ * starts_at in the future, by the database clock). See docs/api.md.
+ */
+export interface EventListItem extends EventRow {
+  next_show: NextShow | null;
+  upcoming_show_count: number;
+  /** Lowest category price across the upcoming shows, in paise; null when there are none. */
+  min_price_paise: number | null;
+}
+
 /** GET /events response: `{ events, page, limit, total }`. */
 export interface EventsPage {
-  events: EventRow[];
+  events: EventListItem[];
   page: number;
   limit: number;
   total: number;
@@ -165,9 +184,9 @@ export interface EventsPage {
 
 /** GET /events query parameters (all optional). */
 export interface GetEventsParams {
-  /** Exact category match. */
+  /** Exact category match, case-insensitive. */
   category?: string;
-  /** Exact match on a show's venue city. */
+  /** Exact match on a show's venue city, case-insensitive. */
   city?: string;
   /** ISO datetime; shows with `starts_at >=` this. */
   dateFrom?: string;

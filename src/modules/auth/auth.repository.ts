@@ -10,6 +10,18 @@ export interface UserRow {
   updated_at: Date;
 }
 
+/** The public user shape (register's user, never password_hash) plus the organizer's organization name. */
+export interface MeRow {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+  organization_name: string | null;
+}
+
 export interface RefreshTokenLockRow {
   id: string;
   user_id: string;
@@ -45,6 +57,19 @@ export async function findUserByEmail(client: PoolClient, email: string, include
 
 export async function findUserById(client: PoolClient, id: string): Promise<UserRow | null> {
   const result = await client.query('SELECT * FROM users WHERE id = $1 AND is_active = true', [id]);
+  return result.rows[0] || null;
+}
+
+// Lists columns explicitly so password_hash can never leak. Inactive users are returned too:
+// the service decides how to reject them.
+export async function findMeById(client: PoolClient, id: string): Promise<MeRow | null> {
+  const result = await client.query<MeRow>(
+    `SELECT u.id, u.name, u.email, u.role, u.is_active, u.created_at, u.updated_at, op.organization_name
+       FROM users u
+       LEFT JOIN organizer_profiles op ON op.user_id = u.id
+      WHERE u.id = $1`,
+    [id]
+  );
   return result.rows[0] || null;
 }
 

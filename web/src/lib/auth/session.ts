@@ -10,15 +10,30 @@ import { decodeAccessToken, type AccessClaims, type Role } from './jwt';
 
 export type SessionStatus = 'unknown' | 'authenticated' | 'anonymous';
 
-/** UI-only profile data. The API only returns the name on register, so it is remembered per user id. */
-export interface Profile {
-  name?: string;
-  email?: string;
-}
-
-export interface SessionUser extends Profile {
+/**
+ * The signed-in user. id and role always come from the access token; name, email and
+ * organizationName come from GET /auth/me (absent only if that call could not be made).
+ */
+export interface SessionUser {
   id: string;
   role: Role;
+  name?: string;
+  email?: string;
+  organizationName?: string | null;
+}
+
+/** GET /auth/me body (src/modules/auth/auth.service.ts getMe). */
+interface MeResponse {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: Role;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+    organization_name: string | null;
+  };
 }
 
 export interface SessionSnapshot {
@@ -28,9 +43,11 @@ export interface SessionSnapshot {
 
 const REFRESH_URL = '/api/auth/refresh';
 const LOGOUT_URL = '/api/auth/logout';
+const ME_URL = '/api/auth/me';
 const REFRESH_EARLY_MS = 60_000; // refresh one minute before the access token expires
 const MIN_REFRESH_DELAY_MS = 5_000;
-const PROFILE_KEY = 'flashseat:profile';
+// Older builds cached the name/email here. Nothing is stored any more; remove the leftover once.
+const LEGACY_PROFILE_KEY = 'flashseat:profile';
 const CHANNEL_NAME = 'flashseat:auth';
 const LOCK_NAME = 'flashseat:refresh';
 
@@ -45,36 +62,10 @@ const listeners = new Set<() => void>();
 const expiredHandlers = new Set<() => void>();
 const remoteLogoutHandlers = new Set<() => void>();
 
-// --- profile cache (display data only: no tokens, cleared on logout) -----------------------
-
-function readProfile(userId: string): Profile {
-  try {
-    const raw = localStorage.getItem(PROFILE_KEY);
-    if (!raw) return {};
-    const value: unknown = JSON.parse(raw);
-    if (typeof value !== 'object' || value === null) return {};
-    const { userId: id, name, email } = value as Record<string, unknown>;
-    if (id !== userId) return {};
-    return { name: typeof name === 'string' ? name : undefined, email: typeof email === 'string' ? email : undefined };
-  } catch {
-    return {};
-  }
-}
-
-function writeProfile(userId: string, profile: Profile) {
-  try {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify({ userId, ...readProfile(userId), ...profile }));
-  } catch {
-    // Storage blocked: the menu just falls back to a generic label.
-  }
-}
-
-function clearProfile() {
-  try {
-    localStorage.removeItem(PROFILE_KEY);
-  } catch {
-    // ignore
-  }
+try {
+  localStorage.removeItem(LEGACY_PROFILE_KEY);
+} catch {
+  // Storage blocked: nothing to clean up.
 }
 
 // --- store ---------------------------------------------------------------------------
@@ -106,15 +97,46 @@ function scheduleRefresh() {
   }, delay);
 }
 
-/** Store a freshly issued access token (from login, register or refresh). */
-export function setAccessToken(token: string, profile?: Profile): boolean {
+/** Read the current user from GET /auth/me with the given token. */
+async function fetchMe(token: string): Promise<SessionUser | 'invalid' | null> {
+  let response: Response;
+  try {
+    response = await fetch(ME_URL, { headers: { Accept: 'application/json', Authorization: `Bearer ${token}` }, credentials: 'include' });
+  } catch {
+    return null; // network trouble: keep the session, just without profile details
+  }
+  if (response.status === 401) return 'invalid'; // user deleted or deactivated
+  if (!response.ok) return null;
+  const body = (await response.json().catch(() => null)) as MeResponse | null;
+  const user = body?.user;
+  if (!user || typeof user.id !== 'string') return null;
+  return { id: user.id, role: user.role, name: user.name, email: user.email, organizationName: user.organization_name };
+}
+
+/**
+ * Store a freshly issued access token (from login, register or refresh). The first time a user
+ * is seen (or when the user changes) their details are loaded from GET /auth/me; token
+ * rotations for the same user keep the details already loaded. Returns false if the session
+ * could not be established.
+ */
+export async function setAccessToken(token: string): Promise<boolean> {
   const decoded = decodeAccessToken(token);
   if (!decoded) return false;
   accessToken = token;
   claims = decoded;
-  if (profile) writeProfile(decoded.userId, profile);
-  emit({ status: 'authenticated', user: { id: decoded.userId, role: decoded.role, ...readProfile(decoded.userId) } });
   scheduleRefresh();
+
+  const known = snapshot.user?.id === decoded.userId && snapshot.user.name !== undefined ? snapshot.user : null;
+  if (known) {
+    emit({ status: 'authenticated', user: { ...known, role: decoded.role } });
+    return true;
+  }
+  const me = await fetchMe(token);
+  if (me === 'invalid') {
+    clearLocal();
+    return false;
+  }
+  emit({ status: 'authenticated', user: me ?? { id: decoded.userId, role: decoded.role } });
   return true;
 }
 
@@ -147,7 +169,7 @@ async function postRefresh(): Promise<boolean> {
   if (response.ok) {
     const body: unknown = await response.json().catch(() => null);
     const token = typeof body === 'object' && body !== null ? (body as { accessToken?: unknown }).accessToken : undefined;
-    if (typeof token === 'string' && setAccessToken(token)) return true;
+    if (typeof token === 'string' && (await setAccessToken(token))) return true;
   }
   // 401 (no cookie, expired, revoked or reused) or a malformed reply: there is no session.
   clearLocal();
@@ -197,7 +219,6 @@ export function onRemoteLogout(handler: () => void): () => void {
 const channel: BroadcastChannel | null = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(CHANNEL_NAME);
 channel?.addEventListener('message', (event: MessageEvent<unknown>) => {
   if (event.data !== 'logout') return;
-  clearProfile();
   clearLocal();
   remoteLogoutHandlers.forEach((handler) => handler());
 });
@@ -211,7 +232,6 @@ export async function logout(): Promise<void> {
   } catch {
     // Even if the request fails we still end the session in this browser.
   }
-  clearProfile();
   clearLocal();
   channel?.postMessage('logout'); // a plain signal: no tokens or user data are broadcast
 }

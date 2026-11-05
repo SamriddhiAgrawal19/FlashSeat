@@ -271,6 +271,7 @@ scoped to `/auth`. Full reference: [docs/api.md](docs/api.md).
 | POST | `/auth/login` | none | log in |
 | POST | `/auth/refresh` | refresh cookie | rotate refresh token, new access token |
 | POST | `/auth/logout` | refresh cookie | revoke refresh token |
+| GET | `/auth/me` | user | current user, read fresh (plus `organization_name` for organizers) |
 | POST | `/venues` | ORGANIZER | create venue |
 | POST | `/venues/:venueId/seats/bulk` | ORGANIZER (owner) | add seats (GRID or GENERAL_ADMISSION) |
 | GET | `/venues/mine` | ORGANIZER | list own venues |

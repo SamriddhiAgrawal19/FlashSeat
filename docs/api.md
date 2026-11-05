@@ -94,6 +94,23 @@ user's refresh tokens are revoked, and the revocation commits before the 401 is 
 Refresh cookie (optional). Revokes it if present and clears the cookie. **200**
 `{ "success": true }`.
 
+### `GET /auth/me`
+
+User. Reads the user fresh from the database by the access token's `userId`, so a
+deactivated or deleted account stops resolving immediately (the token itself stays valid
+until it expires).
+
+**200** `{ "user": { id, name, email, role, is_active, created_at, updated_at, organization_name } }`:
+the same user shape register returns, plus `organization_name` from `organizer_profiles`
+for an `ORGANIZER` (`null` for everyone else). `password_hash` is never returned.
+
+```json
+{"user":{"id":"843eff7f-…","name":"Asha Rao","email":"asha@example.com","role":"ORGANIZER","is_active":true,"created_at":"2026-10-30T09:41:59.978Z","updated_at":"2026-10-30T09:41:59.978Z","organization_name":"Rao Live"}}
+```
+
+Errors: 401 `UNAUTHORIZED` (no bearer token); 401 `TOKEN_EXPIRED` / `INVALID_TOKEN` (bad
+token); 401 `INVALID_TOKEN` when the user no longer exists or is deactivated.
+
 ## Venues
 
 All venue routes require `ORGANIZER`.
@@ -130,11 +147,28 @@ Errors: 400; 404; 409 `SEATS_ALREADY_EXIST` (any seat already exists, nothing in
 
 ### `GET /events`
 
-No auth. Lists PUBLISHED events, newest first. Query: `category` (exact), `city` (exact, a
-show's venue city), `dateFrom` (ISO datetime; show `starts_at >=`), `dateTo` (show
-`ends_at <=`), `page` (default 1), `limit` (1–50, default 20).
+No auth. Lists PUBLISHED events, newest first (`created_at` descending, then `id`). Query:
+`category` (exact match, case-insensitive), `city` (a show's venue city, exact match,
+case-insensitive: `pune` matches `Pune`), `dateFrom` (ISO datetime; show `starts_at >=`),
+`dateTo` (show `ends_at <=`), `page` (default 1), `limit` (1–50, default 20). `city`,
+`dateFrom` and `dateTo` must all hold for the same show; they consider every show of the
+event, including past and cancelled ones.
 
-**200** `{ "events": [event rows], "page", "limit", "total" }`.
+**200** `{ "events": [event rows], "page", "limit", "total" }`. Each event row also carries
+upcoming-show info, where "upcoming" means `status = 'SCHEDULED'` and `starts_at > now()`
+(database clock):
+
+| Field | Meaning |
+|---|---|
+| `next_show` | the earliest upcoming show as `{ id, starts_at, ends_at, venue: { id, name, city } }`, or `null` |
+| `upcoming_show_count` | number of upcoming shows (0 when none) |
+| `min_price_paise` | lowest `price_paise` across the upcoming shows' category prices, or `null` |
+
+All three come from the same query (two `LEFT JOIN LATERAL`s), not from per-event lookups.
+
+```json
+{"events":[{"id":"5ecd64f3-…","organizer_id":"a01986c8-…","title":"An Evening of Jazz","description":"","category":"MUSIC","poster_url":null,"status":"PUBLISHED","cancelled_at":null,"created_at":"2026-11-05T09:58:27.624Z","updated_at":"2026-11-05T09:58:27.633Z","upcoming_show_count":1,"min_price_paise":30000,"next_show":{"id":"e84f050f-…","starts_at":"2026-11-10T09:58:27.627Z","ends_at":"2026-11-10T11:58:27.627Z","venue":{"id":"66146c64-…","name":"Main Hall","city":"Pune"}}}],"page":1,"limit":20,"total":1}
+```
 
 ### `GET /events/mine`
 
