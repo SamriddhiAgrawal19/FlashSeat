@@ -21,6 +21,7 @@ state that would mean double-selling.
 - [Key design decisions](#key-design-decisions)
 - [Tech stack](#tech-stack)
 - [Quickstart with Docker](#quickstart-with-docker)
+- [Demo data](#demo-data)
 - [Running the API on the host](#running-the-api-on-the-host)
 - [Testing](#testing)
 - [Load testing](#load-testing)
@@ -176,6 +177,43 @@ the host.
 
 A full happy path with curl (organizer creates a venue, event and show; an attendee holds,
 checks out and confirms) is in [docs/api.md](docs/api.md#curl-walkthrough).
+
+## Demo data
+
+> **Warning:** `db:reset-local` and `demo:fresh` **delete all data** in the local docker
+> database (every table except `pgmigrations`) and the app's Redis keys (`seatmap:*`,
+> `ratelimit:*`, `admission:*`). They refuse to run unless `NODE_ENV` is not
+> `production`, the database host is `localhost`/`127.0.0.1`/`postgres` with the
+> database name from `.env`, Redis is local, the servers they reach are the compose
+> `postgres`/`redis` containers, and `--yes` is passed.
+
+With the stack up (`docker compose up -d`):
+
+```sh
+npm run demo:fresh                 # reset + seed (about 4 minutes)
+npm run db:reset-local -- --yes    # only wipe (without --yes it just prints the plan)
+npm run seed:demo                  # only seed; refuses if demo accounts already exist
+```
+
+`seed:demo` uses only the public API at `http://localhost:3000`, at the production rate
+limits, so every rule and invariant applies. It creates 3 organizers, 6 venues in Pune,
+Mumbai, Bengaluru, Delhi and Hyderabad, 14 published events across all six categories (two
+with sales opening later), one DRAFT and one CANCELLED event, and ~560 bookings that fill
+several shows 20–60%, front rows first. All names are fictional.
+
+| Account | Role | What to look at |
+|---|---|---|
+| `demo-meera@flashseat.test` | ORGANIZER (Saptak Sound Collective) | dashboard with a cancelled event |
+| `demo-kabir@flashseat.test` | ORGANIZER (Chaupal Theatre Company) | dashboard with a DRAFT event |
+| `demo-nikhil@flashseat.test` | ORGANIZER (Lehar Fest Committee) | general-admission ground, arena |
+| `demo-asha@flashseat.test` | ATTENDEE | confirmed tickets and a REFUND_PENDING booking |
+| `demo-rahul@flashseat.test` | ATTENDEE | confirmed tickets, a PENDING_PAYMENT booking and an ACTIVE hold |
+| `demo-guest-01..20@flashseat.test` | ATTENDEE | volume buyers |
+
+The password is `DEMO_PASSWORD` (shell or `.env`), else the local-only default
+`LocalDemoOnly#2026`; the seed prints it with a summary at the end. Rahul's hold and
+pending booking expire after `HOLD_DURATION_SECONDS` (10 minutes); run `demo:fresh`
+again to get them back. The test suite adds its own data on top of the demo data.
 
 ## Running the API on the host
 
