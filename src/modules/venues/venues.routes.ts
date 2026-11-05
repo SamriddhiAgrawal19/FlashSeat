@@ -10,3 +10,4 @@ venuesRouter.use(requireAuth, requireRole('ORGANIZER'));
 venuesRouter.post('/', venuesController.createVenue);
 venuesRouter.post('/:venueId/seats/bulk', venuesController.bulkCreateSeats);
 venuesRouter.get('/mine', venuesController.getMyVenues);
+venuesRouter.get('/:venueId/seats', venuesController.getVenueSeats);

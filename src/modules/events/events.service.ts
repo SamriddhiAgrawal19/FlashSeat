@@ -107,6 +107,17 @@ export async function getPublicEventDetails(client: PoolClient, eventId: string)
   };
 }
 
+/** The organizer's events in every status, each with all of its shows (DRAFT included). */
 export async function getMyEvents(client: PoolClient, organizerId: string) {
-  return await repo.findEventsByOrganizer(client, organizerId);
+  const events = await repo.findEventsByOrganizer(client, organizerId);
+  const shows = await repo.findShowsForOrganizer(client, organizerId);
+
+  const byEvent = new Map<string, Omit<repo.OrganizerShowRow, 'event_id'>[]>();
+  for (const { event_id, ...show } of shows) {
+    const list = byEvent.get(event_id);
+    if (list) list.push(show);
+    else byEvent.set(event_id, [show]);
+  }
+
+  return events.map((event) => ({ ...event, shows: byEvent.get(event.id) ?? [] }));
 }

@@ -26,10 +26,13 @@ export function statusLabel(status: BookingStatus): string {
   return LABELS[status];
 }
 
+/** Shared shape of every status pill (booking and organizer event/show statuses). */
+export const PILL_BASE = 'label-mono inline-flex h-7 items-center gap-2 rounded-[2px] border px-2.5 whitespace-nowrap';
+
 /** Small mono status label with a hairline border. */
 export function StatusPill({ status, className }: { status: BookingStatus; className?: string }) {
   return (
-    <span className={cn('label-mono inline-flex h-7 items-center gap-2 rounded-[2px] border px-2.5 whitespace-nowrap', TONES[status], className)}>
+    <span className={cn(PILL_BASE, TONES[status], className)}>
       {status === 'CONFIRMED' && <span aria-hidden="true" className="size-1.5 bg-lime" />}
       {LABELS[status]}
     </span>

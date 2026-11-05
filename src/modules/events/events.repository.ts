@@ -189,6 +189,46 @@ export async function findEventsByOrganizer(client: PoolClient, organizerId: str
   return result.rows;
 }
 
+/** A show of one of the organizer's events, as listed on GET /events/mine (any status). */
+export interface OrganizerShowRow {
+  id: string;
+  event_id: string;
+  venue_id: string;
+  venue_name: string;
+  venue_city: string;
+  starts_at: Date;
+  ends_at: Date;
+  sales_open_at: Date | null;
+  status: string;
+  /** show_seats rows of the show. */
+  seats_total: number;
+  /** show_seats rows with status BOOKED (includes seats of REFUND_PENDING bookings). */
+  seats_booked: number;
+}
+
+// Every show of every event the organizer owns, in one statement (no per-event lookups).
+// The seat counts use idx_show_seats_show_status.
+export async function findShowsForOrganizer(client: PoolClient, organizerId: string): Promise<OrganizerShowRow[]> {
+  const result = await client.query<OrganizerShowRow>(
+    `SELECT s.id, s.event_id, s.venue_id, v.name AS venue_name, v.city AS venue_city,
+            s.starts_at, s.ends_at, s.sales_open_at, s.status,
+            c.seats_total, c.seats_booked
+       FROM shows s
+       JOIN events e ON e.id = s.event_id
+       JOIN venues v ON v.id = s.venue_id
+       LEFT JOIN LATERAL (
+              SELECT count(*)::int AS seats_total,
+                     count(*) FILTER (WHERE ss.status = 'BOOKED')::int AS seats_booked
+                FROM show_seats ss
+               WHERE ss.show_id = s.id
+            ) c ON true
+      WHERE e.organizer_id = $1
+      ORDER BY s.starts_at, s.id`,
+    [organizerId]
+  );
+  return result.rows;
+}
+
 /** The earliest upcoming SCHEDULED show of an event, as returned by GET /events. */
 export interface NextShow {
   id: string;

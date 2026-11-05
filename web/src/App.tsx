@@ -17,6 +17,13 @@ import { PayPage } from './pages/PayPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ReservationPage } from './pages/ReservationPage';
 import { SeatMapPage } from './pages/SeatMapPage';
+import { OrganizerShell } from './components/organizer/Sidebar';
+import { ManageEventPage } from './pages/organizer/ManageEventPage';
+import { NewEventPage } from './pages/organizer/NewEventPage';
+import { NewVenuePage } from './pages/organizer/NewVenuePage';
+import { OverviewPage } from './pages/organizer/OverviewPage';
+import { SeatBuilderPage } from './pages/organizer/SeatBuilderPage';
+import { VenuesPage } from './pages/organizer/VenuesPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -106,10 +113,19 @@ const router = createBrowserRouter([
             element: (
               <RequireAuth>
                 <RequireRole role="ORGANIZER">
-                  <ComingSoon title="Organizer dashboard" />
+                  <OrganizerShell />
                 </RequireRole>
               </RequireAuth>
             ),
+            children: [
+              { index: true, element: <OverviewPage /> },
+              { path: 'events', element: <OverviewPage view="events" /> },
+              { path: 'events/new', element: <NewEventPage /> },
+              { path: 'events/:eventId', element: <ManageEventPage /> },
+              { path: 'venues', element: <VenuesPage /> },
+              { path: 'venues/new', element: <NewVenuePage /> },
+              { path: 'venues/:venueId/seats', element: <SeatBuilderPage /> },
+            ],
           },
           {
             path: 'bookings',

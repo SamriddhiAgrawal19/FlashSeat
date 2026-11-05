@@ -66,3 +66,43 @@ export async function bulkInsertSeats(client: PoolClient, ownerId: string, venue
 export async function getMyVenues(client: PoolClient, ownerId: string) {
   return await repo.findVenuesByOwnerId(client, ownerId);
 }
+
+export interface VenueLayoutRow {
+  row: string;
+  seats: { number: number; category: string }[];
+}
+
+export interface VenueLayout {
+  venue_id: string;
+  seat_count: number;
+  categories: string[];
+  sections: { section: string; rows: VenueLayoutRow[] }[];
+}
+
+/** The owner's read-only seat layout, grouped by section and row (404 if not theirs). */
+export async function getVenueLayout(client: PoolClient, ownerId: string, venueId: string): Promise<VenueLayout> {
+  const venue = await repo.findVenueById(client, venueId);
+  if (!venue || venue.owner_id !== ownerId) {
+    throw new NotFoundError('Venue not found');
+  }
+
+  const seats = await repo.findVenueSeatLayout(client, venueId);
+  const sections: VenueLayout['sections'] = [];
+  const categories = new Set<string>();
+  for (const seat of seats) {
+    categories.add(seat.category);
+    let section = sections[sections.length - 1];
+    if (!section || section.section !== seat.section) {
+      section = { section: seat.section, rows: [] };
+      sections.push(section);
+    }
+    let row = section.rows[section.rows.length - 1];
+    if (!row || row.row !== seat.row_label) {
+      row = { row: seat.row_label, seats: [] };
+      section.rows.push(row);
+    }
+    row.seats.push({ number: seat.seat_number, category: seat.category });
+  }
+
+  return { venue_id: venue.id, seat_count: seats.length, categories: [...categories].sort(), sections };
+}

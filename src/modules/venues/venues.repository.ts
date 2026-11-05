@@ -11,6 +11,16 @@ export interface VenueRow {
 
 export interface VenueWithSeatCountRow extends VenueRow {
   seat_count: number;
+  /** Distinct venue_seats.category values, sorted ascending; [] for a venue without seats. */
+  categories: string[];
+}
+
+/** One venue seat, as read for the owner's layout preview. */
+export interface VenueSeatLayoutRow {
+  section: string;
+  row_label: string;
+  seat_number: number;
+  category: string;
 }
 
 export async function createVenue(
@@ -49,13 +59,26 @@ export async function countVenueSeats(client: PoolClient, venueId: string): Prom
 
 export async function findVenuesByOwnerId(client: PoolClient, ownerId: string): Promise<VenueWithSeatCountRow[]> {
   const result = await client.query(`
-    SELECT v.*, COUNT(s.id)::int as seat_count
+    SELECT v.*, COUNT(s.id)::int as seat_count,
+           COALESCE(array_agg(DISTINCT s.category ORDER BY s.category) FILTER (WHERE s.id IS NOT NULL), '{}') AS categories
     FROM venues v
     LEFT JOIN venue_seats s ON v.id = s.venue_id
     WHERE v.owner_id = $1
     GROUP BY v.id
     ORDER BY v.created_at DESC
   `, [ownerId]);
+  return result.rows;
+}
+
+// Rows ordered naturally: shorter labels first ('B' before 'AA', '2' before '10'), then by label.
+export async function findVenueSeatLayout(client: PoolClient, venueId: string): Promise<VenueSeatLayoutRow[]> {
+  const result = await client.query<VenueSeatLayoutRow>(
+    `SELECT section, row_label, seat_number, category
+       FROM venue_seats
+      WHERE venue_id = $1
+      ORDER BY section, length(row_label), row_label, seat_number`,
+    [venueId]
+  );
   return result.rows;
 }
 

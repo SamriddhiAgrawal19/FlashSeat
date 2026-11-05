@@ -142,7 +142,28 @@ Errors: 400; 404; 409 `SEATS_ALREADY_EXIST` (any seat already exists, nothing in
 
 ### `GET /venues/mine`
 
-**200** array of the organizer's venues, newest first, each with `seat_count`.
+**200** array of the organizer's venues, newest first. Each is the venue row plus
+`seat_count` and `categories`: the venue's distinct seat categories, sorted (`[]` for a venue
+without seats). A show's `categoryPrices` must cover exactly these categories.
+
+```json
+[{"id":"d64e49b0-…","owner_id":"843eff7f-…","name":"Main Hall","address":"1 College Road","city":"Pune","created_at":"…","seat_count":68,"categories":["REGULAR","VIP"]}]
+```
+
+### `GET /venues/:venueId/seats`
+
+Owner only (otherwise 404). The venue's seat layout for a read-only preview: sections sorted by
+name, rows in natural order (shorter labels first, so `B` before `AA` and `2` before `10`),
+seats by number.
+
+**200** `{ venue_id, seat_count, categories, sections: [{ section, rows: [{ row, seats: [{ number, category }] }] }] }`.
+A venue without seats returns `seat_count: 0`, `categories: []`, `sections: []`.
+
+```json
+{"venue_id":"d64e49b0-…","seat_count":5,"categories":["REGULAR","VIP"],"sections":[{"section":"MAIN","rows":[{"row":"A","seats":[{"number":1,"category":"VIP"},{"number":2,"category":"VIP"}]},{"row":"B","seats":[{"number":1,"category":"REGULAR"},{"number":2,"category":"REGULAR"},{"number":3,"category":"REGULAR"}]}]}]}
+```
+
+Errors: 400 (bad uuid); 404.
 
 ## Events and shows
 
@@ -181,7 +202,23 @@ condition used for the listing and `total`), not from per-event lookups.
 
 ### `GET /events/mine`
 
-`ORGANIZER`. **200** array of the organizer's events in every status, newest first.
+`ORGANIZER`. **200** array of the organizer's events in every status, newest first. Each is
+the event row plus `shows`: **all** of its shows (any status, DRAFT events included), ordered by
+start time:
+
+| Field | Meaning |
+|---|---|
+| `id`, `venue_id`, `starts_at`, `ends_at`, `sales_open_at`, `status` | from the show row |
+| `venue_name`, `venue_city` | the show's venue |
+| `seats_total` | number of `show_seats` rows |
+| `seats_booked` | `show_seats` with status `BOOKED` (seats of `REFUND_PENDING` bookings stay `BOOKED` and count) |
+
+This is the only way to read a DRAFT event's shows: the public event, show and seat-map reads
+return 404 for DRAFT events. Shows come from one extra query for the whole list, not per event.
+
+```json
+[{"id":"adc70dd1-…","title":"Spring Play","status":"DRAFT",…,"shows":[{"id":"8d33deb0-…","venue_id":"d64e49b0-…","venue_name":"Main Hall","venue_city":"Pune","starts_at":"2027-03-01T13:30:00.000Z","ends_at":"2027-03-01T16:00:00.000Z","sales_open_at":null,"status":"SCHEDULED","seats_total":10,"seats_booked":0}]}]
+```
 
 ### `POST /events`
 

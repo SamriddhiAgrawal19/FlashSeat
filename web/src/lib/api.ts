@@ -451,3 +451,148 @@ export async function getBooking(bookingId: string, signal?: AbortSignal): Promi
 export function getMyBookings(page: number, limit: number, signal?: AbortSignal): Promise<BookingsPage> {
   return request<BookingsPage>('/bookings/mine', { query: { page, limit }, signal });
 }
+
+// ---------------------------------------------------------------------------
+// Organizer: venues, seat layouts, events and shows (ORGANIZER role; docs/api.md)
+// Rows are snake_case (database rows); request bodies are camelCase.
+// ---------------------------------------------------------------------------
+
+/** Server limits (src/config/env.ts defaults, src/modules/venues/venues.schema.ts). */
+export const MAX_SEATS_PER_BULK_CALL = 2000;
+export const MAX_SEATS_PER_VENUE = 20_000;
+export const MAX_SEATS_PER_ROW = 500;
+export const ROW_LABEL_PATTERN = /^[A-Z0-9]{1,4}$/;
+/** Section and category tags: trimmed, 1–30 characters, stored uppercase. */
+export const SEAT_TAG_MAX = 30;
+
+export interface VenueRow {
+  id: string;
+  owner_id: string;
+  name: string;
+  address: string;
+  city: string;
+  created_at: string;
+}
+
+/** A GET /venues/mine row: the venue plus its seat count and sorted distinct seat categories. */
+export interface MyVenue extends VenueRow {
+  seat_count: number;
+  categories: string[];
+}
+
+export interface VenueLayoutRow {
+  row: string;
+  seats: Array<{ number: number; category: string }>;
+}
+
+/** GET /venues/:venueId/seats (owner only). */
+export interface VenueLayout {
+  venue_id: string;
+  seat_count: number;
+  categories: string[];
+  sections: Array<{ section: string; rows: VenueLayoutRow[] }>;
+}
+
+export type BulkSeatsBody =
+  | { mode: 'GRID'; rows: string[]; seatsPerRow: number; section?: string; category?: string }
+  | { mode: 'GENERAL_ADMISSION'; count: number; section?: string; category?: string };
+
+/** `details` of 409 VENUE_SEAT_LIMIT. */
+export interface VenueSeatLimitDetails {
+  existing: number;
+  requested: number;
+  max: number;
+}
+
+export function getMyVenues(signal?: AbortSignal): Promise<MyVenue[]> {
+  return request<MyVenue[]>('/venues/mine', { signal });
+}
+
+export function createVenue(body: { name: string; address: string; city: string }): Promise<VenueRow> {
+  return request<VenueRow>('/venues', { method: 'POST', body });
+}
+
+export function getVenueLayout(venueId: string, signal?: AbortSignal): Promise<VenueLayout> {
+  return request<VenueLayout>(`/venues/${encodeURIComponent(venueId)}/seats`, { signal });
+}
+
+/** 201. 409 SEATS_ALREADY_EXIST (nothing inserted) or VENUE_SEAT_LIMIT. */
+export async function bulkCreateSeats(venueId: string, body: BulkSeatsBody): Promise<void> {
+  await request<{ success: boolean }>(`/venues/${encodeURIComponent(venueId)}/seats/bulk`, { method: 'POST', body });
+}
+
+/** A show on GET /events/mine (any status), with seat counts. */
+export interface OrganizerShow {
+  id: string;
+  venue_id: string;
+  venue_name: string;
+  venue_city: string;
+  starts_at: string;
+  ends_at: string;
+  sales_open_at: string | null;
+  status: ShowStatus;
+  seats_total: number;
+  /** BOOKED seats, including those of REFUND_PENDING bookings. */
+  seats_booked: number;
+}
+
+/** A GET /events/mine row: the event row plus all of its shows, by start time. */
+export interface OrganizerEvent extends EventRow {
+  shows: OrganizerShow[];
+}
+
+export interface EventInput {
+  title: string;
+  category: string;
+  description?: string;
+  posterUrl?: string;
+}
+
+export interface CreateShowBody {
+  venueId: string;
+  startsAt: string;
+  endsAt: string;
+  salesOpenAt?: string;
+  categoryPrices: Array<{ category: string; pricePaise: number }>;
+}
+
+/** The show row plus the number of seats generated. */
+export interface CreatedShow {
+  id: string;
+  event_id: string;
+  venue_id: string;
+  starts_at: string;
+  ends_at: string;
+  sales_open_at: string | null;
+  status: ShowStatus;
+  seatCount: number;
+}
+
+export function getMyEvents(signal?: AbortSignal): Promise<OrganizerEvent[]> {
+  return request<OrganizerEvent[]>('/events/mine', { signal });
+}
+
+/** 201, status DRAFT. */
+export function createEvent(body: EventInput): Promise<EventRow> {
+  return request<EventRow>('/events', { method: 'POST', body });
+}
+
+/** 409 EVENT_CANCELLED. */
+export function updateEvent(eventId: string, body: Partial<EventInput>): Promise<EventRow> {
+  return request<EventRow>(`/events/${encodeURIComponent(eventId)}`, { method: 'PATCH', body });
+}
+
+/** 409 EVENT_NOT_DRAFT, or 409 CONFLICT with zero shows. */
+export async function publishEvent(eventId: string): Promise<void> {
+  await request<{ success: boolean }>(`/events/${encodeURIComponent(eventId)}/publish`, { method: 'POST' });
+}
+
+/** Idempotent: cancelling a cancelled event is a 200 that changes nothing. */
+export async function cancelEvent(eventId: string): Promise<void> {
+  await request<{ success: boolean }>(`/events/${encodeURIComponent(eventId)}/cancel`, { method: 'POST' });
+}
+
+/** 409 CONFLICT (venue overlap) or EVENT_CANCELLED; 400 for missing/unknown price categories. */
+export function createShow(eventId: string, body: CreateShowBody): Promise<CreatedShow> {
+  return request<CreatedShow>(`/events/${encodeURIComponent(eventId)}/shows`, { method: 'POST', body });
+}

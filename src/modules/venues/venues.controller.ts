@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createVenueSchema, bulkSeatsSchema, venueIdParamSchema } from './venues.schema';
 import * as venuesService from './venues.service';
-import { withTransaction } from '../../db/pool';
+import { pool, withTransaction } from '../../db/pool';
 
 export async function createVenue(req: Request, res: Response, next: NextFunction) {
   try {
@@ -43,6 +43,22 @@ export async function getMyVenues(req: Request, res: Response, next: NextFunctio
     });
 
     res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getVenueSeats(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { venueId } = venueIdParamSchema.parse(req.params);
+    const userId = req.user!.userId;
+
+    const client = await pool.connect();
+    try {
+      res.json(await venuesService.getVenueLayout(client, userId, venueId));
+    } finally {
+      client.release();
+    }
   } catch (err) {
     next(err);
   }
