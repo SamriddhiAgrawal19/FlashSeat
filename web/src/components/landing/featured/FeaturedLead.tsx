@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { Arrow } from '../../ui/Button';
-import { EventImage, EventMeta } from './EventParts';
+import { EventImage } from '../../events/EventImage';
+import { EventMeta } from './EventParts';
 import type { FeaturedItem } from './useFeaturedEvents';
 
 /** The dominant event: a wide image, then meta, a big title and a short description. */

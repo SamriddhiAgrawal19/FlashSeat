@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { Arrow, ArrowLink } from '../../ui/Button';
-import { EventImage, EventMeta } from './EventParts';
+import { EventImage } from '../../events/EventImage';
+import { EventMeta } from './EventParts';
 import type { FeaturedItem } from './useFeaturedEvents';
 
 // Each row's thumbnail gets its own shape, so the column reads as a layout, not a list of clones.

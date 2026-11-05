@@ -220,16 +220,25 @@ export interface EventDetail extends EventRow {
   shows: EventShowSummary[];
 }
 
-/** GET /events/:eventId/shows/:showId: the show row plus venue and category prices (paise). */
+/**
+ * GET /events/:eventId/shows/:showId: the full show row (src/modules/shows/shows.repository.ts
+ * findShowInEvent: s.*), the venue, the event's status and the category prices (paise).
+ */
 export interface ShowDetail {
   id: string;
   event_id: string;
+  venue_id: string;
   starts_at: string;
   ends_at: string;
+  /** When ticket sales open; null means they are open as soon as the show is published. */
+  sales_open_at: string | null;
   status: ShowStatus;
+  created_at: string;
+  updated_at: string;
   venue_name: string;
   venue_address: string;
   venue_city: string;
+  event_status: EventStatus;
   category_prices: Array<{ category: string; price_paise: number }>;
 }
 
