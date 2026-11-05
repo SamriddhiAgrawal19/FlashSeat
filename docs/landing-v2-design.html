@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FlashSeat · Landing with motion</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@1&amp;display=swap">
+<style>
+body{margin:0;background:#08080A}
+a{color:#FAFAFA;text-decoration:none}a:hover{color:#FF6B4A}
+.ph{background-size:cover;background-position:center}
+.i-hero{background-image:url(/_blob/3e8feb9942eaeb1ac55951ca46b7ce1d)}
+.i-th{background-image:url(/_blob/7df0742ca1cea4320eb6d405433566d1)}
+.i-cm{background-image:url(/_blob/cff78853c76ba89e65dbc34c0e4cd426)}
+.i-mu{background-image:url(/_blob/25985d709fc2a660a03f2f42a80fd413)}
+.i-fe{background-image:url(/_blob/d5caedd3920c1bf023577a013b8deb0a)}
+.i-sp{background-image:url(/_blob/af18746400ff6b952a7082c5f8e9ca51)}
+.i-ws{background-image:url(/_blob/229fc09061a22a93b75c8941d9efabd8)}
+.grid-bg{background-image:linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px);background-size:48px 48px;-webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 40%,#000 30%,transparent 80%);mask-image:radial-gradient(ellipse 70% 60% at 50% 40%,#000 30%,transparent 80%)}
+.w{display:inline-block;animation:rise .9s cubic-bezier(.2,.7,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(.45em);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+.fade{animation:fadeup .9s cubic-bezier(.2,.7,.2,1) both}
+@keyframes fadeup{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.pulse{animation:pulse 2s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,107,74,.6)}100%{box-shadow:0 0 0 9px rgba(255,107,74,0)}}
+.arr{display:inline-block;transition:transform .25s ease}
+.btn:hover .arr{transform:translateX(4px)}
+.btn-w{transition:background .2s ease}.btn-w:hover{background:#E4E4E7;color:#08080A}
+.btn-g{transition:border-color .2s ease,background .2s ease}.btn-g:hover{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.04);color:#FAFAFA}
+.navl{position:relative;color:#A1A1AA;transition:color .2s}.navl:hover{color:#FAFAFA}
+.tilt{transform:perspective(1600px) rotateY(-7deg) rotateX(3deg);transition:transform .8s cubic-bezier(.2,.7,.2,1)}.tilt:hover{transform:perspective(1600px) rotateY(0) rotateX(0)}
+.float{animation:float 9s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.stage{background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.15) 30%,rgba(255,255,255,.8) 50%,rgba(255,255,255,.15) 70%,transparent 100%);background-size:200% 100%;animation:sh 4s linear infinite}
+@keyframes sh{from{background-position:150% 0}to{background-position:-50% 0}}
+.hs{width:18px;height:18px;border-radius:4px;border:1px solid rgba(255,255,255,.22);background:transparent;padding:0;display:block}
+.hs-t{background:#27272A;border-color:#27272A}
+.r7{background:#FF6B4A;border-color:#FF6B4A;animation:r7 8s infinite both}
+@keyframes r7{0%,33%{background:transparent;border-color:rgba(255,255,255,.22)}35%,94%{background:#FF6B4A;border-color:#FF6B4A}97%,100%{background:transparent;border-color:rgba(255,255,255,.22)}}
+.r9{background:#FAFAFA;border-color:#FAFAFA;animation:r9 8s infinite both}
+@keyframes r9{0%,70%{background:transparent;border-color:rgba(255,255,255,.22)}72%,94%{background:#FAFAFA;border-color:#FAFAFA}97%,100%{background:transparent;border-color:rgba(255,255,255,.22)}}
+.cur{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:flex-start;pointer-events:none}
+.cur-a{transform:translate(150px,118px);animation:ca 8s infinite both}
+@keyframes ca{0%{transform:translate(-90px,210px);opacity:0}8%{opacity:1}30%{transform:translate(163px,79px) scale(1)}34%{transform:translate(163px,79px) scale(.8)}38%{transform:translate(163px,79px) scale(1)}58%{transform:translate(150px,118px)}90%{transform:translate(150px,118px);opacity:1}96%,100%{transform:translate(150px,118px);opacity:0}}
+.cur-r{transform:translate(223px,79px);animation:cr 8s infinite both}
+@keyframes cr{0%{transform:translate(470px,190px);opacity:0}10%{opacity:1}48%{transform:translate(163px,82px) scale(1)}52%{transform:translate(163px,82px) scale(.8)}56%{transform:translate(163px,82px) scale(1)}68%{transform:translate(223px,79px) scale(1)}71%{transform:translate(223px,79px) scale(.8)}74%{transform:translate(223px,79px) scale(1)}92%{opacity:1}97%,100%{transform:translate(223px,79px);opacity:0}}
+.toast{animation:toast 8s infinite both}
+@keyframes toast{0%,52%{opacity:0;transform:translateY(10px)}56%,88%{opacity:1;transform:none}92%,100%{opacity:0;transform:translateY(10px)}}
+.mq-wrap{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.mq{display:flex;gap:16px;width:max-content;animation:mq 50s linear infinite}
+.mq-wrap:hover .mq{animation-play-state:paused}
+@keyframes mq{to{transform:translateX(-50%)}}
+.tile{position:relative;display:block;width:250px;height:330px;border-radius:16px;overflow:hidden;flex:none}
+.tile .img,.card .img{transition:transform .9s cubic-bezier(.2,.7,.2,1)}
+.tile:hover .img,.card:hover .img{transform:scale(1.07)}
+.tile .lbl{transition:transform .3s ease}.tile:hover .lbl{transform:translateY(-4px)}
+.card{transition:border-color .25s ease,transform .25s ease}.card:hover{border-color:rgba(255,255,255,.2);transform:translateY(-3px)}
+.fill{transform-origin:left center;animation:fill 1.8s cubic-bezier(.2,.7,.2,1) both}
+@keyframes fill{from{transform:scaleX(0)}}
+.pk{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.24);background:transparent;padding:0;cursor:pointer;transition:transform .15s ease,border-color .15s ease,background .2s ease;flex:none}
+.pk:hover{border-color:#FAFAFA;transform:translateY(-2px)}
+.pk:focus-visible{outline:2px solid #FAFAFA;outline-offset:2px}
+.pk-s{background:#FF6B4A;border-color:#FF6B4A;animation:pop .32s ease}
+.pk-t{background:#232327;border-color:#232327;cursor:not-allowed}.pk-t:hover{transform:none;border-color:#232327}
+@keyframes pop{0%{transform:scale(.7)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+.chip{animation:chip .25s ease both}
+@keyframes chip{from{opacity:0;transform:scale(.85)}}
+.type{display:inline-block;overflow:hidden;white-space:nowrap;width:10ch;border-right:2px solid #08080A;animation:type 6s steps(10) infinite,caret .8s step-end infinite}
+@keyframes type{0%{width:0}35%,100%{width:10ch}}
+@keyframes caret{50%{border-color:transparent}}
+.scan{position:absolute;left:0;right:0;top:0;height:2px;background:#FF6B4A;box-shadow:0 0 14px 2px rgba(255,107,74,.7);animation:scan 3s ease-in-out infinite alternate}
+@keyframes scan{to{transform:translateY(148px)}}
+.valid{animation:valid 6s infinite both}
+@keyframes valid{0%,40%{opacity:0;transform:scale(.8)}46%,100%{opacity:1;transform:none}}
+.bar{transform-origin:bottom;animation:grow 1.4s cubic-bezier(.2,.7,.2,1) both}
+@keyframes grow{from{transform:scaleY(0)}}
+.lock path{stroke-dasharray:60;stroke-dashoffset:0;animation:draw 4s ease-in-out infinite}
+@keyframes draw{0%{stroke-dashoffset:60}35%,100%{stroke-dashoffset:0}}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none !important;transition:none !important}.cur{display:none}}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #08080A; color: #FAFAFA; font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif; overflow-x: hidden">
+
+<header style="position: sticky; top: 0; z-index: 10; background: rgba(8,8,10,0.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,0.06)">
+<div style="max-width: 1240px; margin: 0 auto; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap">
+<a href="#" style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FAFAFA" stroke-width="1.6"><path d="M3 7a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4z"></path><path d="M9 5v14" stroke-dasharray="2 2"></path></svg>FlashSeat</a>
+<nav aria-label="Main" style="display: flex; gap: 32px; font-size: 14px">
+<a class="navl" href="#">Explore</a><a class="navl" href="#">Categories</a><a class="navl" href="#">For organizers</a>
+</nav>
+<div style="display: flex; gap: 8px; align-items: center">
+<a class="navl" href="#" style="font-size: 14px; padding: 10px 14px">Log in</a>
+<a class="btn btn-w" href="#" style="font-size: 14px; font-weight: 500; background: #FAFAFA; color: #08080A; padding: 10px 16px; border-radius: 9px">Get tickets <span class="arr">→</span></a>
+</div>
+</div>
+</header>
+
+<section style="position: relative">
+<div class="grid-bg" aria-hidden="true" style="position: absolute; inset: 0"></div>
+<div style="position: relative; max-width: 1240px; margin: 0 auto; padding: 96px 32px 112px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 56px; align-items: center">
+<div style="display: flex; flex-direction: column; gap: 28px">
+<span class="fade" style="align-self: flex-start; display: flex; align-items: center; gap: 9px; border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; padding: 6px 13px; font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: #D4D4D8; background: rgba(255,255,255,0.02)"><i class="pulse" style="width: 7px; height: 7px; border-radius: 50%; background: #FF6B4A; display: inline-block"></i>LIVE SEAT MAPS</span>
+<h1 style="margin: 0; font-size: clamp(44px, 5.4vw, 72px); line-height: 1.02; font-weight: 600; letter-spacing: -0.045em">
+<span class="w" style="animation-delay: .05s">Every</span> <span class="w" style="animation-delay: .12s">seat,</span><br>
+<span class="w" style="animation-delay: .22s; color: #71717A">yours</span> <span class="w" style="animation-delay: .29s; color: #71717A">to</span> <span class="w" style="animation-delay: .36s; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: #FF6B4A; letter-spacing: -0.01em">choose.</span>
+</h1>
+<p class="fade" style="margin: 0; font-size: 18px; line-height: 1.6; color: #A1A1AA; max-width: 470px; animation-delay: .5s">Concerts, comedy, theatre and fests near you. See the whole venue, pick the exact seat you want, and get your ticket in seconds.</p>
+<div class="fade" style="display: flex; gap: 12px; flex-wrap: wrap; animation-delay: .6s">
+<a class="btn btn-w" href="#" style="background: #FAFAFA; color: #08080A; padding: 14px 22px; border-radius: 10px; font-size: 15px; font-weight: 500">Explore events <span class="arr">→</span></a>
+<a class="btn btn-g" href="#" style="border: 1px solid rgba(255,255,255,0.16); padding: 14px 22px; border-radius: 10px; font-size: 15px">Host an event</a>
+</div>
+<form class="fade" style="display: grid; grid-template-columns: 1fr 1fr auto; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; background: #0F0F12; max-width: 520px; animation-delay: .7s">
+<label style="display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; border-right: 1px solid rgba(255,255,255,0.08)"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">CITY</span><input placeholder="Any city" style="background: none; border: 0; color: #FAFAFA; font: 500 15px 'Geist', sans-serif; padding: 0; outline: none; min-width: 0"></label>
+<label style="display: flex; flex-direction: column; gap: 4px; padding: 12px 16px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">CATEGORY</span><input placeholder="Anything" style="background: none; border: 0; color: #FAFAFA; font: 500 15px 'Geist', sans-serif; padding: 0; outline: none; min-width: 0"></label>
+<button type="button" style="margin: 6px; background: #FF6B4A; color: #08080A; border: 0; border-radius: 8px; padding: 0 18px; font: 600 14px 'Geist', sans-serif; cursor: pointer">Search</button>
+</form>
+</div>
+
+<div class="tilt" style="justify-self: center; width: 100%; max-width: 520px">
+<div class="float" style="background: #0F0F12; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; overflow: hidden; box-shadow: 0 40px 90px rgba(0,0,0,0.55)">
+<div style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08)">
+<i style="width: 10px; height: 10px; border-radius: 50%; background: #3F3F46; display: inline-block"></i><i style="width: 10px; height: 10px; border-radius: 50%; background: #3F3F46; display: inline-block"></i><i style="width: 10px; height: 10px; border-radius: 50%; background: #3F3F46; display: inline-block"></i>
+<span style="margin: 0 auto; font-family: 'Geist Mono', monospace; font-size: 11px; color: #8B8B94">flashseat.app/shows/last-train</span>
+</div>
+<div style="padding: 22px 26px 26px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">THEATRE · SAT 14 NOV · 7:30 PM</span><span style="font-size: 19px; font-weight: 600; letter-spacing: -0.02em">The Last Train to Lonavala</span></div>
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; color: #A1A1AA; white-space: nowrap">RANGDEEP, PUNE</span>
+</div>
+<div class="stage" style="height: 3px; margin: 10px 48px 0; border-radius: 2px"></div>
+<span style="text-align: center; font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.24em; color: #71717A">STAGE</span>
+<div aria-hidden="true" style="position: relative; width: 396px; margin: 4px auto 0; display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{heroRows}}" as="row" hint-placeholder-count="7">
+<div style="display: flex; gap: 5px; align-items: center">
+<span style="width: 14px; font-family: 'Geist Mono', monospace; font-size: 10px; color: #52525B">{{row.label}}</span>
+<sc-for list="{{row.seats}}" as="seat" hint-placeholder-count="16"><span class="{{seat.cls}}" style="{{seat.gap}}"></span></sc-for>
+</div>
+</sc-for>
+<div class="cur cur-a"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#FF6B4A" stroke="#08080A" stroke-width="1.5"></path></svg><span style="margin: 1px 0 0 12px; background: #FF6B4A; color: #08080A; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; white-space: nowrap">Asha</span></div>
+<div class="cur cur-r"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#E4E4E7" stroke="#08080A" stroke-width="1.5"></path></svg><span style="margin: 1px 0 0 12px; background: #E4E4E7; color: #08080A; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; white-space: nowrap">Rahul</span></div>
+</div>
+<div class="toast" role="status" style="align-self: center; margin-top: 8px; display: flex; align-items: center; gap: 10px; background: #18181B; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #D4D4D8">
+<i style="width: 7px; height: 7px; border-radius: 50%; background: #FF6B4A; display: inline-block"></i>D7 was just taken. <span style="color: #FAFAFA; text-decoration: underline">Try D9?</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section style="padding: 40px 0 112px">
+<div style="max-width: 1240px; margin: 0 auto 36px; padding: 0 32px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8B8B94">BROWSE</span>
+<h2 style="margin: 0; font-size: clamp(32px, 3.6vw, 44px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.05">Find your kind of night.</h2>
+</div>
+<span style="font-size: 14px; color: #8B8B94">Hover to pause</span>
+</div>
+<div class="mq-wrap">
+<div class="mq">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="14">
+<a class="tile" href="#">
+<span class="{{c.img}}" style="position: absolute; inset: 0; display: block"></span>
+<span style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,8,10,0) 40%, rgba(8,8,10,0.85) 100%)"></span>
+<span class="lbl" style="position: absolute; left: 20px; right: 20px; bottom: 18px; display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 24px; font-weight: 600; letter-spacing: -0.03em; color: #FAFAFA">{{c.name}}</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #D4D4D8">{{c.count}}</span>
+</span>
+</a>
+</sc-for>
+</div>
+</div>
+</section>
+
+<section style="max-width: 1240px; margin: 0 auto; padding: 0 32px 120px; display: flex; flex-direction: column; gap: 36px">
+<div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8B8B94">ON SALE</span>
+<h2 style="margin: 0; font-size: clamp(32px, 3.6vw, 44px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.05">Happening this week.</h2>
+</div>
+<a class="btn navl" href="#" style="font-size: 14px">View all events <span class="arr">→</span></a>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px">
+<sc-for list="{{week}}" as="ev" hint-placeholder-count="3">
+<a class="card" href="#" style="display: flex; flex-direction: column; background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; overflow: hidden">
+<span style="display: block; height: 210px; overflow: hidden; position: relative"><span class="{{ev.img}}" style="position: absolute; inset: 0; display: block"></span><span style="position: absolute; top: 14px; left: 14px; font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; background: rgba(8,8,10,0.7); backdrop-filter: blur(6px); padding: 5px 9px; border-radius: 6px; color: #FAFAFA">{{ev.cat}}</span></span>
+<span style="padding: 20px 22px 22px; display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: #8B8B94">{{ev.meta}}</span>
+<span style="font-size: 20px; font-weight: 600; letter-spacing: -0.025em; color: #FAFAFA; line-height: 1.2">{{ev.title}}</span>
+<span style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px">
+<span style="display: flex; justify-content: space-between; font-size: 13px"><span style="color: #A1A1AA">{{ev.left}}</span><span style="color: #FAFAFA">{{ev.price}}</span></span>
+<span style="display: block; height: 4px; border-radius: 2px; background: #27272A; overflow: hidden"><span class="fill" style="{{ev.bar}}"></span></span>
+</span>
+</span>
+</a>
+</sc-for>
+</div>
+</section>
+
+<section style="border-top: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06); background: #0B0B0D">
+<div style="max-width: 1240px; margin: 0 auto; padding: 112px 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 56px; align-items: center">
+<div style="display: flex; flex-direction: column; gap: 22px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8B8B94">TRY IT</span>
+<h2 style="margin: 0; font-size: clamp(32px, 3.6vw, 48px); font-weight: 600; letter-spacing: -0.04em; line-height: 1.04">Go on,<br><span style="color: #71717A">pick a seat.</span></h2>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #A1A1AA; max-width: 420px">This is how every show works on FlashSeat. Tap the seats you want, see the price change, and they're kept for you while you check out.</p>
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; background: #0F0F12">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 12px"><span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #8B8B94">YOUR SEATS · {{count}}/6</span><span style="font-size: 22px; font-weight: 600; letter-spacing: -0.02em">{{total}}</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px">
+<sc-for list="{{chips}}" as="chip" hint-placeholder-count="2"><span class="chip" style="font-family: 'Geist Mono', monospace; font-size: 12px; padding: 6px 10px; border-radius: 6px; background: rgba(255,107,74,0.14); color: #FF8A6E">{{chip}}</span></sc-for>
+<sc-if value="{{empty}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #71717A; align-self: center">No seats yet. Tap one on the map.</span></sc-if>
+</div>
+<sc-if value="{{note}}" hint-placeholder-val="{{ false }}"><span role="status" style="font-size: 13px; color: #FF8A6E">You can pick up to 6 seats at a time.</span></sc-if>
+<button type="button" onClick="{{clear}}" style="align-self: flex-start; background: none; border: 0; padding: 0; color: #A1A1AA; font: 400 13px 'Geist', sans-serif; text-decoration: underline; cursor: pointer">Clear selection</button>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 20px; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; background: #0F0F12; overflow-x: auto">
+<div class="stage" style="width: 70%; height: 3px; border-radius: 2px"></div>
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.24em; color: #71717A; margin-bottom: 14px">STAGE</span>
+<sc-for list="{{pickRows}}" as="row" hint-placeholder-count="8">
+<div style="display: flex; gap: 6px; align-items: center">
+<span style="width: 16px; font-family: 'Geist Mono', monospace; font-size: 11px; color: #52525B">{{row.label}}</span>
+<sc-for list="{{row.seats}}" as="seat" hint-placeholder-count="14">
+<button type="button" class="{{seat.cls}}" style="{{seat.gap}}" aria-label="{{seat.aria}}" aria-pressed="{{seat.on}}" onClick="{{seat.pick}}"></button>
+</sc-for>
+<span style="width: 16px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 11px; color: #52525B">{{row.label}}</span>
+</div>
+</sc-for>
+<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; margin-top: 18px; font-size: 12px; color: #A1A1AA">
+<span style="display: flex; gap: 7px; align-items: center"><i style="width: 11px; height: 11px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.35); display: inline-block"></i>Available</span>
+<span style="display: flex; gap: 7px; align-items: center"><i style="width: 11px; height: 11px; border-radius: 3px; background: #FF6B4A; display: inline-block"></i>Yours</span>
+<span style="display: flex; gap: 7px; align-items: center"><i style="width: 11px; height: 11px; border-radius: 3px; background: #2E2E33; display: inline-block"></i>Taken</span>
+<span style="font-family: 'Geist Mono', monospace; color: #71717A">A–B ₹899 · C–E ₹599 · F–H ₹399</span>
+</div>
+</div>
+</div>
+</section>
+
+<section style="max-width: 1240px; margin: 0 auto; padding: 120px 32px; display: flex; flex-direction: column; gap: 40px">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8B8B94">WHY FLASHSEAT</span>
+<h2 style="margin: 0; font-size: clamp(32px, 3.6vw, 44px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.05">Booking that feels<br><span style="color: #71717A">as good as the show.</span></h2>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px">
+
+<div style="background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 14px">
+<span style="font-size: 19px; font-weight: 600; letter-spacing: -0.02em">The seat you pick is yours</span>
+<span style="font-size: 14px; line-height: 1.55; color: #A1A1AA">Once you choose it, nobody else can book it, even when thousands are booking at once.</span>
+<div style="margin-top: auto; padding-top: 24px; display: flex; gap: 10px; align-items: center">
+<span style="width: 48px; height: 48px; border-radius: 10px; background: #FF6B4A; display: flex; align-items: center; justify-content: center"><svg class="lock" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#08080A" stroke-width="2" stroke-linecap="round"><path d="M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2z"></path><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></span>
+<span style="width: 48px; height: 48px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.18)"></span>
+<span style="width: 48px; height: 48px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.18)"></span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #8B8B94; margin-left: 4px">D9 · YOURS</span>
+</div>
+</div>
+
+<div style="background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 14px">
+<span style="font-size: 19px; font-weight: 600; letter-spacing: -0.02em">Tickets in your pocket</span>
+<span style="font-size: 14px; line-height: 1.55; color: #A1A1AA">Every seat gets its own e-ticket code, ready at the door.</span>
+<div style="margin-top: auto; position: relative; background: #FAFAFA; color: #08080A; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; height: 148px; box-sizing: border-box">
+<span class="scan" aria-hidden="true"></span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #52525B">ROW D · SEAT 9 · PREMIUM</span>
+<span style="font-size: 16px; font-weight: 600">The Last Train to Lonavala</span>
+<div style="margin-top: auto; border-top: 1px dashed #A1A1AA; padding-top: 10px; display: flex; justify-content: space-between; align-items: center"><span class="type" style="font-family: 'Geist Mono', monospace; font-size: 13px">FS-7K2Q-D9</span><span class="valid" style="display: flex; align-items: center; gap: 6px; font-family: 'Geist Mono', monospace; font-size: 10px; color: #15803D"><i style="width: 7px; height: 7px; border-radius: 50%; background: #22C55E; display: inline-block"></i>VALID</span></div>
+</div>
+</div>
+
+<div style="background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 14px">
+<span style="font-size: 19px; font-weight: 600; letter-spacing: -0.02em">Made for organizers too</span>
+<span style="font-size: 14px; line-height: 1.55; color: #A1A1AA">Set up your venue, schedule shows, set prices and watch every seat sell.</span>
+<div style="margin-top: auto; padding-top: 18px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; font-family: 'Geist Mono', monospace; font-size: 11px; color: #8B8B94"><span>SEATS SOLD</span><span style="color: #FAFAFA">165 / 300</span></div>
+<div style="height: 6px; border-radius: 3px; background: #27272A; overflow: hidden"><div class="fill" style="width: 55%; height: 100%; background: #FF6B4A"></div></div>
+<div style="display: flex; gap: 6px; align-items: flex-end; height: 64px">
+<sc-for list="{{bars}}" as="bar" hint-placeholder-count="7"><span class="bar" style="{{bar}}"></span></sc-for>
+</div>
+</div>
+</div>
+
+</div>
+</section>
+
+<section style="position: relative; overflow: hidden; border-top: 1px solid rgba(255,255,255,0.06)">
+<div class="ph i-hero" aria-hidden="true" style="position: absolute; inset: 0; opacity: 0.28"></div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(180deg, #08080A 0%, rgba(8,8,10,0.55) 45%, #08080A 100%)"></div>
+<div style="position: relative; max-width: 1240px; margin: 0 auto; padding: 140px 32px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 28px">
+<h2 style="margin: 0; font-size: clamp(40px, 5.6vw, 76px); font-weight: 600; letter-spacing: -0.045em; line-height: 1">Your next night out<br><span style="color: #71717A">starts with a </span><span style="font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: #FF6B4A">seat.</span></h2>
+<a class="btn btn-w" href="#" style="background: #FAFAFA; color: #08080A; padding: 15px 26px; border-radius: 10px; font-size: 16px; font-weight: 500">Explore events <span class="arr">→</span></a>
+</div>
+</section>
+
+<footer style="border-top: 1px solid rgba(255,255,255,0.08)">
+<div style="max-width: 1240px; margin: 0 auto; padding: 28px 32px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #8B8B94">
+<span style="color: #FAFAFA; font-weight: 600">FlashSeat</span>
+<span style="display: flex; gap: 20px; flex-wrap: wrap"><a class="navl" href="#">Explore</a><a class="navl" href="#">Categories</a><a class="navl" href="#">For organizers</a><a class="navl" href="#">GitHub</a></span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.1em">© 2026 FLASHSEAT</span>
+</div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":4300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var sel = st.sel || ['E7', 'E8'];
+    var note = !!st.note;
+
+    var heroRows = ['A','B','C','D','E','F','G'].map(function (L, r) {
+      var seats = [];
+      for (var s = 1; s <= 16; s++) {
+        var taken = (r < 2 && s % 4 !== 1) || ((r * 3 + s * 5) % 7 === 0);
+        var cls = 'hs' + (r === 3 && s === 7 ? ' r7' : r === 3 && s === 9 ? ' r9' : taken ? ' hs-t' : '');
+        seats.push({ cls: cls, gap: s === 9 ? 'margin-left: 14px' : '' });
+      }
+      return { label: L, seats: seats };
+    });
+
+    var price = function (r) { return r < 2 ? 899 : r < 5 ? 599 : 399; };
+    var total = 0;
+    var pickRows = ['A','B','C','D','E','F','G','H'].map(function (L, r) {
+      var seats = [];
+      for (var s = 1; s <= 14; s++) {
+        var id = L + s;
+        var taken = (r === 0 && s > 3 && s < 12) || ((r * 5 + s * 3) % 7 === 0);
+        var on = sel.indexOf(id) !== -1;
+        if (on) total += price(r);
+        seats.push({
+          cls: 'pk' + (on ? ' pk-s' : taken ? ' pk-t' : ''),
+          gap: s === 8 ? 'margin-left: 18px' : '',
+          on: on ? 'true' : 'false',
+          aria: 'Row ' + L + ', seat ' + s + ', ₹' + price(r) + (on ? ', selected' : taken ? ', taken' : ', available'),
+          pick: function () {
+            if (taken) return;
+            var cur = (self.state && self.state.sel) || ['E7', 'E8'];
+            if (cur.indexOf(id) !== -1) { self.setState({ sel: cur.filter(function (x) { return x !== id; }), note: false }); return; }
+            if (cur.length >= 6) { self.setState({ note: true }); return; }
+            self.setState({ sel: cur.concat([id]), note: false });
+          }
+        });
+      }
+      return { label: L, seats: seats };
+    });
+    var chips = sel.slice().sort(function (a, b) { return a[0] === b[0] ? parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10) : (a < b ? -1 : 1); });
+
+    var base = [
+      { img: 'ph i-mu img', name: 'Music', count: '3 EVENTS' },
+      { img: 'ph i-cm img', name: 'Comedy', count: '3 EVENTS' },
+      { img: 'ph i-th img', name: 'Theatre', count: '2 EVENTS' },
+      { img: 'ph i-sp img', name: 'Sports', count: '2 EVENTS' },
+      { img: 'ph i-ws img', name: 'Workshops', count: '2 EVENTS' },
+      { img: 'ph i-fe img', name: 'Fests', count: '2 EVENTS' },
+      { img: 'ph i-hero img', name: 'This weekend', count: 'NEAR YOU' }
+    ];
+    var cats = base.concat(base);
+
+    var week = [
+      { img: 'ph i-cm img', cat: 'COMEDY', meta: 'TUE 10 NOV · 8:00 PM · MUMBAI', title: 'Tuesday Open Mic at The Back Bench', left: 'Filling up', price: 'from ₹299', bar: 'display: block; height: 100%; width: 35%; background: #FAFAFA' },
+      { img: 'ph i-mu img', cat: 'MUSIC', meta: 'SAT 14 NOV · 7:00 PM · BENGALURU', title: 'Monsoon Ragas: An Evening of Hindustani Classical', left: 'Half sold', price: 'from ₹599', bar: 'display: block; height: 100%; width: 50%; background: #FAFAFA' },
+      { img: 'ph i-th img', cat: 'THEATRE', meta: 'SAT 14 NOV · 7:30 PM · PUNE', title: 'The Last Train to Lonavala', left: 'Selling fast', price: 'from ₹499', bar: 'display: block; height: 100%; width: 55%; background: #FF6B4A' }
+    ];
+
+    var bars = [20, 28, 24, 40, 47, 56, 64].map(function (h, i) {
+      return 'flex: 1; display: block; height: ' + h + 'px; border-radius: 3px; background: ' + (i === 6 ? '#FF6B4A' : '#3F3F46') + '; animation-delay: ' + (0.1 * i).toFixed(1) + 's';
+    });
+
+    return {
+      heroRows: heroRows, pickRows: pickRows, chips: chips, count: sel.length,
+      total: '₹' + total.toLocaleString('en-IN'), empty: sel.length === 0, note: note,
+      clear: function () { self.setState({ sel: [], note: false }); },
+      cats: cats, week: week, bars: bars
+    };
+  }
+}
+</script>
+</body>
+</html>

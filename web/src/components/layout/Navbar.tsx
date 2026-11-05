@@ -10,7 +10,7 @@ import { NAV_LINKS } from './navLinks';
 import { accountLinks, Avatar, UserMenu } from './UserMenu';
 import { Wordmark } from './Wordmark';
 
-const MOBILE_MENU_ID = 'mobile-menu';
+export const MOBILE_MENU_ID = 'mobile-menu';
 
 /** Is this nav target the current page? Hash links (/#categories) count only on that hash. */
 function isCurrent(to: string, pathname: string, hash: string): boolean {
@@ -44,7 +44,8 @@ function NavLink({ to, children, current }: { to: string; children: string; curr
 
 const LOGIN_LINK = { label: 'Log in', to: '/login' };
 
-function MobileMenu({ onClose }: { onClose: () => void }) {
+/** Full-screen mobile menu (also used by the landing page's own header). */
+export function MobileMenu({ onClose }: { onClose: () => void }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const { status, user, logout } = useAuth();
   const signedIn = status === 'authenticated' && user;

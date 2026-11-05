@@ -1,10 +1,15 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ApiError, getBooking, getEvent, getEvents, getMyBookings, getReservation, getSeatMap, getShow, type GetEventsParams } from './api';
 
-export const UPCOMING_LIMIT = 10;
+/** The API's maximum page size: one request covers every listed event when total <= 50. */
+export const UPCOMING_LIMIT = 50;
 export const EVENTS_PAGE_SIZE = 20;
 
-/** Upcoming published events for the landing page (one request). */
+/**
+ * Upcoming published events for the landing page, in one request. "Happening this week" takes the
+ * soonest few; the category marquee counts per category, but only when the page holds the whole
+ * list (total <= UPCOMING_LIMIT), so the counts are never partial.
+ */
 export function useUpcomingEvents() {
   return useQuery({
     queryKey: ['events', { limit: UPCOMING_LIMIT }],

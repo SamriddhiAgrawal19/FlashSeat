@@ -3,7 +3,7 @@ import type { EventListItem } from '../../lib/api';
 import { categoryLabel } from '../../lib/categories';
 import { cn } from '../../lib/cn';
 import { formatPaise, formatShowDay } from '../../lib/format';
-import { PHOTOS } from '../../lib/photos';
+import { PHOTOS, photosForEvents, type Photo } from '../../lib/photos';
 import { Arrow, Button, ButtonLink } from '../ui/Button';
 import { EventImage } from './EventImage';
 
@@ -25,12 +25,12 @@ function metaLine(event: EventListItem): string {
     .join(' · ');
 }
 
-function EventTile({ event, index }: { event: EventListItem; index: number }) {
+function EventTile({ event, index, photo }: { event: EventListItem; index: number; photo?: Photo }) {
   const more = event.upcoming_show_count - 1;
   return (
     <article className="group relative">
       <div className={cn('overflow-hidden rounded-[2px] bg-surface', SHAPES[index % SHAPES.length])}>
-        <EventImage event={event} className="size-full object-cover transition-transform duration-[600ms] ease-out motion-safe:group-hover:scale-[1.04]" />
+        <EventImage event={event} photo={photo} className="size-full object-cover transition-transform duration-[600ms] ease-out motion-safe:group-hover:scale-[1.04]" />
       </div>
       <p className="label-mono mt-5 text-text-2">{metaLine(event)}</p>
       <h2 className="mt-2.5 text-title font-medium text-text transition-colors group-hover:text-lime">
@@ -49,11 +49,13 @@ function EventTile({ event, index }: { event: EventListItem; index: number }) {
 }
 
 export function EventList({ events }: { events: EventListItem[] }) {
+  // Two columns: the card beside (i - 1) and the one above (i - 2) never share a photo.
+  const photos = photosForEvents(events, 2);
   return (
     <ul className={listClass}>
       {events.map((event, i) => (
         <li key={event.id}>
-          <EventTile event={event} index={i} />
+          <EventTile event={event} index={i} photo={photos[i]} />
         </li>
       ))}
     </ul>

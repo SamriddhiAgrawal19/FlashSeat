@@ -1,5 +1,4 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { domAnimation, LazyMotion } from 'motion/react';
 import { createBrowserRouter, Navigate, Outlet, RouterProvider, useParams } from 'react-router';
 import { Layout } from './components/layout/Layout';
 import { GuestOnly } from './components/routing/GuestOnly';
@@ -154,10 +153,7 @@ const router = createBrowserRouter([
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Only the animation features the page uses (no drag/layout), to keep the bundle small. */}
-      <LazyMotion features={domAnimation} strict>
-        <RouterProvider router={router} />
-      </LazyMotion>
+      <RouterProvider router={router} />
     </QueryClientProvider>
   );
 }

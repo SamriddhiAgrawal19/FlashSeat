@@ -46,6 +46,27 @@ and why it was not fixed at the time.
   at that server, and make the local `.env` match `.env.example` limits.
 - **Not fixed because:** out of scope for that change (config cleanup only).
 
+### Separate test database / API instance
+
+- **Found in:** adding the demo-data workflow (`npm run demo:fresh`, 2026-11-05).
+- **Problem:** the integration suite writes to the same database and API the developer
+  uses, so every `npm run test:docker` leaves hundreds of test users, venues and events
+  mixed in with the demo data (and the dev data pollutes the tests' starting state).
+- **Fix:** run tests against their own database and API instance: a `flashseat_test`
+  database (or a second compose project), started with `start:test` / `.env.test` (see
+  above), so dev and demo data are never touched by the suite.
+- **Not fixed because:** out of scope for the demo-data scripts (scripts and docs only).
+
+### `rate-limit.test.ts` "login-by-IP" flaked once
+
+- **Found in:** a test run (2026-11-05).
+- **Problem:** the login-by-IP test got a 429 after waiting out the window once. Fixed
+  windows start at the first `INCR`, so a test that sleeps a fixed duration can wake just
+  before the key's TTL actually lapses.
+- **Fix:** wait for the key's real TTL (`PTTL`) plus a margin, i.e. the start of the next
+  window, or run the test with a much shorter window (e.g. 2 s) so it can wait generously.
+- **Not fixed because:** seen once; not reproduced yet.
+
 ### Never run a standalone sweeper during the test battery
 
 - **Found in:** regression test runs (2026-10-30).
@@ -63,6 +84,26 @@ and why it was not fixed at the time.
 - **Not fixed because:** a workflow rule until `start:test` exists.
 
 ## API consistency
+
+### `GET /bookings/mine` server-side filtering by tab
+
+- **Found in:** adding the demo-data workflow (2026-11-05).
+- **Problem:** My bookings sorts and splits bookings into upcoming / past / pending /
+  cancelled on the client, from pages of `GET /bookings/mine`. With many bookings a tab can
+  look empty or incomplete because its rows are on a page that was never fetched.
+- **Fix:** add a `tab` (or `status` + `when`) query parameter so the server filters and
+  paginates each tab, with `total` per tab.
+- **Not fixed because:** app behaviour change; out of scope for the demo-data scripts.
+
+### Atomic multi-group seat layout save
+
+- **Found in:** adding the demo-data workflow (2026-11-05).
+- **Problem:** a venue layout with several sections or categories is saved with several
+  `POST /venues/:venueId/seats/bulk` calls. If one fails midway, the venue is left with a
+  partial layout, and retrying the earlier groups fails with `SEATS_ALREADY_EXIST`.
+- **Fix:** one endpoint that accepts every group and inserts them in a single transaction
+  (all or nothing), with the same per-venue seat limit.
+- **Not fixed because:** app behaviour change; out of scope for the demo-data scripts.
 
 ### Mixed field casing in requests and responses
 

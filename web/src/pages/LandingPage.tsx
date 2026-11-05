@@ -1,24 +1,31 @@
 import { useEffect } from 'react';
-import { Categories } from '../components/landing/categories/Categories';
-import { Featured } from '../components/landing/featured/Featured';
-import { DiscoverBar } from '../components/landing/hero/DiscoverBar';
-import { Hero } from '../components/landing/hero/Hero';
-import { OrganizerCta } from '../components/landing/organizers/OrganizerCta';
-import { WhyStory } from '../components/landing/story/WhyStory';
+import '@fontsource-variable/geist';
+import '@fontsource-variable/geist-mono';
+import '../components/landing/landing.css';
+import { CategoryMarquee } from '../components/landing/CategoryMarquee';
+import { FinalCta } from '../components/landing/FinalCta';
+import { Hero } from '../components/landing/Hero';
+import { ThisWeek } from '../components/landing/ThisWeek';
+import { TryIt } from '../components/landing/TryIt';
+import { WhyFlashSeat } from '../components/landing/WhyFlashSeat';
 
+/**
+ * The landing page (docs/landing-v2-design.html). Its header and footer (LandingHeader,
+ * LandingFooter) are rendered by Layout on "/", inside the .lp style scope.
+ */
 export function LandingPage() {
   useEffect(() => {
-    document.title = 'FlashSeat · Make room for moments that matter';
+    document.title = 'FlashSeat · Every seat, yours to choose';
   }, []);
 
   return (
     <>
       <Hero />
-      <DiscoverBar />
-      <Featured />
-      <Categories />
-      <WhyStory />
-      <OrganizerCta />
+      <CategoryMarquee />
+      <ThisWeek />
+      <TryIt />
+      <WhyFlashSeat />
+      <FinalCta />
     </>
   );
 }

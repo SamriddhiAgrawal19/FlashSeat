@@ -76,7 +76,7 @@ export function Footer() {
       <Container>
         <div className="flex flex-col gap-2 border-t border-rule py-6 text-sm text-text-2 sm:flex-row sm:justify-between">
           <p>© 2026 FlashSeat. All rights reserved.</p>
-          <p>Photography from Unsplash, used under the Unsplash License.</p>
+          <p>Photography from Unsplash and Pexels, used under their licenses.</p>
         </div>
       </Container>
     </footer>
