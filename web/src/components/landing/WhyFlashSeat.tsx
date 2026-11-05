@@ -1,5 +1,5 @@
 import { cn } from '../../lib/cn';
-import { useReveal } from './hooks';
+import { useReveal } from '../site/hooks';
 
 // Illustrative cards, exactly as in the design (no API data).
 const BARS = [20, 28, 24, 40, 47, 56, 64];

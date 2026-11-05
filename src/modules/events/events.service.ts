@@ -99,10 +99,13 @@ export async function getPublicEventDetails(client: PoolClient, eventId: string)
     throw new NotFoundError('Event not found');
   }
 
+  // Fixed number of queries: event, organizer name, all shows (with venue and seat counts).
+  const organization_name = await repo.findOrganizationName(client, event.organizer_id);
   const shows = await repo.findShowsForEvent(client, eventId);
-  
+
   return {
     ...event,
+    organization_name,
     shows
   };
 }

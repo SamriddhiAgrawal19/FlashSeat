@@ -229,12 +229,23 @@ export async function findShowsForOrganizer(client: PoolClient, organizerId: str
   return result.rows;
 }
 
+/**
+ * Seats a buyer could hold right now: AVAILABLE, plus HELD seats whose hold has lapsed
+ * (held_until < now(), not yet swept). The same rule the public seat map uses
+ * (show-seats.repository.ts), so these counts match its summary.available.
+ */
+const SEAT_AVAILABLE_SQL = `ss.status = 'AVAILABLE' OR (ss.status = 'HELD' AND ss.held_until < now())`;
+
 /** The earliest upcoming SCHEDULED show of an event, as returned by GET /events. */
 export interface NextShow {
   id: string;
   starts_at: Date;
   ends_at: Date;
   venue: { id: string; name: string; city: string };
+  /** show_seats rows of the show. */
+  seats_total: number;
+  /** Seats a buyer could hold now (SEAT_AVAILABLE_SQL). */
+  seats_available: number;
 }
 
 /** A GET /events row: the event row unchanged, plus upcoming-show info. */
@@ -251,6 +262,8 @@ interface SearchRow extends EventRow {
   ns_venue_id: string | null;
   ns_venue_name: string | null;
   ns_venue_city: string | null;
+  ns_seats_total: number | null;
+  ns_seats_available: number | null;
   upcoming_show_count: number;
   min_price_paise: number | null;
 }
@@ -300,14 +313,17 @@ export async function searchPublishedEvents(
   );
   const total = countResult.rows[0].total;
 
-  // One statement for the page: the show info comes from two LATERAL joins over the same
-  // matching shows (evaluated per event row inside the query), so there are no per-event
-  // follow-up queries. The $n placeholders of the filters are shared by all three uses.
+  // One statement for the page: the show info comes from LATERAL joins over the same matching
+  // shows (evaluated per event row inside the query), so there are no per-event follow-up
+  // queries. The $n placeholders of the filters are shared by all three uses. The seat counts
+  // are a third LATERAL keyed on the chosen next show only (ns.id), so they are computed once
+  // per listed event, never for every matching show.
   const pageValues = [...values, limit, offset];
   const result = await client.query<SearchRow>(
     `SELECT e.*,
             ns.id AS ns_id, ns.starts_at AS ns_starts_at, ns.ends_at AS ns_ends_at,
             ns.venue_id AS ns_venue_id, ns.venue_name AS ns_venue_name, ns.venue_city AS ns_venue_city,
+            nsc.seats_total AS ns_seats_total, nsc.seats_available AS ns_seats_available,
             up.upcoming_show_count, up.min_price_paise
        FROM events e
        LEFT JOIN LATERAL (
@@ -318,6 +334,12 @@ export async function searchPublishedEvents(
                ORDER BY s.starts_at, s.id
                LIMIT 1
             ) ns ON true
+       LEFT JOIN LATERAL (
+              SELECT count(*)::int AS seats_total,
+                     count(*) FILTER (WHERE ${SEAT_AVAILABLE_SQL})::int AS seats_available
+                FROM show_seats ss
+               WHERE ss.show_id = ns.id
+            ) nsc ON true
        LEFT JOIN LATERAL (
               -- DISTINCT: the price join yields one row per (show, category).
               SELECT count(DISTINCT s.id)::int AS upcoming_show_count,
@@ -334,11 +356,18 @@ export async function searchPublishedEvents(
   );
 
   const events = result.rows.map(
-    ({ ns_id, ns_starts_at, ns_ends_at, ns_venue_id, ns_venue_name, ns_venue_city, ...row }): PublicEventRow => ({
+    ({ ns_id, ns_starts_at, ns_ends_at, ns_venue_id, ns_venue_name, ns_venue_city, ns_seats_total, ns_seats_available, ...row }): PublicEventRow => ({
       ...row,
       next_show:
         ns_id && ns_starts_at && ns_ends_at && ns_venue_id && ns_venue_name !== null && ns_venue_city !== null
-          ? { id: ns_id, starts_at: ns_starts_at, ends_at: ns_ends_at, venue: { id: ns_venue_id, name: ns_venue_name, city: ns_venue_city } }
+          ? {
+              id: ns_id,
+              starts_at: ns_starts_at,
+              ends_at: ns_ends_at,
+              venue: { id: ns_venue_id, name: ns_venue_name, city: ns_venue_city },
+              seats_total: ns_seats_total ?? 0,
+              seats_available: ns_seats_available ?? 0,
+            }
           : null,
     })
   );
@@ -346,13 +375,48 @@ export async function searchPublishedEvents(
   return { events, total };
 }
 
-export async function findShowsForEvent(client: PoolClient, eventId: string) {
-  const result = await client.query(`
-    SELECT s.id, v.name as venue_name, v.city as venue_city, s.starts_at, s.ends_at, s.status
-    FROM shows s
-    JOIN venues v ON s.venue_id = v.id
-    WHERE s.event_id = $1
-    ORDER BY s.starts_at ASC
-  `, [eventId]);
-  return result.rows;
+/** A show on GET /events/:eventId. venue_name / venue_city are kept for existing clients. */
+export interface PublicShowRow {
+  id: string;
+  venue_name: string;
+  venue_city: string;
+  venue: { name: string; city: string; address: string };
+  starts_at: Date;
+  ends_at: Date;
+  status: string;
+  seats_total: number;
+  seats_available: number;
+}
+
+// All of an event's shows with their venue and seat counts, in one statement (the counts are a
+// LATERAL per show inside the query, not follow-up queries).
+export async function findShowsForEvent(client: PoolClient, eventId: string): Promise<PublicShowRow[]> {
+  const result = await client.query<Omit<PublicShowRow, 'venue'> & { venue_address: string }>(
+    `SELECT s.id, v.name AS venue_name, v.city AS venue_city, v.address AS venue_address,
+            s.starts_at, s.ends_at, s.status, c.seats_total, c.seats_available
+       FROM shows s
+       JOIN venues v ON s.venue_id = v.id
+       LEFT JOIN LATERAL (
+              SELECT count(*)::int AS seats_total,
+                     count(*) FILTER (WHERE ${SEAT_AVAILABLE_SQL})::int AS seats_available
+                FROM show_seats ss
+               WHERE ss.show_id = s.id
+            ) c ON true
+      WHERE s.event_id = $1
+      ORDER BY s.starts_at ASC, s.id`,
+    [eventId]
+  );
+  return result.rows.map(({ venue_address, ...row }) => ({
+    ...row,
+    venue: { name: row.venue_name, city: row.venue_city, address: venue_address },
+  }));
+}
+
+/** The organizer's organization_name (organizer_profiles), or null if there is no profile. */
+export async function findOrganizationName(client: PoolClient, organizerId: string): Promise<string | null> {
+  const result = await client.query<{ organization_name: string }>(
+    'SELECT organization_name FROM organizer_profiles WHERE user_id = $1',
+    [organizerId]
+  );
+  return result.rows[0]?.organization_name ?? null;
 }

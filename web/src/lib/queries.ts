@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 import { ApiError, getBooking, getEvent, getEvents, getMyBookings, getReservation, getSeatMap, getShow, type GetEventsParams } from './api';
 
 /** The API's maximum page size: one request covers every listed event when total <= 50. */
@@ -47,13 +47,33 @@ export function useEventDetail(eventId: string) {
   });
 }
 
+const showDetailOptions = (eventId: string, showId: string) => ({
+  queryKey: ['show', eventId, showId],
+  queryFn: ({ signal }: { signal: AbortSignal }) => getShow(eventId, showId, signal),
+  enabled: eventId !== '' && showId !== '',
+  staleTime: 60_000,
+  retry: retryUnlessNotFound,
+});
+
 export function useShowDetail(eventId: string, showId: string) {
+  return useQuery(showDetailOptions(eventId, showId));
+}
+
+/**
+ * GET /events/:eventId/shows/:showId for every show of an event, in parallel (same cache entries
+ * as useShowDetail). The event detail page needs each show's sales_open_at and prices.
+ */
+export function useShowDetails(eventId: string, showIds: string[]) {
+  return useQueries({ queries: showIds.map((id) => showDetailOptions(eventId, id)) });
+}
+
+/** "More like this": up to 4 upcoming events of a category (the caller drops the current one). */
+export function useMoreLikeThis(category: string) {
   return useQuery({
-    queryKey: ['show', eventId, showId],
-    queryFn: ({ signal }) => getShow(eventId, showId, signal),
-    enabled: eventId !== '' && showId !== '',
-    staleTime: 60_000,
-    retry: retryUnlessNotFound,
+    queryKey: ['events', 'more', category],
+    queryFn: ({ signal }) => getEvents({ category, limit: 4 }, signal),
+    enabled: category !== '',
+    retry: 1,
   });
 }
 

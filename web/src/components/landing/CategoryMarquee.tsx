@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn';
 import { presetRange } from '../../lib/dateRanges';
 import { PHOTOS, type Photo } from '../../lib/photos';
 import { useUpcomingEvents } from '../../lib/queries';
-import { usePlayWhenVisible, useReveal } from './hooks';
+import { usePlayWhenVisible, useReveal } from '../site/hooks';
 
 // One photo per tile, all different: the livelier "people performing" shot from each pool.
 const TILE_PHOTOS: Record<string, Photo> = {

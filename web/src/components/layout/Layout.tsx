@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router';
 import { cn } from '../../lib/cn';
-import { LandingFooter } from '../landing/LandingFooter';
-import { LandingHeader } from '../landing/LandingHeader';
+import { SiteFooter } from '../site/SiteFooter';
+import { SiteHeader } from '../site/SiteHeader';
 import { Toaster } from '../ui/Toaster';
 import { Footer } from './Footer';
 import { Navbar } from './Navbar';
@@ -22,23 +22,25 @@ function useScrollOnNavigate() {
 
 export function Layout() {
   useScrollOnNavigate();
-  // The landing page has its own design (docs/landing-v2-design.html): its own header and footer,
-  // styled inside the .lp scope. Every other page keeps the shared Navbar and Footer.
-  const isLanding = useLocation().pathname === '/';
+  // Pages on the v2 look (styles/theme-v2.css) get the v2 header and footer inside the .v2 scope;
+  // the landing also gets its own .lp scope. Every other page keeps the old Navbar and Footer.
+  const { pathname } = useLocation();
+  const isLanding = pathname === '/';
+  const isV2 = isLanding || pathname === '/events' || pathname.startsWith('/events/');
 
   return (
-    <div className={cn('flex min-h-dvh flex-col', isLanding && 'lp')}>
+    <div className={cn('flex min-h-dvh flex-col', isV2 && 'v2', isLanding && 'lp')}>
       <a
         href="#main"
         className="sr-only z-[70] rounded-[10px] bg-text px-4 py-2 text-sm font-medium text-bg focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
       >
         Skip to content
       </a>
-      {isLanding ? <LandingHeader /> : <Navbar />}
+      {isV2 ? <SiteHeader /> : <Navbar />}
       <main id="main" className="flex-1">
         <Outlet />
       </main>
-      {isLanding ? <LandingFooter /> : <Footer />}
+      {isV2 ? <SiteFooter /> : <Footer />}
       <Toaster />
     </div>
   );

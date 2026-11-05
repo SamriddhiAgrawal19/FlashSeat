@@ -87,7 +87,10 @@ describe('GET /events upcoming-show info', () => {
     expect(e.id).toBe(id);
     expect(e.next_show.id).toBe(earlier);
     expect(e.next_show.id).not.toBe(later);
-    expect(Object.keys(e.next_show).sort()).toEqual(['ends_at', 'id', 'starts_at', 'venue']);
+    expect(Object.keys(e.next_show).sort()).toEqual(['ends_at', 'id', 'seats_available', 'seats_total', 'starts_at', 'venue']);
+    // 2 rows x 2 seats, nothing held or booked (counts: tests/events-seat-counts.test.ts).
+    expect(e.next_show.seats_total).toBe(4);
+    expect(e.next_show.seats_available).toBe(4);
     expect(e.next_show.venue).toEqual({ id: v.id, name: expect.any(String), city: 'Testville' });
     expect(new Date(e.next_show.starts_at).getTime()).toBeLessThan(new Date(e.next_show.ends_at).getTime());
     expect(e.upcoming_show_count).toBe(2);

@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { cn } from '../../lib/cn';
 import { PHOTOS } from '../../lib/photos';
-import { useReveal } from './hooks';
+import { useReveal } from '../site/hooks';
 
 const photo = PHOTOS.heroConcert;
 

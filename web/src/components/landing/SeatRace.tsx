@@ -1,5 +1,5 @@
 import { cn } from '../../lib/cn';
-import { useFitScale, usePlayWhenVisible } from './hooks';
+import { useFitScale, usePlayWhenVisible } from '../site/hooks';
 
 // Illustrative demo, exactly as in the design: Asha takes D7, Rahul reaches for it a moment
 // too late, gets the "D7 was just taken. Try D9?" toast and takes D9. No API calls.

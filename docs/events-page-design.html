@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FlashSeat · Events</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@1&amp;display=swap">
+<style>
+body{margin:0;background:#08080A}
+a{color:#FAFAFA;text-decoration:none}a:hover{color:#FF6B4A}
+.i-hero{background-image:url(/_blob/3e8feb9942eaeb1ac55951ca46b7ce1d)}
+.i-th{background-image:url(/_blob/7df0742ca1cea4320eb6d405433566d1)}
+.i-cm{background-image:url(/_blob/cff78853c76ba89e65dbc34c0e4cd426)}
+.i-mu{background-image:url(/_blob/25985d709fc2a660a03f2f42a80fd413)}
+.i-fe{background-image:url(/_blob/d5caedd3920c1bf023577a013b8deb0a)}
+.i-sp{background-image:url(/_blob/af18746400ff6b952a7082c5f8e9ca51)}
+.i-ws{background-image:url(/_blob/229fc09061a22a93b75c8941d9efabd8)}
+.img{background-size:cover;background-position:center;transition:transform .9s cubic-bezier(.2,.7,.2,1)}
+.card{transition:border-color .25s ease,transform .25s ease;animation:fadeup .7s cubic-bezier(.2,.7,.2,1) both}
+.card:hover{border-color:rgba(255,255,255,.2);transform:translateY(-3px)}
+.card:hover .img{transform:scale(1.06)}
+.card .go{transition:transform .25s ease}.card:hover .go{transform:translateX(4px)}
+@keyframes fadeup{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.w{display:inline-block;animation:rise .9s cubic-bezier(.2,.7,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(.45em);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+.chip{transition:background .2s ease,color .2s ease,border-color .2s ease;cursor:pointer}
+.chip:hover{border-color:rgba(255,255,255,.35)}
+.chip:focus-visible,.dchip:focus-visible{outline:2px solid #FAFAFA;outline-offset:2px}
+.dchip{cursor:pointer;transition:color .2s ease}
+.navl{color:#A1A1AA;transition:color .2s}.navl:hover{color:#FAFAFA}
+.pulse{animation:pulse 2s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,107,74,.6)}100%{box-shadow:0 0 0 8px rgba(255,107,74,0)}}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #08080A; color: #FAFAFA; font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif">
+
+<header style="position: sticky; top: 0; z-index: 10; background: rgba(8,8,10,0.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,0.06)">
+<div style="max-width: 1240px; margin: 0 auto; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap">
+<a href="#" style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FAFAFA" stroke-width="1.6"><path d="M3 7a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4z"></path><path d="M9 5v14" stroke-dasharray="2 2"></path></svg>FlashSeat</a>
+<nav aria-label="Main" style="display: flex; gap: 32px; font-size: 14px"><a href="#" style="color: #FAFAFA">Explore</a><a class="navl" href="#">Categories</a><a class="navl" href="#">For organizers</a></nav>
+<div style="display: flex; gap: 10px; align-items: center"><span style="width: 32px; height: 32px; border-radius: 50%; background: #27272A; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">AK</span><span style="font-size: 14px; color: #D4D4D8">Asha</span></div>
+</div>
+</header>
+
+<section style="max-width: 1240px; margin: 0 auto; padding: 72px 32px 32px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8B8B94">EXPLORE</span>
+<h1 style="margin: 0; font-size: clamp(44px, 5vw, 68px); line-height: 1; font-weight: 600; letter-spacing: -0.045em"><span class="w" style="animation-delay: .05s">What's</span> <span class="w" style="animation-delay: .12s">on</span> <span class="w" style="animation-delay: .2s; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: #FF6B4A">{{headWhere}}</span></h1>
+<p style="margin: 0; font-size: 17px; color: #A1A1AA">{{subtitle}}</p>
+</div>
+<span style="display: flex; align-items: center; gap: 8px; font-family: 'Geist Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: #A1A1AA"><i class="pulse" style="width: 7px; height: 7px; border-radius: 50%; background: #FF6B4A; display: inline-block"></i>14 EVENTS ON SALE</span>
+</section>
+
+<div style="position: sticky; top: 65px; z-index: 5; background: rgba(8,8,10,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06)">
+<div style="max-width: 1240px; margin: 0 auto; padding: 14px 32px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap">
+<label style="display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 9px 14px; background: #0F0F12; min-width: 200px">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B8B94" stroke-width="1.8"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">City</span>
+<input placeholder="Any city" value="{{city}}" style="background: none; border: 0; outline: none; color: #FAFAFA; font: 500 14px 'Geist', sans-serif; width: 120px">
+</label>
+<div role="group" aria-label="Category" style="display: flex; gap: 6px; flex-wrap: wrap">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="7">
+<button type="button" class="chip" aria-pressed="{{c.on}}" onClick="{{c.pick}}" style="{{c.style}}">{{c.label}}</button>
+</sc-for>
+</div>
+<div role="group" aria-label="Date" style="margin-left: auto; display: flex; gap: 18px; font-size: 13px">
+<sc-for list="{{dates}}" as="d" hint-placeholder-count="4">
+<button type="button" class="dchip" aria-pressed="{{d.on}}" onClick="{{d.pick}}" style="{{d.style}}">{{d.label}}</button>
+</sc-for>
+</div>
+</div>
+</div>
+
+<main style="max-width: 1240px; margin: 0 auto; padding: 40px 32px 96px; display: flex; flex-direction: column; gap: 56px">
+
+<a class="card" href="#" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; overflow: hidden">
+<span style="display: block; position: relative; min-height: 360px; overflow: hidden"><span class="img i-th" style="position: absolute; inset: 0; display: block"></span><span style="position: absolute; top: 18px; left: 18px; font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.12em; background: #FF6B4A; color: #08080A; padding: 6px 10px; border-radius: 6px; font-weight: 500">SELLING FAST</span></span>
+<span style="padding: 40px; display: flex; flex-direction: column; gap: 16px; justify-content: center">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #8B8B94">THEATRE · 4 DATES</span>
+<span style="font-size: 40px; font-weight: 600; letter-spacing: -0.04em; line-height: 1.02; color: #FAFAFA">The Last Train to Lonavala</span>
+<span style="font-size: 16px; line-height: 1.6; color: #A1A1AA">A night train, six strangers and one secret that won't wait for the next station.</span>
+<span style="display: flex; gap: 28px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 14px">
+<span style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #71717A">NEXT</span><span style="color: #FAFAFA">Sat 14 Nov · 7:30 PM</span></span>
+<span style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #71717A">WHERE</span><span style="color: #FAFAFA">Rangdeep Theatre, Pune</span></span>
+<span style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #71717A">FROM</span><span style="color: #FAFAFA">₹399</span></span>
+</span>
+<span style="align-self: flex-start; margin-top: 8px; background: #FAFAFA; color: #08080A; padding: 12px 18px; border-radius: 10px; font-size: 14px; font-weight: 500">Choose seats <span class="go" style="display: inline-block">→</span></span>
+</span>
+</a>
+
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+<section style="display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; align-items: baseline; gap: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 14px">
+<h2 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.03em">{{g.title}}</h2>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #71717A">{{g.range}}</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 16px">
+<sc-for list="{{g.items}}" as="ev" hint-placeholder-count="3">
+<a class="card" href="#" style="{{ev.cardStyle}}">
+<span style="display: block; position: relative; height: 196px; overflow: hidden">
+<span class="{{ev.img}}" style="position: absolute; inset: 0; display: block"></span>
+<span style="position: absolute; left: 14px; top: 14px; display: flex; flex-direction: column; align-items: center; background: rgba(8,8,10,0.78); backdrop-filter: blur(8px); border-radius: 10px; padding: 6px 10px; min-width: 40px"><span style="font-size: 20px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; color: #FAFAFA">{{ev.day}}</span><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #D4D4D8">{{ev.mon}}</span></span>
+<sc-if value="{{ev.later}}" hint-placeholder-val="{{ false }}"><span style="position: absolute; right: 14px; top: 14px; font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.08em; background: rgba(8,8,10,0.78); color: #FAFAFA; padding: 6px 9px; border-radius: 6px">{{ev.later}}</span></sc-if>
+</span>
+<span style="padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">{{ev.cat}}</span>
+<span style="font-size: 18px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.25; color: #FAFAFA">{{ev.title}}</span>
+<span style="font-size: 13px; color: #A1A1AA">{{ev.where}}</span>
+<span style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); font-size: 13px"><span style="color: #FAFAFA">{{ev.price}}</span><span style="color: #71717A">{{ev.more}}</span></span>
+</span>
+</a>
+</sc-for>
+</div>
+</section>
+</sc-for>
+
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08)">
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: #8B8B94">SHOWING 1–14 OF 14</span>
+<div style="display: flex; gap: 8px"><button type="button" disabled style="background: none; border: 1px solid rgba(255,255,255,0.1); color: #52525B; border-radius: 9px; padding: 9px 14px; font: 500 14px 'Geist', sans-serif">← Previous</button><button type="button" disabled style="background: none; border: 1px solid rgba(255,255,255,0.1); color: #52525B; border-radius: 9px; padding: 9px 14px; font: 500 14px 'Geist', sans-serif">Next →</button></div>
+</div>
+</main>
+
+<footer style="border-top: 1px solid rgba(255,255,255,0.08)"><div style="max-width: 1240px; margin: 0 auto; padding: 28px 32px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #8B8B94"><span style="color: #FAFAFA; font-weight: 600">FlashSeat</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.1em">© 2026 FLASHSEAT</span></div></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var cat = st.cat || 'All';
+    var date = st.date || 'Any date';
+    var catList = ['All', 'Music', 'Comedy', 'Theatre', 'Sports', 'Workshops', 'Fests'];
+    var cats = catList.map(function (c) {
+      var on = c === cat;
+      return {
+        label: c, on: on ? 'true' : 'false',
+        style: 'font: 500 13px Geist, sans-serif; padding: 8px 14px; border-radius: 999px; border: 1px solid ' + (on ? '#FAFAFA' : 'rgba(255,255,255,0.12)') + '; background: ' + (on ? '#FAFAFA' : 'transparent') + '; color: ' + (on ? '#08080A' : '#D4D4D8') + ';',
+        pick: function () { self.setState({ cat: c }); }
+      };
+    });
+    var dates = ['This weekend', 'Next 7 days', 'This month', 'Any date'].map(function (d) {
+      var on = d === date;
+      return {
+        label: d, on: on ? 'true' : 'false',
+        style: 'background: none; border: 0; padding: 4px 0; font: 500 13px Geist, sans-serif; color: ' + (on ? '#FAFAFA' : '#71717A') + '; border-bottom: 1px solid ' + (on ? '#FF6B4A' : 'transparent') + ';',
+        pick: function () { self.setState({ date: d }); }
+      };
+    });
+    var all = [
+      { g: 0, img: 'img i-cm', day: '10', mon: 'NOV', cat: 'COMEDY', title: 'Tuesday Open Mic at The Back Bench', where: 'The Back Bench Comedy Room, Mumbai', price: 'from ₹299', more: '+2 dates' },
+      { g: 0, img: 'img i-mu', day: '14', mon: 'NOV', cat: 'MUSIC', title: 'Monsoon Ragas: An Evening of Hindustani Classical', where: 'Neelgiri Auditorium, Bengaluru', price: 'from ₹599', more: '+1 date' },
+      { g: 0, img: 'img i-ws', day: '14', mon: 'NOV', cat: 'WORKSHOP', title: "Beginner's Tabla Circle", where: 'Studio Ninefold, Delhi', price: 'from ₹499', more: '+2 dates' },
+      { g: 0, img: 'img i-hero', day: '15', mon: 'NOV', cat: 'MUSIC', title: 'Strings Across Borders: Sitar and Cello', where: 'Neelgiri Auditorium, Bengaluru', price: 'from ₹699', more: '' },
+      { g: 1, img: 'img i-cm', day: '20', mon: 'NOV', cat: 'COMEDY', title: 'Overthinkers Anonymous: A Stand-up Hour', where: 'The Back Bench Comedy Room, Mumbai', price: 'from ₹399', more: '+1 date' },
+      { g: 1, img: 'img i-th', day: '27', mon: 'NOV', cat: 'THEATRE', title: 'Chai, Chess and Other Arguments', where: 'Rangdeep Theatre, Pune', price: 'from ₹349', more: '+1 date', later: 'SALES OPEN FRI' },
+      { g: 1, img: 'img i-sp', day: '28', mon: 'NOV', cat: 'SPORTS', title: 'Inter-College Basketball Finals', where: 'Deccan Indoor Arena, Hyderabad', price: 'from ₹199', more: '' },
+      { g: 2, img: 'img i-mu', day: '04', mon: 'DEC', cat: 'MUSIC', title: 'Indie Nights Vol. 7', where: 'Studio Ninefold, Delhi', price: 'from ₹449', more: '', later: 'SALES OPEN SUN' },
+      { g: 2, img: 'img i-fe', day: '05', mon: 'DEC', cat: 'FESTIVAL', title: 'Lehar 2026: Weekend Day Pass', where: 'Banyan Grounds, Hyderabad', price: 'from ₹299', more: '+1 date' }
+    ];
+    var map = { Music: 'MUSIC', Comedy: 'COMEDY', Theatre: 'THEATRE', Sports: 'SPORTS', Workshops: 'WORKSHOP', Fests: 'FESTIVAL' };
+    var filtered = all.filter(function (e) { return cat === 'All' || e.cat === map[cat]; });
+    var meta = [['This week', '9 – 15 NOV'], ['Later this month', '16 – 30 NOV'], ['December', 'DEC 2026']];
+    var groups = meta.map(function (m, gi) {
+      var items = filtered.filter(function (e) { return e.g === gi; }).map(function (e, i) {
+        e.cardStyle = 'display: flex; flex-direction: column; background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow: hidden; animation-delay: ' + (0.06 * i).toFixed(2) + 's';
+        e.later = e.later || '';
+        return e;
+      });
+      return { title: m[0], range: m[1], items: items };
+    }).filter(function (g) { return g.items.length > 0; });
+    return {
+      cats: cats, dates: dates, groups: groups, city: '',
+      headWhere: cat === 'All' ? 'tonight.' : cat.toLowerCase() + '.',
+      subtitle: cat === 'All' ? 'Every upcoming show, sorted by date.' : 'Upcoming ' + cat.toLowerCase() + ' across all cities.'
+    };
+  }
+}
+</script>
+</body>
+</html>

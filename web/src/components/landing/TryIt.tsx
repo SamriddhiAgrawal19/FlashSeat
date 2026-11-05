@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '../../lib/cn';
-import { useReveal } from './hooks';
+import { useReveal } from '../site/hooks';
 
 // Illustrative demo, exactly as in the design: no API calls, no real holds.
 const ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];

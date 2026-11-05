@@ -1,0 +1,371 @@
+/*
+ * Shared pieces of the v2 look (components/site/*): header, footer, eyebrow, pills, buttons,
+ * date block, fill bar, and the animations the v2 pages share. All values come from the designs
+ * (docs/*-design.html) via the tokens in styles/theme-v2.css. Prefixed site-, scoped by use.
+ */
+
+@layer components {
+  /* ------------------------------------------------------------- layout */
+  .site-wrap {
+    max-width: var(--content);
+    margin: 0 auto;
+    padding-left: var(--gutter);
+    padding-right: var(--gutter);
+  }
+  .site-mono {
+    font-family: var(--ff-mono);
+  }
+  .site-serif {
+    font-family: var(--ff-serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+  }
+
+  /* ------------------------------------------------------------- header */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: rgba(8, 8, 10, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .site-header-in {
+    padding-top: 16px;
+    padding-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .site-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .site-nav {
+    display: flex;
+    gap: 32px;
+    font-size: 14px;
+  }
+  .site-header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .v2 .site-navl {
+    position: relative;
+    color: var(--text-2);
+    transition: color 0.2s;
+  }
+  .v2 .site-navl:hover,
+  .v2 .site-navl[aria-current='page'] {
+    color: var(--text);
+  }
+  .site-menu-btn {
+    display: none;
+    width: 44px;
+    height: 44px;
+    margin-right: -10px;
+    place-items: center;
+    background: none;
+    border: 0;
+    color: var(--text);
+    cursor: pointer;
+  }
+  @media (max-width: 767px) {
+    .site-nav,
+    .site-header-actions {
+      display: none;
+    }
+    .site-menu-btn {
+      display: grid;
+    }
+  }
+
+  /* ------------------------------------------------------------- footer */
+  .site-footer {
+    border-top: 1px solid var(--line);
+  }
+  .site-footer-in {
+    padding-top: 28px;
+    padding-bottom: 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--muted-mono);
+  }
+  .site-footer-links {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* ------------------------------------------------------------- eyebrow */
+  .site-eyebrow {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--muted-mono);
+    text-transform: uppercase;
+  }
+
+  /* ------------------------------------------------------------- buttons */
+  .site-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 0;
+    font-family: var(--ff-sans);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+  .site-btn-sm {
+    font-size: 14px;
+    padding: 9px 14px;
+    border-radius: var(--r-9);
+  }
+  .site-btn-md {
+    font-size: 14px;
+    padding: 11px 18px;
+    border-radius: var(--r-10);
+  }
+  .site-btn-lg {
+    font-size: 15px;
+    padding: 14px 22px;
+    border-radius: var(--r-10);
+  }
+  /* The header's "Get tickets": exactly the landing design's button (plain inline text, 10px 16px). */
+  .site-btn-nav {
+    display: inline-block;
+    font-size: 14px;
+    padding: 10px 16px;
+    border-radius: var(--r-9);
+  }
+  .site-arr {
+    display: inline-block;
+    transition: transform 0.25s ease;
+  }
+  .site-btn:hover .site-arr,
+  .site-arr-host:hover .site-arr {
+    transform: translateX(4px);
+  }
+  .site-btn:hover .site-arr-down {
+    transform: translateY(3px);
+  }
+  .v2 .site-btn-primary {
+    background: var(--text);
+    color: var(--bg);
+  }
+  .v2 .site-btn-primary:hover {
+    background: #e4e4e7;
+    color: var(--bg);
+  }
+  .v2 .site-btn-accent {
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 600;
+  }
+  .v2 .site-btn-accent:hover {
+    background: var(--accent-hover);
+    color: var(--bg);
+  }
+  .v2 .site-btn-ghost {
+    background: none;
+    color: var(--text);
+    border: 1px solid var(--line-strong);
+  }
+  .v2 .site-btn-ghost:hover:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+  }
+  .v2 .site-btn:disabled {
+    cursor: not-allowed;
+    color: #52525b;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  .site-btn:focus-visible,
+  .site-chip:focus-visible,
+  .site-tab:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+  }
+
+  /* ------------------------------------------------------------- pills (chips) + tabs */
+  .site-chip {
+    font: 500 13px var(--ff-sans);
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: transparent;
+    color: #d4d4d8;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+  .site-chip:hover {
+    border-color: rgba(255, 255, 255, 0.35);
+  }
+  .site-chip[aria-pressed='true'] {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--bg);
+  }
+  .site-tab {
+    background: none;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    padding: 4px 0;
+    font: 500 13px var(--ff-sans);
+    color: var(--text-3);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+  }
+  .site-tab:hover {
+    color: var(--text-2);
+  }
+  .site-tab[aria-pressed='true'] {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+  }
+  /* A fact pill on a photo (event hero). */
+  .site-pill {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(8, 8, 10, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* ------------------------------------------------------------- date block */
+  .site-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: none;
+  }
+  .site-date-day {
+    font-weight: 600;
+    line-height: 1;
+    color: var(--text);
+  }
+  .site-date-mon {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+  /* On a photo (event cards). */
+  .site-date-overlay {
+    background: rgba(8, 8, 10, 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: var(--r-10);
+    padding: 6px 10px;
+    min-width: 40px;
+  }
+  .site-date-overlay .site-date-day {
+    font-size: 20px;
+    letter-spacing: -0.03em;
+  }
+  .site-date-overlay .site-date-mon {
+    color: #d4d4d8;
+  }
+  /* In a list (show rows). */
+  .site-date-plain {
+    width: 48px;
+  }
+  .site-date-plain .site-date-day {
+    font-size: 24px;
+    letter-spacing: -0.04em;
+  }
+  .site-date-plain .site-date-mon {
+    color: var(--text-2);
+  }
+
+  /* ------------------------------------------------------------- fill bar */
+  .site-bar {
+    display: inline-block;
+    overflow: hidden;
+    border-radius: 2px;
+    background: #27272a;
+    vertical-align: middle;
+  }
+  .site-bar-fill {
+    display: block;
+    height: 100%;
+    transform-origin: left center;
+    animation: site-fill 1.6s var(--ease-out) both;
+  }
+
+  /* ------------------------------------------------------------- skeleton */
+  .site-skel {
+    display: block;
+    border-radius: 6px;
+    background: #1c1c20;
+    animation: site-skel 1.6s ease-in-out infinite;
+  }
+
+  /* ------------------------------------------------------------- shared motion */
+  .site-w {
+    display: inline-block;
+    animation: site-rise 0.9s var(--ease-out) both;
+  }
+  .site-fade {
+    animation: site-fadeup 0.8s var(--ease-out) both;
+  }
+  .site-pulse {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: none;
+    animation: site-pulse 2s ease-out infinite;
+  }
+  .site-paused,
+  .site-paused * {
+    animation-play-state: paused !important;
+  }
+}
+
+@keyframes site-rise {
+  from { opacity: 0; transform: translateY(0.45em); filter: blur(8px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes site-fadeup {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes site-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 107, 74, 0.6); }
+  100% { box-shadow: 0 0 0 8px rgba(255, 107, 74, 0); }
+}
+@keyframes site-fill {
+  from { transform: scaleX(0); }
+}
+@keyframes site-skel {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+/* Reduced motion: the global rule in styles/index.css stops every animation and transition, and
+   each element above is already in its final state without them. */

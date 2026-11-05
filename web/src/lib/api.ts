@@ -167,6 +167,10 @@ export interface NextShow {
   starts_at: string;
   ends_at: string;
   venue: { id: string; name: string; city: string };
+  /** show_seats rows of this show. */
+  seats_total: number;
+  /** Seats a buyer could hold now: AVAILABLE plus lapsed holds (the seat map's rule). */
+  seats_available: number;
 }
 
 /**
@@ -216,6 +220,11 @@ export interface EventShowSummary {
   id: string;
   venue_name: string;
   venue_city: string;
+  venue: { name: string; city: string; address: string };
+  /** show_seats rows of this show. */
+  seats_total: number;
+  /** Seats a buyer could hold now: AVAILABLE plus lapsed holds (the seat map's rule). */
+  seats_available: number;
   starts_at: string;
   ends_at: string;
   status: ShowStatus;
@@ -223,6 +232,8 @@ export interface EventShowSummary {
 
 /** GET /events/:eventId: the event row plus its shows. */
 export interface EventDetail extends EventRow {
+  /** The organizer's organization name; null if they have no organizer profile. */
+  organization_name: string | null;
   shows: EventShowSummary[];
 }
 

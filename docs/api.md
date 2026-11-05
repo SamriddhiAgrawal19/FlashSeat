@@ -189,15 +189,19 @@ next Pune show and the lowest Pune price):
 
 | Field | Meaning |
 |---|---|
-| `next_show` | the earliest matching show as `{ id, starts_at, ends_at, venue: { id, name, city } }` |
+| `next_show` | the earliest matching show as `{ id, starts_at, ends_at, venue: { id, name, city }, seats_total, seats_available }` |
+| `next_show.seats_total` | number of `show_seats` rows of that show |
+| `next_show.seats_available` | seats a buyer could hold now: `AVAILABLE`, plus `HELD` seats whose `held_until` has passed (a lapsed hold not swept yet). The same rule as the seat map's `summary.available` |
 | `upcoming_show_count` | number of matching shows (at least 1 for every listed event) |
 | `min_price_paise` | lowest `price_paise` across the matching shows' category prices (`null` only if those shows have no prices) |
 
-All three come from the same query (two `LEFT JOIN LATERAL`s over the same matching-show
-condition used for the listing and `total`), not from per-event lookups.
+All of it comes from the same query (`LEFT JOIN LATERAL`s over the same matching-show
+condition used for the listing and `total`), not from per-event lookups. The seat counts are
+one more `LATERAL` keyed on the chosen next show, so they are counted for that show only.
+`next_show` has no `sales_open_at`; read it from `GET /events/:eventId/shows/:showId`.
 
 ```json
-{"events":[{"id":"5ecd64f3-…","organizer_id":"a01986c8-…","title":"An Evening of Jazz","description":"","category":"MUSIC","poster_url":null,"status":"PUBLISHED","cancelled_at":null,"created_at":"2026-11-05T09:58:27.624Z","updated_at":"2026-11-05T09:58:27.633Z","upcoming_show_count":1,"min_price_paise":30000,"next_show":{"id":"e84f050f-…","starts_at":"2026-11-10T09:58:27.627Z","ends_at":"2026-11-10T11:58:27.627Z","venue":{"id":"66146c64-…","name":"Main Hall","city":"Pune"}}}],"page":1,"limit":20,"total":1}
+{"events":[{"id":"5ecd64f3-…","organizer_id":"a01986c8-…","title":"An Evening of Jazz","description":"","category":"MUSIC","poster_url":null,"status":"PUBLISHED","cancelled_at":null,"created_at":"2026-11-05T09:58:27.624Z","updated_at":"2026-11-05T09:58:27.633Z","upcoming_show_count":1,"min_price_paise":30000,"next_show":{"id":"e84f050f-…","starts_at":"2026-11-10T09:58:27.627Z","ends_at":"2026-11-10T11:58:27.627Z","venue":{"id":"66146c64-…","name":"Main Hall","city":"Pune"},"seats_total":300,"seats_available":135}}],"page":1,"limit":20,"total":1}
 ```
 
 ### `GET /events/mine`
@@ -227,9 +231,24 @@ return 404 for DRAFT events. Shows come from one extra query for the whole list,
 
 ### `GET /events/:eventId`
 
-No auth. **200** the event row plus `shows: [{ id, venue_name, venue_city, starts_at,
-ends_at, status }]`, ordered by start time. 404 for unknown or DRAFT events; CANCELLED
-events stay readable.
+No auth. **200** the event row plus:
+
+| Field | Meaning |
+|---|---|
+| `organization_name` | the organizer's `organizer_profiles.organization_name` (`null` if there is no profile) |
+| `shows` | **all** of the event's shows (any status), ordered by start time: `{ id, venue_name, venue_city, venue: { name, city, address }, starts_at, ends_at, status, seats_total, seats_available }` |
+| `shows[].venue` | the show's venue; `venue_name` / `venue_city` repeat its name and city for older clients |
+| `shows[].seats_total` | number of `show_seats` rows |
+| `shows[].seats_available` | `AVAILABLE` seats plus `HELD` seats whose `held_until` has passed: the seat map's `summary.available` rule |
+
+Three queries whatever the number of shows: the event, the organizer's name, and every show
+with its venue and counts (a `LATERAL` count per show inside one statement). The shows carry
+no `sales_open_at`; read it from `GET /events/:eventId/shows/:showId`. 404 for unknown or DRAFT
+events; CANCELLED events stay readable.
+
+```json
+{"id":"adc70dd1-…","title":"The Last Train to Lonavala","category":"THEATRE","status":"PUBLISHED",…,"organization_name":"Chaupal Theatre Company","shows":[{"id":"8d33deb0-…","venue_name":"Rangdeep Theatre","venue_city":"Pune","venue":{"name":"Rangdeep Theatre","city":"Pune","address":"Lane 4, Prabhat Road, Erandwane, Pune 411004"},"starts_at":"2026-11-07T14:00:00.000Z","ends_at":"2026-11-07T16:30:00.000Z","status":"SCHEDULED","seats_total":300,"seats_available":135}]}
+```
 
 ### `PATCH /events/:eventId`
 

@@ -1,0 +1,80 @@
+/*
+ * FlashSeat v2 design tokens (docs/landing-v2-design.html, docs/events-page-design.html,
+ * docs/event-detail-design.html). Plain CSS variables on :root, so any page can use them.
+ *
+ * Pages on the new look render inside `.v2` (set by Layout on "/", "/events" and
+ * "/events/:eventId"); `.v2` gives them the base colours, font and link styles. Other pages keep
+ * the Tailwind theme in styles/index.css for now.
+ *
+ * Names deliberately avoid Tailwind's theme namespaces (--color-*, --font-*, --radius-*,
+ * --text-<size>) so nothing here changes an existing utility.
+ */
+
+:root {
+  --bg: #08080a;
+  --surface: #0f0f12;
+  --surface-2: #18181b;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --text: #fafafa;
+  --text-2: #a1a1aa;
+  --text-3: #71717a;
+  --muted-mono: #8b8b94;
+  --accent: #ff6b4a;
+  --accent-hover: #ff8466;
+
+  /* Radii used across the designs. */
+  --r-9: 9px;
+  --r-10: 10px;
+  --r-12: 12px;
+  --r-16: 16px;
+  --r-18: 18px;
+  --r-20: 20px;
+
+  --ff-sans: 'Geist Variable', 'Geist', 'Helvetica Neue', Arial, sans-serif;
+  --ff-mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, monospace;
+  --ff-serif: 'Instrument Serif', Georgia, serif;
+
+  /* The site header's real height, kept up to date by SiteHeader (sticky bars sit under it). */
+  --site-header-h: 69px;
+  /* Page gutter and content width. */
+  --gutter: 32px;
+  --content: 1240px;
+
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --gutter: 20px;
+  }
+}
+
+/* In the components layer, so Tailwind utilities on shared components rendered inside (UserMenu,
+   the skip link) still win, as they do everywhere else. */
+@layer components {
+  .v2 {
+    /* Shared components that use the lime token (UserMenu avatar, focus rings) follow the accent. */
+    --fs-lime: var(--accent);
+    --fs-lime-hover: var(--accent-hover);
+
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--ff-sans);
+    /* clip, not hidden: hidden would make this a scroll container and break sticky children. */
+    overflow-x: clip;
+  }
+  .v2 a {
+    color: var(--text);
+    text-decoration: none;
+  }
+  .v2 a:hover {
+    color: var(--accent);
+  }
+  /* Focus rings: the global ring (styles/index.css) follows --fs-lime, i.e. the accent here.
+     Pills, tabs and show rows use the designs' white ring (components/site/site.css). */
+  .v2 [id] {
+    scroll-margin-top: calc(var(--site-header-h) + 16px);
+  }
+}

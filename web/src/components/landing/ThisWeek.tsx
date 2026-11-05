@@ -5,7 +5,7 @@ import { formatPaise, showDateParts } from '../../lib/format';
 import { photosForEvents, type Photo } from '../../lib/photos';
 import { useUpcomingEvents } from '../../lib/queries';
 import { EventImage } from '../events/EventImage';
-import { useReveal } from './hooks';
+import { useReveal } from '../site/hooks';
 
 const CARD_COUNT = 3;
 

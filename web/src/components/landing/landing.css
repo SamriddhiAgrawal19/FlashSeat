@@ -1,52 +1,35 @@
 /*
  * Landing page (docs/landing-v2-design.html). Everything is scoped under .lp (set on the Layout
- * root on "/") and prefixed lp-, so none of it leaks into other pages or collides with Tailwind's
- * theme keyframes. Values are copied from the design's inline styles and <style> block.
+ * root on "/", next to .v2) and prefixed lp-, so none of it leaks into other pages or collides
+ * with Tailwind's theme keyframes. Colours, fonts and the gutter come from styles/theme-v2.css;
+ * the site header and footer live in components/site/site.css.
  */
 
 /* In the components layer, so Tailwind utilities on shared components inside .lp (UserMenu, the skip link) still win. */
 @layer components {
 
+/* Landing aliases of the shared tokens (base colours, font and links come from .v2). */
 .lp {
-  --lp-bg: #08080a;
-  --lp-surface: #0f0f12;
-  --lp-text: #fafafa;
-  --lp-coral: #ff6b4a;
+  --lp-bg: var(--bg);
+  --lp-surface: var(--surface);
+  --lp-text: var(--text);
+  --lp-coral: var(--accent);
+  /* The landing's own lighter coral (chips, search hover); the shared --accent-hover is #ff8466. */
   --lp-coral-soft: #ff8a6e;
-  --lp-muted: #a1a1aa;
-  --lp-muted-2: #8b8b94;
-  --lp-dim: #71717a;
+  --lp-muted: var(--text-2);
+  --lp-muted-2: var(--muted-mono);
+  --lp-dim: var(--text-3);
   --lp-faint: #52525b;
-  --lp-line: rgba(255, 255, 255, 0.08);
-  --lp-mono: 'Geist Mono Variable', 'Geist Mono', ui-monospace, monospace;
-  --lp-serif: 'Instrument Serif', Georgia, serif;
-  --lp-gutter: 32px;
-  /* Shared components rendered inside the landing (UserMenu, focus rings) use the lime token. */
-  --fs-lime: var(--lp-coral);
-  --fs-lime-hover: var(--lp-coral-soft);
-
-  min-height: 100vh;
-  background: var(--lp-bg);
-  color: var(--lp-text);
-  font-family: 'Geist Variable', 'Geist', 'Helvetica Neue', Arial, sans-serif;
-  /* clip, not hidden: hidden would make this a scroll container and break the sticky header. */
-  overflow-x: clip;
-}
-.lp a {
-  color: var(--lp-text);
-  text-decoration: none;
-}
-.lp a:hover {
-  color: var(--lp-coral);
+  --lp-line: var(--line);
+  --lp-mono: var(--ff-mono);
+  --lp-serif: var(--ff-serif);
+  --lp-gutter: var(--gutter);
 }
 .lp-wrap {
   max-width: 1240px;
   margin: 0 auto;
   padding-left: var(--lp-gutter);
   padding-right: var(--lp-gutter);
-}
-.lp [id] {
-  scroll-margin-top: 72px;
 }
 .lp-mono {
   font-family: var(--lp-mono);
@@ -62,42 +45,6 @@
   background-position: center;
 }
 
-/* ---------------------------------------------------------------- header */
-.lp-header {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background: rgba(8, 8, 10, 0.72);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-.lp-header-in {
-  padding-top: 16px;
-  padding-bottom: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-}
-.lp-logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.lp-nav {
-  display: flex;
-  gap: 32px;
-  font-size: 14px;
-}
-.lp-header-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
 .lp .lp-navl {
   position: relative;
   color: var(--lp-muted);
@@ -106,18 +53,6 @@
 .lp .lp-navl:hover {
   color: var(--lp-text);
 }
-.lp-menu-btn {
-  display: none;
-  width: 44px;
-  height: 44px;
-  margin-right: -10px;
-  place-items: center;
-  background: none;
-  border: 0;
-  color: var(--lp-text);
-  cursor: pointer;
-}
-
 /* ---------------------------------------------------------------- buttons */
 .lp-arr {
   display: inline-block;
@@ -137,7 +72,7 @@
   color: var(--lp-bg);
 }
 .lp .lp-btn-g {
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid var(--line-strong);
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 .lp .lp-btn-g:hover {
@@ -448,7 +383,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #18181b;
+  background: var(--surface-2);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   padding: 10px 14px;
@@ -592,7 +527,7 @@
   height: 210px;
   overflow: hidden;
   position: relative;
-  background: #18181b;
+  background: var(--surface-2);
 }
 .lp-card-cat {
   position: absolute;
@@ -895,7 +830,7 @@
   box-sizing: border-box;
 }
 
-/* ---------------------------------------------------------------- final cta + footer */
+/* ---------------------------------------------------------------- final cta */
 .lp-cta {
   position: relative;
   overflow: hidden;
@@ -912,7 +847,7 @@
 .lp-cta-shade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, #08080a 0%, rgba(8, 8, 10, 0.55) 45%, #08080a 100%);
+  background: linear-gradient(180deg, var(--bg) 0%, rgba(8, 8, 10, 0.55) 45%, var(--bg) 100%);
 }
 .lp-cta-in {
   position: relative;
@@ -931,29 +866,6 @@
   letter-spacing: -0.045em;
   line-height: 1;
 }
-.lp-footer {
-  border-top: 1px solid var(--lp-line);
-}
-.lp-footer-in {
-  padding-top: 28px;
-  padding-bottom: 28px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  font-size: 13px;
-  color: var(--lp-muted-2);
-}
-.lp-footer-links {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 /* ---------------------------------------------------------------- motion (from the design) */
 .lp-w {
   display: inline-block;
@@ -1002,7 +914,7 @@
 }
 @keyframes lp-r7 {
   0%, 33% { background: transparent; border-color: rgba(255, 255, 255, 0.22); }
-  35%, 94% { background: #ff6b4a; border-color: #ff6b4a; }
+  35%, 94% { background: var(--accent); border-color: var(--accent); }
   97%, 100% { background: transparent; border-color: rgba(255, 255, 255, 0.22); }
 }
 .lp-r9 {
@@ -1012,7 +924,7 @@
 }
 @keyframes lp-r9 {
   0%, 70% { background: transparent; border-color: rgba(255, 255, 255, 0.22); }
-  72%, 94% { background: #fafafa; border-color: #fafafa; }
+  72%, 94% { background: var(--text); border-color: var(--text); }
   97%, 100% { background: transparent; border-color: rgba(255, 255, 255, 0.22); }
 }
 .lp-cur-a {
@@ -1160,19 +1072,7 @@
     transform: none;
   }
 }
-@media (max-width: 767px) {
-  .lp-nav,
-  .lp-header-actions {
-    display: none;
-  }
-  .lp-menu-btn {
-    display: grid;
-  }
-}
 @media (max-width: 640px) {
-  .lp {
-    --lp-gutter: 20px;
-  }
   .lp-hero-in {
     padding-top: 56px;
     padding-bottom: 72px;

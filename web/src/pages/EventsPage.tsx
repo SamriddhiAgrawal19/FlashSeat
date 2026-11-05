@@ -1,26 +1,42 @@
 import { useEffect, useRef } from 'react';
-import { EventList, EventListSkeleton, EventsEmpty, EventsError, Pagination } from '../components/events/EventResults';
+import '../components/events/events.css';
+import { EventListSkeleton, EventResultsView, EventsEmpty, EventsError, PageEmpty, Pagination } from '../components/events/EventResults';
 import { FilterBar } from '../components/events/FilterBar';
 import { useEventFilters, type EventFilters } from '../components/events/useEventFilters';
-import { Button } from '../components/ui/Button';
-import { Container } from '../components/ui/Container';
-import { Accent, Eyebrow } from '../components/ui/Section';
+import { usePlayWhenVisible } from '../components/site/hooks';
+import { Eyebrow } from '../components/site/ui';
 import { categoryLabel } from '../lib/categories';
+import { cn } from '../lib/cn';
 import { DATE_PRESETS, matchPreset } from '../lib/dateRanges';
 import { formatDateRange } from '../lib/format';
 import { useEventsList } from '../lib/queries';
 
-/** "Theatre in Pune, this weekend", "Events in Pune", "All upcoming events". */
-function describe(filters: EventFilters): string {
-  const city = filters.city ? filters.city.charAt(0).toUpperCase() + filters.city.slice(1) : '';
-  const what = filters.category ? categoryLabel(filters.category) : city ? 'Events' : '';
-  let text = what && city ? `${what} in ${city}` : what || 'All upcoming events';
+const titleCase = (s: string) => s.replace(/\b\w/g, (c) => c.toUpperCase());
+
+/** The headline's last word: "tonight." or the category ("comedy.", "fests."). */
+function headWord(category: string): string {
+  return category ? `${categoryLabel(category).toLowerCase()}.` : 'tonight.';
+}
+
+/**
+ * The subtitle under the headline, from the filters:
+ *   none                -> "Every upcoming show, sorted by date."
+ *   category only       -> "Upcoming comedy across all cities."
+ *   otherwise           -> "Theatre in Pune, this weekend." / "Events in Pune." / "Every upcoming show, this month."
+ */
+function subtitle(filters: EventFilters): string {
+  const city = filters.city ? titleCase(filters.city) : '';
+  const cat = filters.category ? categoryLabel(filters.category) : '';
   const preset = matchPreset(filters.dateFrom || null, filters.dateTo || null);
   const when = preset
     ? DATE_PRESETS.find((p) => p.id === preset)?.phrase
     : formatDateRange(filters.dateFrom || null, filters.dateTo || null)?.replace(/^\w/, (c) => c.toLowerCase());
+
+  if (!city && !cat && !when) return 'Every upcoming show, sorted by date.';
+  if (cat && !city && !when) return `Upcoming ${cat.toLowerCase()} across all cities.`;
+  let text = cat && city ? `${cat} in ${city}` : cat || (city ? `Events in ${city}` : 'Every upcoming show');
   if (when) text += `, ${when}`;
-  return text;
+  return `${text}.`;
 }
 
 export function EventsPage() {
@@ -35,12 +51,13 @@ export function EventsPage() {
   });
   const resultsRef = useRef<HTMLDivElement>(null);
   const previousPage = useRef(page);
+  const pulse = usePlayWhenVisible<HTMLSpanElement>();
 
   useEffect(() => {
     document.title = 'Events · FlashSeat';
   }, []);
 
-  // On page change, bring the top of the results into view (below the sticky bar).
+  // On page change, bring the top of the results into view (below the sticky bars).
   useEffect(() => {
     if (previousPage.current !== page) resultsRef.current?.scrollIntoView({ block: 'start' });
     previousPage.current = page;
@@ -48,19 +65,35 @@ export function EventsPage() {
 
   const data = query.data;
   const refreshing = query.isFetching && query.isPlaceholderData;
+  const word = headWord(category);
 
   return (
     <>
-      <section aria-labelledby="events-title" className="pt-28 pb-10 md:pt-36 md:pb-12">
-        <Container>
+      <section aria-labelledby="events-title" className="site-wrap ev-head">
+        <div className="ev-head-text">
           <Eyebrow>Explore</Eyebrow>
-          <h1 id="events-title" className="mt-4 text-[clamp(2.75rem,6vw,5rem)] leading-[0.98] font-medium tracking-[-0.045em] text-text">
-            What's <Accent>on</Accent>.
+          {/* Keyed on the last word, so a category change replays the word reveal. */}
+          <h1 id="events-title" key={word} className="ev-h1">
+            <span className="site-w" style={{ animationDelay: '.05s' }}>
+              What's
+            </span>{' '}
+            <span className="site-w" style={{ animationDelay: '.12s' }}>
+              on
+            </span>{' '}
+            <span className="site-w site-serif" style={{ animationDelay: '.2s' }}>
+              {word}
+            </span>
           </h1>
-          <p className="mt-4 text-[17px] text-text-2" aria-live="polite">
-            {describe(filters)}
+          <p className="ev-sub" aria-live="polite">
+            {subtitle(filters)}
           </p>
-        </Container>
+        </div>
+        {data && (
+          <span ref={pulse.ref} className={cn('ev-count', !pulse.playing && 'site-paused')}>
+            <i className="site-pulse" aria-hidden="true" />
+            {data.total} EVENT{data.total === 1 ? '' : 'S'} ON SALE
+          </span>
+        )}
       </section>
 
       <FilterBar
@@ -73,41 +106,35 @@ export function EventsPage() {
         total={data?.total}
       />
 
-      <Container>
-        <div ref={resultsRef} className="scroll-mt-40 pt-10 pb-24 md:pt-14" aria-busy={refreshing || undefined}>
-          {/* Thin loading line while the previous results stay on screen. */}
-          <div aria-hidden="true" className="mb-6 h-px overflow-hidden">
-            <div className={refreshing ? 'h-px w-full bg-lime/70 motion-safe:animate-breathe' : 'h-px w-full bg-transparent'} />
+      <div
+        ref={resultsRef}
+        className="site-wrap ev-main"
+        style={{ scrollMarginTop: 'calc(var(--site-header-h) + 72px)' }}
+        aria-busy={refreshing || undefined}
+      >
+        {refreshing && (
+          <div className="ev-loading-line" aria-hidden="true">
+            <span />
           </div>
+        )}
 
-          {query.isPending ? (
-            <EventListSkeleton />
-          ) : query.isError && !data ? (
-            <EventsError onRetry={() => void query.refetch()} retrying={query.isFetching} />
-          ) : data && data.events.length === 0 && data.total > 0 ? (
-            <div className="border-y border-rule py-8">
-              <p className="text-title font-medium text-text">There's nothing on this page.</p>
-              <Button variant="secondary" className="mt-5" onClick={() => setPage(1)}>
-                Go to the first page
-              </Button>
+        {query.isPending ? (
+          <EventListSkeleton />
+        ) : query.isError && !data ? (
+          <EventsError onRetry={() => void query.refetch()} retrying={query.isFetching} />
+        ) : data && data.events.length === 0 && data.total > 0 ? (
+          <PageEmpty onFirstPage={() => setPage(1)} />
+        ) : data && data.events.length === 0 ? (
+          <EventsEmpty hasFilters={hasFilters} onClear={clear} />
+        ) : data ? (
+          <>
+            <div className={cn('ev-main', refreshing && 'ev-refreshing')} style={{ padding: 0 }}>
+              <EventResultsView events={data.events} featureFirst={data.page === 1} />
             </div>
-          ) : data && data.events.length === 0 ? (
-            <EventsEmpty hasFilters={hasFilters} onClear={clear} />
-          ) : data ? (
-            <div className={refreshing ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-              <EventList events={data.events} />
-              <Pagination
-                page={data.page}
-                limit={data.limit}
-                total={data.total}
-                count={data.events.length}
-                onPage={setPage}
-                busy={query.isFetching}
-              />
-            </div>
-          ) : null}
-        </div>
-      </Container>
+            <Pagination page={data.page} limit={data.limit} total={data.total} count={data.events.length} onPage={setPage} busy={query.isFetching} />
+          </>
+        ) : null}
+      </div>
     </>
   );
 }

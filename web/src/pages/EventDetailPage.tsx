@@ -1,137 +1,239 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { EventImage } from '../components/events/EventImage';
+import '../components/events/events.css';
+import { DatesPanel, duration, type ShowDetailState } from '../components/events/DatesPanel';
+import { MoreLikeThis } from '../components/events/MoreLikeThis';
+import { SeatsPrices } from '../components/events/SeatsPrices';
 import { isUpcoming } from '../components/events/showState';
-import { ShowRow } from '../components/events/ShowRow';
-import { Arrow, Button, ButtonLink } from '../components/ui/Button';
-import { Container } from '../components/ui/Container';
-import { Eyebrow, SectionLabel } from '../components/ui/Section';
-import type { EventDetail } from '../lib/api';
+import { usePlayWhenVisible, useReducedMotion } from '../components/site/hooks';
+import { AccentButton, Arrow, Eyebrow, GhostButton } from '../components/site/ui';
+import type { EventDetail, EventShowSummary } from '../lib/api';
 import { categoryLabel } from '../lib/categories';
-import { isNotFound, useEventDetail } from '../lib/queries';
+import { cn } from '../lib/cn';
+import { splitFirstSentence } from '../lib/eventGroups';
+import { formatDateRange, formatPaise } from '../lib/format';
+import { photoForEvent } from '../lib/photos';
+import { isNotFound, useEventDetail, useShowDetails } from '../lib/queries';
 
 function EventNotFound() {
   useEffect(() => {
     document.title = 'Event not found · FlashSeat';
   }, []);
   return (
-    <section aria-labelledby="nf-title" className="pt-40 pb-28 md:pt-48">
-      <Container className="max-w-[42rem]">
-        <Eyebrow>404</Eyebrow>
-        <h1 id="nf-title" className="mt-4 text-section font-medium text-text">
-          Event not found.
-        </h1>
-        <p className="mt-4 text-text-2">This event doesn't exist or isn't on sale. It may have been removed, or the link may be wrong.</p>
-        <ButtonLink to="/events" variant="secondary" className="mt-8">
-          Browse events <Arrow />
-        </ButtonLink>
-      </Container>
+    <section aria-labelledby="nf-title" className="site-wrap ed-nf">
+      <Eyebrow>404</Eyebrow>
+      <h1 id="nf-title" className="ev-h1">
+        Event not <span className="site-serif">found.</span>
+      </h1>
+      <p className="ev-sub">This event doesn't exist or isn't on sale. It may have been removed, or the link may be wrong.</p>
+      <GhostButton to="/events" size="lg">
+        Browse events <Arrow />
+      </GhostButton>
+    </section>
+  );
+}
+
+function DetailError({ onRetry, retrying }: { onRetry: () => void; retrying: boolean }) {
+  return (
+    <section className="site-wrap ed-nf">
+      <div role="alert" className="ev-panel" style={{ width: '100%' }}>
+        <p className="ev-panel-title">We couldn't load this event right now.</p>
+        <p className="ev-panel-text">Check your connection, or try again in a moment.</p>
+        <GhostButton onClick={onRetry} disabled={retrying}>
+          {retrying ? 'Retrying…' : 'Try again'}
+        </GhostButton>
+      </div>
     </section>
   );
 }
 
 function DetailSkeleton() {
-  const block = 'bg-text/[0.07] motion-safe:animate-breathe';
   return (
     <div aria-busy="true">
       <p className="sr-only" role="status">
         Loading event
       </p>
-      <div aria-hidden="true" className={`h-[56svh] min-h-[420px] ${block}`} />
-      <Container aria-hidden="true" className="py-14">
-        <div className={`h-4 w-2/3 max-w-xl ${block}`} />
-        <div className={`mt-3 h-4 w-1/2 max-w-md ${block}`} />
-      </Container>
+      <div aria-hidden="true" className="ed-hero" style={{ background: 'var(--surface)' }}>
+        <div className="site-wrap ed-hero-in">
+          <span className="site-skel" style={{ width: 160, height: 12 }} />
+          <span className="site-skel" style={{ width: '60%', height: 64 }} />
+          <span className="site-skel" style={{ width: 360, maxWidth: '100%', height: 34 }} />
+        </div>
+      </div>
     </div>
   );
 }
 
+/** poster_url (if it loads) or the event's photo; Ken Burns pauses while the hero is off-screen. */
+function HeroImage({ event }: { event: EventDetail }) {
+  const [failed, setFailed] = useState(false);
+  const { ref, playing } = usePlayWhenVisible<HTMLImageElement>();
+  const usePoster = !!event.poster_url && !failed;
+  const photo = photoForEvent(event);
+  return (
+    <img
+      ref={ref}
+      src={usePoster ? event.poster_url! : photo.src}
+      width={usePoster ? undefined : photo.width}
+      height={usePoster ? undefined : photo.height}
+      alt={usePoster ? `Poster for ${event.title}` : photo.alt}
+      onError={() => setFailed(true)}
+      decoding="async"
+      className={cn('ed-hero-img', !playing && 'site-paused')}
+    />
+  );
+}
+
+/** The title with each word revealed in turn; the last word in Instrument Serif italic coral. */
+function Title({ title }: { title: string }) {
+  const words = title.trim().split(/\s+/);
+  return (
+    <h1 id="event-title" className="ed-h1">
+      {words.map((word, i) => (
+        <span key={i}>
+          <span className={cn('site-w', i === words.length - 1 && words.length > 1 && 'site-serif')} style={{ animationDelay: `${(0.05 + i * 0.06).toFixed(2)}s` }}>
+            {word}
+          </span>
+          {i < words.length - 1 && ' '}
+        </span>
+      ))}
+    </h1>
+  );
+}
+
+function uniqueVenues(shows: EventShowSummary[]) {
+  const seen = new Map<string, EventShowSummary>();
+  for (const s of shows) {
+    const key = `${s.venue.name}|${s.venue.city}`;
+    if (!seen.has(key)) seen.set(key, s);
+  }
+  return [...seen.values()];
+}
+
 function Detail({ event }: { event: EventDetail }) {
-  const datesRef = useRef<HTMLElement>(null);
+  const reduced = useReducedMotion();
   const cancelled = event.status === 'CANCELLED';
-  const shows = [...event.shows].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-  const upcoming = shows.filter((s) => isUpcoming(s)).length;
+  const shows = [...event.shows].sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  const upcoming = shows.filter((s) => isUpcoming(s));
+  const next = upcoming[0] ?? shows[0];
+  const detailQueries = useShowDetails(event.id, shows.map((s) => s.id));
+  const details = new Map<string, ShowDetailState>(shows.map((s, i) => [s.id, { data: detailQueries[i]?.data, isError: detailQueries[i]?.isError ?? false }]));
+
+  // Hero facts, all from real data.
+  const venueShows = uniqueVenues(upcoming.length ? upcoming : shows);
+  const first = upcoming[0];
+  const last = upcoming[upcoming.length - 1];
+  const datesFact = first && last ? `${upcoming.length} date${upcoming.length === 1 ? '' : 's'} · ${formatDateRange(first.starts_at, last.starts_at)}` : null;
+  const venueFact = venueShows.length === 1 ? `${venueShows[0]!.venue.name}, ${venueShows[0]!.venue.city}` : venueShows.length > 1 ? 'Multiple venues' : null;
+  const lengthFact = next ? duration(next.starts_at, next.ends_at) : null;
+  const upcomingPrices = upcoming.flatMap((s) => details.get(s.id)?.data?.category_prices.map((p) => p.price_paise) ?? []);
+  const fromFact = upcomingPrices.length ? `From ${formatPaise(Math.min(...upcomingPrices))}` : null;
+  const [lead, rest] = event.description ? splitFirstSentence(event.description) : ['', ''];
 
   useEffect(() => {
     document.title = `${event.title} · FlashSeat`;
   }, [event.title]);
 
+  const toDates = () => document.getElementById('dates')?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+
   return (
     <>
-      <section aria-labelledby="event-title" className="relative h-[62svh] min-h-[460px] overflow-hidden md:h-[70svh]">
-        <EventImage event={event} className="absolute inset-0 size-full object-cover" />
-        <div
-          aria-hidden="true"
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              'linear-gradient(to bottom, rgb(12 12 12 / 0.7), transparent 28%), linear-gradient(to top, rgb(12 12 12 / 0.96) 0%, rgb(12 12 12 / 0.55) 40%, transparent 72%)',
-          }}
-        />
-        <Container className="relative flex h-full flex-col justify-end pb-10 md:pb-14">
-          <Link to="/events" className="label-mono mb-6 self-start text-text/80 hover:text-lime">
-            ← All events
-          </Link>
-          <p className="label-mono text-text/85">
-            {categoryLabel(event.category)}
-            {!cancelled && ` · ${upcoming} upcoming date${upcoming === 1 ? '' : 's'}`}
-          </p>
-          <h1 id="event-title" className="mt-4 max-w-[18ch] text-[clamp(2.5rem,6vw,5.25rem)] leading-[0.98] font-medium tracking-[-0.045em] text-text">
-            {event.title}
-          </h1>
-          {!cancelled && upcoming > 0 && (
-            <div className="mt-8">
-              <Button size="lg" onClick={() => datesRef.current?.scrollIntoView({ block: 'start' })}>
-                Choose seats <Arrow />
-              </Button>
-            </div>
+      <section aria-labelledby="event-title" className="ed-hero">
+        <HeroImage event={event} />
+        <div className="ed-scrim" aria-hidden="true" />
+        <div className="site-wrap ed-hero-in">
+          <nav aria-label="Breadcrumb" className="site-fade">
+            <ol className="ed-crumbs">
+              <li>
+                <Link to="/events">EXPLORE</Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li>
+                <Link to={`/events?category=${encodeURIComponent(event.category)}`}>{categoryLabel(event.category).toUpperCase()}</Link>
+              </li>
+            </ol>
+          </nav>
+          <Title title={event.title} />
+          {event.organization_name && (
+            <p className="ed-by site-fade" style={{ animationDelay: '.3s' }}>
+              by {event.organization_name}
+            </p>
           )}
-        </Container>
+          <div className="ed-pills site-fade" style={{ animationDelay: '.4s' }}>
+            {!cancelled && <span className="site-pill">{datesFact ?? 'No upcoming dates'}</span>}
+            {venueFact && <span className="site-pill">{venueFact}</span>}
+            {!cancelled && lengthFact && <span className="site-pill">{lengthFact}</span>}
+            {!cancelled && fromFact && <span className="site-pill">{fromFact}</span>}
+            {!cancelled && upcoming.length > 0 && (
+              <AccentButton size="md" onClick={toDates} style={{ marginLeft: 6 }}>
+                Choose seats <Arrow down />
+              </AccentButton>
+            )}
+          </div>
+        </div>
       </section>
 
       {cancelled && (
-        <Container className="pt-10">
-          <div role="status" className="border-l-2 border-danger bg-surface px-5 py-4">
-            <p className="text-[17px] font-medium text-text">This event has been cancelled.</p>
-            <p className="mt-1 text-[15px] text-text-2">Tickets for it are no longer on sale.</p>
+        <div className="site-wrap">
+          <div role="status" className="ed-cancelled">
+            <i className="site-pulse" aria-hidden="true" style={{ marginTop: 7, animation: 'none' }} />
+            <div>
+              <p style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>This event has been cancelled.</p>
+              <p style={{ margin: '4px 0 0', fontSize: 15, color: 'var(--text-2)' }}>Tickets for it are no longer on sale.</p>
+            </div>
           </div>
-        </Container>
+        </div>
       )}
 
-      {event.description && (
-        <section aria-labelledby="about-title" className="py-14 md:py-20">
-          <Container>
-            <SectionLabel index="01">About</SectionLabel>
-            <h2 id="about-title" className="sr-only">
-              About this event
-            </h2>
-            <p className="mt-8 max-w-[62ch] text-[18px] leading-[1.7] whitespace-pre-line text-text">{event.description}</p>
-          </Container>
-        </section>
-      )}
-
-      <section ref={datesRef} id="dates" aria-labelledby="dates-title" className="scroll-mt-20 pt-6 pb-28 md:pt-10">
-        <Container>
-          <SectionLabel index={event.description ? '02' : '01'}>Dates &amp; tickets</SectionLabel>
-          <h2 id="dates-title" className="mt-8 text-section font-medium text-text">
-            Pick a date.
-          </h2>
-          {shows.length === 0 ? (
-            <p className="mt-8 text-text-2">No dates have been scheduled for this event.</p>
-          ) : (
-            <ol className="mt-10 border-t border-rule">
-              {shows.map((show) => (
-                <ShowRow key={show.id} eventId={event.id} eventStatus={event.status} show={show} />
-              ))}
-            </ol>
+      <div className="site-wrap ed-main">
+        <div className="ed-left">
+          {lead && (
+            <section className="ed-section" aria-labelledby="about-title">
+              <h2 id="about-title" className="site-eyebrow" style={{ margin: 0 }}>
+                About
+              </h2>
+              <p className="ed-lead">{lead}</p>
+              {rest && <p className="ed-body">{rest}</p>}
+            </section>
           )}
-        </Container>
-      </section>
+
+          {next && <SeatsPrices showId={next.id} detail={details.get(next.id)?.data} />}
+
+          {venueShows.length > 0 && (
+            <section className="ed-section" aria-labelledby="venue-title" style={{ gap: 14 }}>
+              <h2 id="venue-title" className="site-eyebrow" style={{ margin: 0 }}>
+                {venueShows.length > 1 ? 'Venues' : 'Venue'}
+              </h2>
+              {venueShows.map((s) => (
+                <div key={s.id} className="ed-venue">
+                  <span className="ed-venue-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FAFAFA" strokeWidth="1.6">
+                      <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
+                      <circle cx="12" cy="10" r="2.5" />
+                    </svg>
+                  </span>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                    <span style={{ fontSize: 17, fontWeight: 500 }}>{s.venue.name}</span>
+                    <span style={{ fontSize: 14, color: 'var(--text-2)' }}>
+                      {s.venue.address ? (s.venue.address.toLowerCase().includes(s.venue.city.toLowerCase()) ? s.venue.address : `${s.venue.address}, ${s.venue.city}`) : s.venue.city}
+                      {s.seats_total > 0 && ` · ${s.seats_total} seats`}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </section>
+          )}
+        </div>
+
+        <DatesPanel event={event} details={details} />
+      </div>
+
+      <MoreLikeThis eventId={event.id} category={event.category} />
     </>
   );
 }
 
-/** /events/:eventId: one GET /events/:eventId, then one GET /events/:eventId/shows/:showId per show. */
+/** /events/:eventId: GET /events/:eventId, then GET /events/:eventId/shows/:showId per show (prices, sales_open_at). */
 export function EventDetailPage() {
   const { eventId = '' } = useParams();
   const query = useEventDetail(eventId);
@@ -139,21 +241,7 @@ export function EventDetailPage() {
   if (query.isPending) return <DetailSkeleton />;
   if (query.isError) {
     if (isNotFound(query.error)) return <EventNotFound />;
-    return (
-      <section className="pt-40 pb-28">
-        <Container>
-          <div role="alert" className="flex flex-col gap-6 border-y border-rule py-8 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-title font-medium text-text">We couldn't load this event right now.</p>
-              <p className="mt-1.5 text-text-2">Check your connection, or try again in a moment.</p>
-            </div>
-            <Button variant="secondary" onClick={() => void query.refetch()} disabled={query.isFetching}>
-              {query.isFetching ? 'Retrying…' : 'Try again'}
-            </Button>
-          </div>
-        </Container>
-      </section>
-    );
+    return <DetailError onRetry={() => void query.refetch()} retrying={query.isFetching} />;
   }
   return <Detail event={query.data} />;
 }

@@ -1,0 +1,965 @@
+/*
+ * /events (docs/events-page-design.html) and /events/:eventId (docs/event-detail-design.html).
+ * Prefixed ev- (list) and ed- (detail); tokens from styles/theme-v2.css, shared pieces from
+ * components/site/site.css.
+ */
+
+@layer components {
+  /* ============================================================= /events */
+  .ev-head {
+    padding-top: 72px;
+    padding-bottom: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .ev-head-text {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+  .ev-h1 {
+    margin: 0;
+    font-size: clamp(44px, 5vw, 68px);
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: -0.045em;
+    text-wrap: initial;
+  }
+  .ev-sub {
+    margin: 0;
+    font-size: 17px;
+    color: var(--text-2);
+  }
+  .ev-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--ff-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--text-2);
+  }
+
+  /* ---------------------------------------------------- sticky filter bar */
+  .ev-filters {
+    position: sticky;
+    top: var(--site-header-h);
+    z-index: 30;
+    background: rgba(8, 8, 10, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .ev-filters-in {
+    padding-top: 14px;
+    padding-bottom: 14px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .ev-city {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--r-10);
+    padding: 9px 14px;
+    background: var(--surface);
+    min-width: 200px;
+    transition: border-color 0.2s ease;
+  }
+  .ev-city:focus-within {
+    border-color: var(--text);
+  }
+  .ev-city input {
+    background: none;
+    border: 0;
+    outline: none;
+    color: var(--text);
+    font: 500 14px var(--ff-sans);
+    width: 120px;
+    min-width: 0;
+    flex: 1;
+  }
+  .ev-city input::placeholder {
+    color: var(--text-3);
+  }
+  /* The search input's own clear button would clash with the design. */
+  .ev-city input::-webkit-search-cancel-button {
+    filter: invert(0.6);
+  }
+  .ev-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .ev-tabs {
+    margin-left: auto;
+    display: flex;
+    gap: 18px;
+    align-items: center;
+  }
+  .ev-clear {
+    background: none;
+    border: 0;
+    padding: 4px 0;
+    color: var(--text-2);
+    font: 400 13px var(--ff-sans);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+  .ev-clear:hover {
+    color: var(--text);
+  }
+
+  /* Phones: a Filters button that opens the sheet. */
+  .ev-mfilters {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .ev-mbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 16px;
+    border-radius: var(--r-10);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--surface);
+    color: var(--text);
+    font: 500 14px var(--ff-sans);
+    cursor: pointer;
+  }
+  .ev-mbadge {
+    display: inline-grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg);
+    font: 600 11px var(--ff-mono);
+  }
+  .ev-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+  }
+  .ev-sheet-head {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    padding: 0 var(--gutter);
+    border-bottom: 1px solid var(--line);
+  }
+  .ev-sheet-title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+  .ev-sheet-close {
+    width: 44px;
+    height: 44px;
+    margin-right: -10px;
+    display: grid;
+    place-items: center;
+    background: none;
+    border: 0;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .ev-sheet-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px var(--gutter);
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .ev-sheet-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .ev-sheet-group .ev-city {
+    min-width: 0;
+  }
+  .ev-sheet-group .ev-tabs {
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+  .ev-sheet-foot {
+    flex: none;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    padding: 16px var(--gutter);
+    border-top: 1px solid var(--line);
+  }
+
+  @media (max-width: 767px) {
+    .ev-filters {
+      display: none;
+    }
+    .ev-mfilters {
+      display: flex;
+    }
+  }
+
+  /* ---------------------------------------------------- results */
+  .ev-main {
+    position: relative;
+    padding-top: 40px;
+    padding-bottom: 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+  /* Thin line while the previous results stay on screen (a filter or page is loading). */
+  .ev-loading-line {
+    position: absolute;
+    top: 18px;
+    left: var(--gutter);
+    right: var(--gutter);
+    height: 1px;
+    overflow: hidden;
+  }
+  .ev-loading-line > span {
+    display: block;
+    height: 1px;
+    background: var(--accent);
+    opacity: 0.7;
+    animation: site-skel 1.2s ease-in-out infinite;
+  }
+  .ev-refreshing {
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+  }
+
+  /* cards (shared by featured, grid and "More like this") */
+  .v2 .ev-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-16);
+    overflow: hidden;
+    transition: border-color 0.25s ease, transform 0.25s ease;
+    animation: site-fadeup 0.7s var(--ease-out) both;
+  }
+  .v2 .ev-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-3px);
+  }
+  .ev-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.9s var(--ease-out);
+  }
+  .ev-card:hover .ev-img {
+    transform: scale(1.06);
+  }
+
+  /* featured */
+  .v2 .ev-featured {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+    border-radius: var(--r-20);
+  }
+  .ev-featured-img {
+    display: block;
+    position: relative;
+    min-height: 360px;
+    overflow: hidden;
+    background: var(--surface-2);
+  }
+  .ev-badge {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    background: var(--accent);
+    color: var(--bg);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+  .ev-featured-body {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    justify-content: center;
+    min-width: 0;
+  }
+  .ev-kicker {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted-mono);
+  }
+  .ev-featured-title {
+    font-size: 40px;
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1.02;
+    color: var(--text);
+  }
+  .ev-featured-lede {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-2);
+  }
+  .ev-facts {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 14px;
+  }
+  .ev-fact {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .ev-fact-label {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-3);
+  }
+  .ev-fact-value {
+    color: var(--text);
+  }
+
+  /* groups */
+  .ev-group {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .ev-group-head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
+  }
+  .ev-h2 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+  .ev-range {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text-3);
+  }
+  .ev-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ev-grid > li {
+    display: flex;
+  }
+  .ev-grid > li > * {
+    flex: 1;
+  }
+  .ev-card-img {
+    display: block;
+    position: relative;
+    height: 196px;
+    overflow: hidden;
+    background: var(--surface-2);
+  }
+  .ev-card-date {
+    position: absolute;
+    left: 14px;
+    top: 14px;
+  }
+  .ev-card-body {
+    padding: 18px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+  .ev-card-cat {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted-mono);
+  }
+  .ev-card-title {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    color: var(--text);
+  }
+  .ev-card-where {
+    font-size: 13px;
+    color: var(--text-2);
+  }
+  .ev-card-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    font-size: 13px;
+  }
+
+  /* states */
+  .ev-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 32px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-18);
+    background: var(--surface);
+  }
+  .ev-panel-media {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+    gap: 32px;
+    align-items: center;
+    padding: 0;
+    overflow: hidden;
+  }
+  .ev-panel-media img {
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    object-fit: cover;
+    display: block;
+  }
+  .ev-panel-media > div {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .ev-panel-title {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+  .ev-panel-text {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-2);
+    max-width: 48ch;
+  }
+
+  /* pagination */
+  .ev-pager {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+  .ev-pager-label {
+    font-family: var(--ff-mono);
+    font-size: 12px;
+    color: var(--muted-mono);
+  }
+
+  @media (max-width: 640px) {
+    .ev-head {
+      padding-top: 48px;
+    }
+    .ev-featured-body {
+      padding: 24px;
+    }
+    .ev-featured-img {
+      min-height: 240px;
+    }
+    .ev-featured-title {
+      font-size: 30px;
+    }
+    .ev-main {
+      gap: 44px;
+    }
+  }
+
+  /* ============================================================= /events/:eventId */
+  .ed-hero {
+    position: relative;
+    height: 560px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+  }
+  .ed-hero-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    animation: ed-kb 22s ease-in-out infinite alternate;
+  }
+  .ed-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(8, 8, 10, 0.25) 0%, rgba(8, 8, 10, 0.35) 45%, var(--bg) 100%);
+  }
+  .ed-hero-in {
+    position: relative;
+    width: 100%;
+    padding-bottom: 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .ed-crumbs {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: #d4d4d8;
+    display: flex;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .v2 .ed-crumbs a {
+    color: #d4d4d8;
+  }
+  .v2 .ed-crumbs a:hover {
+    color: var(--accent);
+  }
+  .ed-h1 {
+    margin: 0;
+    font-size: clamp(44px, 6vw, 84px);
+    line-height: 0.98;
+    font-weight: 600;
+    letter-spacing: -0.05em;
+    max-width: 900px;
+    text-wrap: initial;
+  }
+  .ed-by {
+    margin: -8px 0 0;
+    font-size: 15px;
+    color: #d4d4d8;
+  }
+  .ed-pills {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .ed-cancelled {
+    margin-top: 32px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 18px 20px;
+    border-radius: var(--r-12);
+    border: 1px solid rgba(255, 107, 74, 0.35);
+    background: rgba(255, 107, 74, 0.08);
+  }
+
+  .ed-main {
+    padding-top: 56px;
+    padding-bottom: 96px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 440px);
+    gap: 56px;
+    align-items: start;
+  }
+  .ed-left {
+    display: flex;
+    flex-direction: column;
+    gap: 44px;
+    min-width: 0;
+  }
+  .ed-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .ed-lead {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .ed-body {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text-2);
+    max-width: 60ch;
+    white-space: pre-line;
+  }
+
+  /* seats & prices */
+  .ed-box {
+    border: 1px solid var(--line);
+    border-radius: var(--r-16);
+    background: var(--surface);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .ed-mini {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    max-width: 100%;
+  }
+  .ed-mini-stage {
+    width: 60%;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+    margin-bottom: 10px;
+  }
+  .ed-mini-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+  }
+  .ed-mini-section + .ed-mini-section {
+    margin-top: 10px;
+  }
+  .ed-mini-label {
+    font-family: var(--ff-mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--text-3);
+    margin-bottom: 2px;
+  }
+  /* Seats shrink with the box (max 10px), so a 25-seat row still fits a phone. */
+  .ed-mini-row {
+    display: grid;
+    gap: 3px;
+    width: 100%;
+    justify-content: center;
+  }
+  .ed-mini-seat {
+    display: block;
+    aspect-ratio: 1;
+    border-radius: 2px;
+  }
+  .ed-prices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr));
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+    gap: 12px;
+    margin: 0;
+  }
+  .ed-prices > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .ed-prices dt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-2);
+  }
+  .ed-prices dt i {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+    flex: none;
+  }
+  .ed-prices dd {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  /* venue */
+  .ed-venue {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+  }
+  .ed-venue-icon {
+    width: 52px;
+    height: 52px;
+    flex: none;
+    border-radius: var(--r-12);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* pick a date */
+  .ed-panel {
+    position: sticky;
+    top: calc(var(--site-header-h) + 27px);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-20);
+    padding: 24px;
+    min-width: 0;
+  }
+  .ed-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .ed-h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+  .ed-shows {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .ed-row {
+    width: 100%;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 16px;
+    border-radius: var(--r-12);
+    font-family: var(--ff-sans);
+    color: var(--text);
+    border: 1px solid var(--line);
+    background: transparent;
+    text-align: left;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    animation: site-fadeup 0.7s var(--ease-out) both;
+  }
+  button.ed-row {
+    cursor: pointer;
+  }
+  button.ed-row:hover {
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+  .ed-row:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+  }
+  .ed-row[aria-expanded='true'] {
+    border-color: var(--accent);
+    background: rgba(255, 107, 74, 0.06);
+  }
+  .ed-row-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+  .ed-row-when {
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .ed-row-seats {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .ed-row-price {
+    font-size: 13px;
+    color: #d4d4d8;
+    white-space: nowrap;
+  }
+  .ed-row-open {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 4px 4px;
+    animation: ed-openup 0.35s var(--ease-out) both;
+  }
+  .ed-row-note {
+    font-size: 13px;
+    color: var(--text-2);
+  }
+  .ed-past {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: var(--r-12);
+    border: 1px dashed rgba(255, 255, 255, 0.14);
+    opacity: 0.7;
+  }
+  .ed-past-date {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-2);
+  }
+  .ed-past-text {
+    font-size: 13px;
+    color: var(--text-3);
+  }
+  .ed-sales {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+  .ed-hold-note {
+    margin: 4px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-3);
+  }
+
+  /* more like this */
+  .ed-more {
+    padding-bottom: 112px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .ed-more-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
+  }
+  .ed-more .ev-card-img {
+    height: 170px;
+  }
+
+  /* 404 */
+  .ed-nf {
+    padding-top: 120px;
+    padding-bottom: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+    max-width: 720px;
+  }
+
+  /* Stacked: the dates panel is not sticky and comes right after the hero, before About. */
+  @media (max-width: 1023px) {
+    .ed-main {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 44px;
+      padding-top: 32px;
+    }
+    .ed-panel {
+      position: static;
+      order: -1;
+    }
+  }
+  @media (max-width: 640px) {
+    .ed-hero {
+      height: 520px;
+    }
+    .ed-hero-in {
+      padding-bottom: 32px;
+    }
+    .ed-panel {
+      padding: 18px;
+    }
+    /* Phones: the price moves under the seats line, so time and seats never wrap mid-phrase. */
+    .ed-row {
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr);
+      column-gap: 14px;
+      row-gap: 6px;
+      padding: 12px 14px;
+    }
+    .ed-row .site-date {
+      grid-row: span 2;
+      align-self: center;
+    }
+    .ed-row-when,
+    .ed-row-seats {
+      white-space: nowrap;
+    }
+    .ed-row-price,
+    .ed-row .ed-sales,
+    .ed-row .site-skel {
+      grid-column: 2;
+      justify-self: start;
+    }
+  }
+}
+
+@keyframes ed-kb {
+  from { transform: scale(1); }
+  to { transform: scale(1.07); }
+}
+@keyframes ed-openup {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}

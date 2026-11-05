@@ -7,7 +7,7 @@ import { NAV_LINKS } from '../layout/navLinks';
 import { MOBILE_MENU_ID, MobileMenu } from '../layout/Navbar';
 import { UserMenu } from '../layout/UserMenu';
 
-/** The ticket mark from the design. */
+/** The ticket mark from the designs. */
 export function TicketMark() {
   return (
     <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -17,16 +17,39 @@ export function TicketMark() {
   );
 }
 
+/** "Explore" is current anywhere under /events; hash links (/#categories) never are. */
+function isCurrent(to: string, pathname: string): boolean {
+  if (to.includes('#')) return false;
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
+/** Publishes the header's height as --site-header-h, so sticky bars below it line up exactly. */
+function useHeaderHeightVar() {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const set = () => document.documentElement.style.setProperty('--site-header-h', `${el.offsetHeight}px`);
+    set();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(set);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return ref;
+}
+
 /**
- * The landing page's header (design: sticky, blurred). Same auth behaviour as the shared Navbar:
- * "Log in" for guests, the account menu when signed in, nothing while the session is loading;
- * below 768px the same full-screen mobile menu.
+ * The v2 site header (sticky, blurred). Same auth behaviour as the old Navbar: "Log in" for
+ * guests, the account menu when signed in, nothing while the session is loading; below 768px the
+ * full-screen mobile menu. Used on "/", "/events" and "/events/:eventId" (Layout).
  */
-export function LandingHeader() {
+export function SiteHeader() {
   const { status, user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const location = useLocation();
+  const headerRef = useHeaderHeightVar();
 
   useEffect(() => {
     setMenuOpen(false);
@@ -38,34 +61,39 @@ export function LandingHeader() {
   }, []);
 
   return (
-    <header className="lp-header">
-      <div className="lp-wrap lp-header-in">
-        <Link to="/" className="lp-logo">
+    <header ref={headerRef} className="site-header">
+      <div className="site-wrap site-header-in">
+        <Link to="/" className="site-logo">
           <TicketMark />
           FlashSeat
         </Link>
-        <nav aria-label="Main" className="lp-nav">
+        <nav aria-label="Main" className="site-nav">
           {NAV_LINKS.map((item) => (
-            <Link key={item.to} to={item.to} className="lp-navl">
+            <Link
+              key={item.to}
+              to={item.to}
+              className="site-navl"
+              aria-current={isCurrent(item.to, location.pathname) ? 'page' : undefined}
+            >
               {item.label}
             </Link>
           ))}
         </nav>
-        <div className="lp-header-actions">
+        <div className="site-header-actions">
           {status === 'anonymous' && (
-            <Link to="/login" className="lp-navl" style={{ fontSize: 14, padding: '10px 14px' }}>
+            <Link to="/login" className="site-navl" style={{ fontSize: 14, padding: '10px 14px' }}>
               Log in
             </Link>
           )}
           {status === 'authenticated' && user && <UserMenu user={user} />}
-          <Link to="/events" className="lp-btn lp-btn-w lp-btn-sm">
-            Get tickets <span className="lp-arr">→</span>
+          <Link to="/events" className="site-btn site-btn-primary site-btn-nav">
+            Get tickets <span className="site-arr">→</span>
           </Link>
         </div>
         <button
           ref={toggleRef}
           type="button"
-          className="lp-menu-btn"
+          className="site-menu-btn"
           aria-expanded={menuOpen}
           aria-controls={MOBILE_MENU_ID}
           aria-label="Open menu"
