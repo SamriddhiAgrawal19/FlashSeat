@@ -29,6 +29,16 @@ export function statusLabel(status: BookingStatus): string {
 /** Shared shape of every status pill (booking and organizer event/show statuses). */
 export const PILL_BASE = 'label-mono inline-flex h-7 items-center gap-2 rounded-[2px] border px-2.5 whitespace-nowrap';
 
+/** The v2 pill (booking pages, My bookings): rounded, mono, coral dot for confirmed. */
+export function BookingStatusPill({ status, className }: { status: BookingStatus; className?: string }) {
+  return (
+    <span className={cn('bk-pill', `is-${status.toLowerCase().replace('_', '-')}`, className)}>
+      {status === 'CONFIRMED' && <i aria-hidden="true" className="bk-pill-dot" />}
+      {LABELS[status].toUpperCase()}
+    </span>
+  );
+}
+
 /** Small mono status label with a hairline border. */
 export function StatusPill({ status, className }: { status: BookingStatus; className?: string }) {
   return (

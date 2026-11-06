@@ -1,14 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
+import '../components/booking/booking.css';
+import { BookingHeader } from '../components/booking/BookingHeader';
 import { HoldStatusPanel } from '../components/booking/HoldStatusPanel';
+import { buildSeatLayout, shadeForRank } from '../components/booking/seatLayout';
 import { SeatLegend } from '../components/booking/SeatLegend';
 import { SeatMap } from '../components/booking/SeatMap';
-import { SelectionBar } from '../components/booking/SelectionBar';
-import { Arrow, Button, ButtonLink } from '../components/ui/Button';
-import { Container } from '../components/ui/Container';
-import { Eyebrow } from '../components/ui/Section';
-import { ApiError, activeReservationId, seatsUnavailableIds, type SeatMap as SeatMapData } from '../lib/api';
+import { MobileSelectionBar, SelectionCard } from '../components/booking/SelectionBar';
+import { useEventPhoto } from '../components/booking/useEventPhoto';
+import { ViewFromSeat } from '../components/booking/ViewFromSeat';
+import { AccentButton, Arrow, Eyebrow, GhostButton } from '../components/site/ui';
+import { ApiError, activeReservationId, seatsUnavailableIds, type SeatMap as SeatMapData, type SeatStatus } from '../lib/api';
 import { holdSeatsWithRetry, HOLD_RETRY_DELAYS_MS } from '../lib/booking/holdRequest';
 import { clearPendingHold, newIdempotencyKey, readPendingHold, savePendingHold } from '../lib/booking/idempotency';
 import { serverNow } from '../lib/booking/serverClock';
@@ -93,32 +96,34 @@ function ShowNotFound() {
     document.title = 'Show not found · FlashSeat';
   }, []);
   return (
-    <section className="pt-40 pb-28 md:pt-48">
-      <Container className="max-w-[42rem]">
+    <>
+      <BookingHeader step="seats" />
+      <section className="bk-main bk-narrow bk-step-in">
         <Eyebrow>404</Eyebrow>
-        <h1 className="mt-4 text-section font-medium text-text">Show not found.</h1>
-        <p className="mt-4 text-text-2">This show doesn't exist or isn't on sale.</p>
-        <ButtonLink to="/events" variant="secondary" className="mt-8">
+        <h1 className="bk-h1-lg">
+          Show not <span className="site-serif">found.</span>
+        </h1>
+        <p className="bk-lede">This show doesn't exist or isn't on sale.</p>
+        <GhostButton to="/events" size="lg">
           Browse events <Arrow />
-        </ButtonLink>
-      </Container>
-    </section>
+        </GhostButton>
+      </section>
+    </>
   );
 }
 
 function MapSkeleton() {
-  const block = 'bg-text/[0.07] motion-safe:animate-breathe';
   return (
-    <div aria-busy="true" className="border-y border-rule py-10">
+    <div aria-busy="true" className="bk-mapbox bk-skelmap">
       <p className="sr-only" role="status">
         Loading seats
       </p>
-      <div aria-hidden="true" className="mx-auto flex max-w-[42rem] flex-col items-center gap-2">
-        <div className={`mb-8 h-1.5 w-full ${block}`} />
-        {[10, 12, 12, 14, 14, 12].map((n, i) => (
-          <div key={i} className="flex gap-1.5">
+      <div aria-hidden="true" className="bk-skelmap-in">
+        <span className="site-skel" style={{ width: '46%', height: 6, marginBottom: 28 }} />
+        {[14, 16, 18, 20, 20, 18].map((n, i) => (
+          <div key={i} className="bk-skelmap-row">
             {Array.from({ length: n }, (_, j) => (
-              <span key={j} className={`size-7 ${block}`} />
+              <span key={j} className="site-skel" style={{ width: 16, height: 14, borderRadius: '5px 5px 3px 3px' }} />
             ))}
           </div>
         ))}
@@ -126,6 +131,12 @@ function MapSkeleton() {
     </div>
   );
 }
+
+const ZOOM_MIN = 0.7;
+const ZOOM_MAX = 1.4;
+const ZOOM_STEP = 0.1;
+/** How long a seat taken by someone else pulses after a refresh shows it (the CSS animation is 1.2 s). */
+const JUST_TAKEN_MS = 1300;
 
 /** /shows/:showId: pick seats and hold them. (An old ?event= parameter is simply ignored.) */
 export function SeatMapPage() {
@@ -146,9 +157,33 @@ export function SeatMapPage() {
   const event = map?.event;
   const seats = useMemo(() => (map ? indexSeats(map) : new Map<string, SeatInfo>()), [map]);
   const categories = useMemo(() => (map ? categoriesOf(map) : []), [map]);
-  const tiers = useMemo(() => new Map(categories.map((c) => [c.category, c.tier])), [categories]);
   const reason = map ? readOnlyReason(map, refused) : null;
   const readOnly = reason !== null;
+
+  // --- presentation only: curved layout, category shades, zoom, view from seat, taken pulse ----
+  const layout = useMemo(() => (map ? buildSeatLayout(map) : null), [map]);
+  // categoriesOf is cheapest first (tier 0); the shade rank is most expensive first.
+  const shades = useMemo(() => new Map(categories.map((c) => [c.category, shadeForRank(categories.length - 1 - c.tier, categories.length)])), [categories]);
+  const { photo, onError: onPhotoError } = useEventPhoto(event);
+  const [zoom, setZoom] = useState(1);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [justTaken, setJustTaken] = useState<ReadonlySet<string>>(() => new Set());
+  const lastStatuses = useRef<Map<string, SeatStatus> | null>(null);
+  const justTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(justTimer.current), []);
+  useEffect(() => {
+    if (!map) return;
+    const next = new Map<string, SeatStatus>();
+    for (const seat of seats.values()) next.set(seat.id, seat.status);
+    const prev = lastStatuses.current;
+    lastStatuses.current = next;
+    if (!prev) return;
+    const changed = [...next].filter(([id, status]) => status !== 'AVAILABLE' && prev.get(id) === 'AVAILABLE').map(([id]) => id);
+    if (changed.length === 0) return;
+    setJustTaken(new Set(changed));
+    window.clearTimeout(justTimer.current);
+    justTimer.current = window.setTimeout(() => setJustTaken(new Set()), JUST_TAKEN_MS);
+  }, [map]);
 
   useEffect(() => {
     document.title = event ? `Seats · ${event.title} · FlashSeat` : 'Pick seats · FlashSeat';
@@ -312,36 +347,54 @@ export function SeatMapPage() {
   // --- render ---------------------------------------------------------------------------------
   if (seatMap.isError && isNotFound(seatMap.error)) return <ShowNotFound />;
 
-  const metaLine = map ? [formatShowDate(map.show.startsAt), `${map.show.venue.name} · ${map.show.venue.city}`].filter(Boolean).join(' · ') : '';
+  // The view panel follows the hovered/focused seat, else the last selected one, else the centre.
+  const placedById = new Map((layout?.seats ?? []).map((p) => [p.seat.id, p]));
+  const middleLine = layout?.lines[Math.floor(layout.lines.length / 2)] ?? [];
+  const centreSeat = layout?.seats[middleLine[Math.floor(middleLine.length / 2)] ?? -1] ?? null;
+  const viewed = (preview && placedById.get(preview)) || placedById.get(selected[selected.length - 1] ?? '') || centreSeat;
+  const sortedSeats = [...selectedSeats].sort((a, b) => (placedById.get(a.id)?.order ?? 0) - (placedById.get(b.id)?.order ?? 0));
+  const zoomBy = (step: number) => setZoom((z) => Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z + step)) * 10) / 10);
 
   return (
     <>
-      <section aria-labelledby="seatmap-title" className="pt-28 pb-8 md:pt-32">
-        <Container>
-          <Link to={event ? `/events/${event.id}` : '/events'} className="label-mono inline-block text-text-2 hover:text-lime">
-            ← {event ? 'Back to event' : 'All events'}
-          </Link>
-          <h1 id="seatmap-title" className="mt-6 max-w-[24ch] text-section font-medium text-text">
-            {event?.title ?? 'Pick your seats'}
-          </h1>
-          <p className="label-mono mt-4 min-h-4 text-text-2">{metaLine}</p>
-
-          {categories.length > 0 && (
-            <div className="mt-10">
-              <SeatLegend categories={categories} />
+      <BookingHeader step="seats" event={event} startsAt={map?.show.startsAt} venue={map?.show.venue} />
+      <div className="bk-main bk-seats bk-step-in">
+        <section aria-labelledby="seatmap-title" className="bk-mapcard">
+          <div className="bk-mapcard-top">
+            <div className="bk-titlewrap">
+              <h1 id="seatmap-title" className="bk-h1">
+                Pick your <span className="site-serif">seats.</span>
+              </h1>
+              {map && (
+                <span className="bk-live">
+                  <i aria-hidden="true" className="site-pulse" />
+                  LIVE · {map.summary.available.toLocaleString('en-IN')} {map.summary.available === 1 ? 'SEAT' : 'SEATS'} LEFT
+                </span>
+              )}
             </div>
-          )}
+            <div className="bk-zoom" role="group" aria-label="Zoom the seat map">
+              <button type="button" className="bk-zbtn" aria-label="Zoom out" onClick={() => zoomBy(-ZOOM_STEP)} disabled={!map || zoom <= ZOOM_MIN}>
+                −
+              </button>
+              <span className="bk-zoom-pct" aria-live="polite">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button type="button" className="bk-zbtn" aria-label="Zoom in" onClick={() => zoomBy(ZOOM_STEP)} disabled={!map || zoom >= ZOOM_MAX}>
+                +
+              </button>
+            </div>
+          </div>
 
-          <div className="mt-8 flex flex-col gap-3 empty:hidden">
+          <div className="bk-panels">
             {reason && map && <ReadOnlyBanner reason={reason} salesOpenAt={map.show.salesOpenAt} />}
             {panel?.kind === 'active-hold' && (
               <HoldStatusPanel
                 title="You already have seats held for this show."
                 action={
                   panel.reservationId ? (
-                    <ButtonLink to={`/reservations/${panel.reservationId}`}>
+                    <AccentButton to={`/reservations/${panel.reservationId}`} size="sm">
                       Go to your hold <Arrow />
-                    </ButtonLink>
+                    </AccentButton>
                   ) : undefined
                 }
               >
@@ -354,50 +407,69 @@ export function SeatMapPage() {
                 role="alert"
                 title={panel.title}
                 action={
-                  <Button variant="secondary" size="sm" onClick={() => setPanel(null)}>
+                  <GhostButton size="sm" onClick={() => setPanel(null)}>
                     Dismiss
-                  </Button>
+                  </GhostButton>
                 }
               >
                 {panel.body}
               </HoldStatusPanel>
             )}
           </div>
-        </Container>
-      </section>
 
-      <Container className="pb-16">
-        {map ? (
-          // Read-only maps stay legible but clearly inert.
-          <div className={readOnly ? 'opacity-50' : undefined}>
-            <SeatMap map={map} selected={selectedSet} takenLocally={takenLocally.ids} tiers={tiers} locked={holding || readOnly} onToggle={onToggle} />
-          </div>
-        ) : seatMap.isError ? (
-          <HoldStatusPanel
-            tone="error"
-            role="alert"
-            title="We couldn't load the seats right now."
-            action={
-              <Button variant="secondary" size="sm" onClick={() => void seatMap.refetch()} disabled={seatMap.isFetching}>
-                {seatMap.isFetching ? 'Retrying…' : 'Try again'}
-              </Button>
-            }
-          >
-            Check your connection, or try again in a moment.
-          </HoldStatusPanel>
-        ) : (
-          <MapSkeleton />
-        )}
-        {map && (
-          <p className="label-mono mt-4 text-text-3">
-            {map.summary.available} of {map.summary.total} seats available · Updates every few seconds
-          </p>
-        )}
-      </Container>
+          {map && layout ? (
+            // Read-only maps stay legible but clearly inert.
+            <div className={readOnly ? 'bk-readonly' : undefined}>
+              <SeatMap
+                layout={layout}
+                selected={selectedSet}
+                takenLocally={takenLocally.ids}
+                justTaken={justTaken}
+                shades={shades}
+                zoom={zoom}
+                locked={holding || readOnly}
+                onToggle={onToggle}
+                onPreview={setPreview}
+              />
+            </div>
+          ) : seatMap.isError ? (
+            <HoldStatusPanel
+              tone="error"
+              role="alert"
+              title="We couldn't load the seats right now."
+              action={
+                <GhostButton size="sm" onClick={() => void seatMap.refetch()} disabled={seatMap.isFetching}>
+                  {seatMap.isFetching ? 'Retrying…' : 'Try again'}
+                </GhostButton>
+              }
+            >
+              Check your connection, or try again in a moment.
+            </HoldStatusPanel>
+          ) : (
+            <MapSkeleton />
+          )}
+
+          {categories.length > 0 && <SeatLegend categories={categories} shades={shades} />}
+        </section>
+
+        <aside className="bk-aside" aria-label="Your selection">
+          {layout && <ViewFromSeat placed={viewed} totalRows={layout.totalRows} photo={photo} onPhotoError={onPhotoError} />}
+          {map && !readOnly && (
+            <SelectionCard
+              seats={sortedSeats}
+              holding={holding}
+              holdingNote={holdingNote}
+              note={note}
+              onRemove={(id) => setSelected((prev) => prev.filter((s) => s !== id))}
+              onHold={onHold}
+            />
+          )}
+        </aside>
+      </div>
 
       {map && !readOnly && (
-        <SelectionBar
-          seats={selectedSeats}
+        <MobileSelectionBar
+          seats={sortedSeats}
           holding={holding}
           holdingNote={holdingNote}
           note={note}

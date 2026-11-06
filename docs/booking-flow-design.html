@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FlashSeat · Booking flow</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@1&amp;display=swap">
+<style>
+body{margin:0;background:#08080A}
+a{color:#FAFAFA}a:hover{color:#FF6B4A}
+.i-th{background-image:url(/_blob/7df0742ca1cea4320eb6d405433566d1)}
+.img{background-size:cover;background-position:center}
+.seat{position:absolute;width:22px;height:20px;padding:0;border-radius:7px 7px 4px 4px;cursor:pointer;transition:transform .18s ease,background .25s ease,border-color .25s ease,box-shadow .25s ease}
+.seat:hover{z-index:2}
+.seat:focus-visible{outline:2px solid #FAFAFA;outline-offset:2px}
+.seat.sel{animation:pop .32s ease}
+.seat.just{animation:taken 1.2s ease}
+@keyframes pop{0%{scale:.6}60%{scale:1.25}100%{scale:1}}
+@keyframes taken{0%{box-shadow:0 0 0 0 rgba(255,107,74,.8)}100%{box-shadow:0 0 0 14px rgba(255,107,74,0)}}
+.stage{animation:breathe 5s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.75}50%{opacity:1}}
+.pulse{animation:pulse 2s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,107,74,.6)}100%{box-shadow:0 0 0 8px rgba(255,107,74,0)}}
+.step-in{animation:stepin .5s cubic-bezier(.2,.7,.2,1) both}
+@keyframes stepin{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.toast{animation:toast .4s cubic-bezier(.2,.7,.2,1) both}
+@keyframes toast{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+.chip{animation:chip .25s ease both}
+@keyframes chip{from{opacity:0;transform:scale(.85)}}
+.view{transition:transform .6s cubic-bezier(.2,.7,.2,1),filter .6s ease}
+.btn .arr{display:inline-block;transition:transform .25s ease}.btn:hover .arr{transform:translateX(4px)}
+.btn-c{transition:background .2s ease}.btn-c:hover{background:#FF8466}
+.btn-w{transition:background .2s ease}.btn-w:hover{background:#E4E4E7}
+.ring{transition:stroke-dashoffset 1s linear}
+.spin{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.line{transform-origin:left;animation:line 1.2s cubic-bezier(.2,.7,.2,1) both}
+@keyframes line{from{transform:scaleX(0)}}
+.fan1{animation:fan1 .9s cubic-bezier(.2,.7,.2,1) .2s both}
+.fan2{animation:fan2 .9s cubic-bezier(.2,.7,.2,1) .35s both}
+@keyframes fan1{from{opacity:0;transform:translateY(40px) rotate(0)}to{opacity:1;transform:rotate(-4deg)}}
+@keyframes fan2{from{opacity:0;transform:translateY(40px) rotate(0)}to{opacity:1;transform:translate(36px,22px) rotate(3deg)}}
+.zbtn{transition:background .2s ease}.zbtn:hover{background:#27272A}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #08080A; color: #FAFAFA; font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif; display: flex; flex-direction: column">
+
+<header style="border-bottom: 1px solid rgba(255,255,255,0.06)">
+<div style="max-width: 1320px; margin: 0 auto; padding: 16px 32px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap">
+<a href="#" style="display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; letter-spacing: -0.02em; text-decoration: none"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FAFAFA" stroke-width="1.6"><path d="M3 7a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4z"></path><path d="M9 5v14" stroke-dasharray="2 2"></path></svg>FlashSeat</a>
+<div style="display: flex; flex-direction: column; gap: 2px; padding-left: 24px; border-left: 1px solid rgba(255,255,255,0.1)">
+<span style="font-size: 15px; font-weight: 600; letter-spacing: -0.02em">The Last Train to Lonavala</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: #8B8B94">SAT 14 NOV · 7:30 PM · RANGDEEP THEATRE, PUNE</span>
+</div>
+<ol aria-label="Booking steps" style="margin: 0 0 0 auto; padding: 0; list-style: none; display: flex; gap: 6px; align-items: center">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+<li style="display: flex; align-items: center; gap: 6px"><span aria-current="{{s.current}}" style="{{s.style}}">{{s.label}}</span><sc-if value="{{s.sep}}" hint-placeholder-val="{{ true }}"><span aria-hidden="true" style="width: 18px; height: 1px; background: rgba(255,255,255,0.15)"></span></sc-if></li>
+</sc-for>
+</ol>
+</div>
+</header>
+
+<sc-if value="{{isSeats}}" hint-placeholder-val="{{ true }}">
+<main class="step-in" style="flex: 1; max-width: 1320px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 28px 32px 140px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 24px; align-items: start">
+
+<section style="grid-column: span 2; min-width: 0; background: #0B0B0E; border: 1px solid rgba(255,255,255,0.07); border-radius: 22px; padding: 22px; display: flex; flex-direction: column; gap: 16px; position: relative">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.035em">Pick your <span style="font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: #FF6B4A">seats.</span></h1>
+<span style="display: flex; align-items: center; gap: 8px; font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: #A1A1AA"><i class="pulse" style="width: 7px; height: 7px; border-radius: 50%; background: #FF6B4A; display: inline-block"></i>LIVE · {{leftCount}} SEATS LEFT</span>
+</div>
+<div style="display: flex; gap: 6px; align-items: center">
+<button type="button" class="zbtn" aria-label="Zoom out" onClick="{{zoomOut}}" style="width: 36px; height: 36px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #131317; color: #FAFAFA; font-size: 18px; cursor: pointer">−</button>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #8B8B94; width: 44px; text-align: center">{{zoomPct}}</span>
+<button type="button" class="zbtn" aria-label="Zoom in" onClick="{{zoomIn}}" style="width: 36px; height: 36px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #131317; color: #FAFAFA; font-size: 18px; cursor: pointer">+</button>
+</div>
+</div>
+
+<div style="overflow: auto; border-radius: 14px; background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(255,255,255,0.06), transparent 70%)">
+<div style="{{mapStyle}}">
+<div class="stage" aria-hidden="true" style="position: absolute; left: 230px; top: 4px; width: 400px; height: 54px; border-radius: 50% 50% 0 0 / 100% 100% 0 0; border-top: 2px solid rgba(255,255,255,0.85); box-shadow: 0 -18px 40px -10px rgba(255,255,255,0.25) inset; display: flex; align-items: center; justify-content: center"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.3em; color: #A1A1AA; margin-top: 10px">STAGE</span></div>
+<sc-for list="{{rowLabels}}" as="rl" hint-placeholder-count="10"><span aria-hidden="true" style="{{rl.style}}">{{rl.label}}</span></sc-for>
+<sc-for list="{{seats}}" as="seat" hint-placeholder-count="80">
+<button type="button" class="{{seat.cls}}" aria-label="{{seat.aria}}" aria-pressed="{{seat.on}}" onClick="{{seat.pick}}" onMouseEnter="{{seat.hover}}" onFocus="{{seat.hover}}" style="{{seat.style}}"></button>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; font-size: 12px; color: #A1A1AA">
+<span style="display: flex; gap: 8px; align-items: center"><i style="width: 12px; height: 11px; border-radius: 4px 4px 2px 2px; border: 1.5px solid #FAFAFA; display: inline-block"></i>VIP · ₹1,199</span>
+<span style="display: flex; gap: 8px; align-items: center"><i style="width: 12px; height: 11px; border-radius: 4px 4px 2px 2px; border: 1.5px solid #A1A1AA; display: inline-block"></i>Premium · ₹799</span>
+<span style="display: flex; gap: 8px; align-items: center"><i style="width: 12px; height: 11px; border-radius: 4px 4px 2px 2px; border: 1.5px solid #5B5B66; display: inline-block"></i>Regular · ₹399</span>
+<span style="display: flex; gap: 8px; align-items: center"><i style="width: 12px; height: 11px; border-radius: 4px 4px 2px 2px; background: #FF6B4A; display: inline-block"></i>Yours</span>
+<span style="display: flex; gap: 8px; align-items: center"><i style="width: 12px; height: 11px; border-radius: 4px 4px 2px 2px; background: #1E1E23; display: inline-block"></i>Taken</span>
+</div>
+
+<sc-if value="{{toast}}" hint-placeholder-val="{{ false }}">
+<div class="toast" role="status" style="position: absolute; left: 50%; bottom: 76px; display: flex; align-items: center; gap: 10px; background: #18181B; border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; padding: 11px 16px; font-size: 13px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); white-space: nowrap"><i style="width: 7px; height: 7px; border-radius: 50%; background: #FF6B4A; display: inline-block"></i>{{toast}}</div>
+</sc-if>
+</section>
+
+<aside style="display: flex; flex-direction: column; gap: 16px; position: sticky; top: 24px">
+<div style="background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; overflow: hidden">
+<div style="position: relative; height: 200px; overflow: hidden; background: #111">
+<div class="img i-th view" role="img" aria-label="{{viewAlt}}" style="{{viewStyle}}"></div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,8,10,0) 50%, rgba(8,8,10,0.85))"></div>
+<span style="position: absolute; left: 14px; top: 12px; font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; background: rgba(8,8,10,0.7); border-radius: 6px; padding: 5px 8px">VIEW FROM {{viewSeat}}</span>
+<span style="position: absolute; left: 14px; bottom: 12px; font-size: 13px; color: #E4E4E7">{{viewText}}</span>
+</div>
+<div style="padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 13px">
+<span style="color: #A1A1AA">{{viewCat}}</span><span style="font-weight: 600">{{viewPrice}}</span>
+</div>
+</div>
+<div style="background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #8B8B94">YOUR SEATS · {{count}}/6</span><span style="font-size: 26px; font-weight: 600; letter-spacing: -0.03em">{{total}}</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 32px">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="2"><button type="button" class="chip" aria-label="{{c.aria}}" onClick="{{c.remove}}" style="display: flex; align-items: center; gap: 6px; font-family: 'Geist Mono', monospace; font-size: 12px; padding: 7px 10px; border-radius: 8px; border: 0; background: rgba(255,107,74,0.14); color: #FF8A6E; cursor: pointer">{{c.id}} <span aria-hidden="true">×</span></button></sc-for>
+<sc-if value="{{empty}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #71717A; align-self: center">Tap a seat on the map. Hover to preview the view.</span></sc-if>
+</div>
+<sc-if value="{{note}}" hint-placeholder-val="{{ false }}"><span role="status" style="font-size: 13px; color: #FF8A6E">You can hold up to 6 seats at a time.</span></sc-if>
+<button type="button" class="btn btn-c" onClick="{{hold}}" disabled="{{empty}}" style="{{holdStyle}}">{{holdLabel}} <span class="arr">→</span></button>
+<span style="font-size: 12px; line-height: 1.5; color: #71717A">Your seats are kept for you for 10 minutes while you check out.</span>
+</div>
+</aside>
+</main>
+</sc-if>
+
+<sc-if value="{{isHold}}" hint-placeholder-val="{{ false }}">
+<main class="step-in" style="flex: 1; max-width: 1100px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 56px 32px 96px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 48px; align-items: center">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 22px">
+<div style="position: relative; width: 260px; height: 260px">
+<svg aria-hidden="true" width="260" height="260" viewBox="0 0 260 260" style="transform: rotate(-90deg)"><circle cx="130" cy="130" r="112" fill="none" stroke="#1E1E23" stroke-width="8"></circle><circle class="ring" cx="130" cy="130" r="112" fill="none" stroke="{{ringColor}}" stroke-width="8" stroke-linecap="round" stroke-dasharray="703.7" stroke-dashoffset="{{ringOffset}}"></circle></svg>
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px">
+<span role="timer" aria-live="off" style="font-size: 60px; font-weight: 600; letter-spacing: -0.04em; font-variant-numeric: tabular-nums">{{clock}}</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8B8B94">HELD FOR YOU</span>
+</div>
+</div>
+<p style="margin: 0; font-size: 15px; color: #A1A1AA; text-align: center; max-width: 320px">Nobody else can book these seats until the timer runs out.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 20px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8B8B94">STEP 2 OF 4</span>
+<h1 style="margin: 0; font-size: 44px; line-height: 1.02; font-weight: 600; letter-spacing: -0.045em">They're <span style="font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: #FF6B4A">yours</span><br><span style="color: #71717A">for now.</span></h1>
+<div style="border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; background: #0F0F12">
+<sc-for list="{{lines}}" as="l" hint-placeholder-count="2">
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.06)"><span style="display: flex; gap: 12px; align-items: center"><span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: rgba(255,107,74,0.14); color: #FF8A6E; padding: 5px 8px; border-radius: 6px">{{l.id}}</span><span style="font-size: 14px; color: #D4D4D8">{{l.cat}}</span></span><span style="font-size: 14px">{{l.price}}</span></div>
+</sc-for>
+<div style="display: flex; justify-content: space-between; padding: 16px 18px; font-size: 16px; font-weight: 600"><span>Total</span><span>{{total}}</span></div>
+</div>
+<div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center">
+<button type="button" class="btn btn-w" onClick="{{toPay}}" style="background: #FAFAFA; color: #08080A; border: 0; border-radius: 12px; padding: 15px 22px; font: 600 15px 'Geist', sans-serif; cursor: pointer">Continue to payment <span class="arr">→</span></button>
+<button type="button" onClick="{{release}}" style="background: none; border: 0; color: #A1A1AA; font: 400 14px 'Geist', sans-serif; text-decoration: underline; cursor: pointer">Release seats</button>
+</div>
+</div>
+</main>
+</sc-if>
+
+<sc-if value="{{isPay}}" hint-placeholder-val="{{ false }}">
+<main class="step-in" style="flex: 1; max-width: 1100px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 48px 32px 96px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 32px; align-items: start">
+<section style="display: flex; flex-direction: column; gap: 18px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8B8B94">STEP 3 OF 4 · ORDER</span>
+<div style="display: flex; gap: 16px; align-items: center"><div class="img i-th" role="img" aria-label="Theatre stage" style="width: 84px; height: 84px; border-radius: 14px"></div><div style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 20px; font-weight: 600; letter-spacing: -0.03em">The Last Train to Lonavala</span><span style="font-size: 13px; color: #A1A1AA">Sat 14 Nov · 7:30 PM · Rangdeep Theatre, Pune</span></div></div>
+<div style="border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; background: #0F0F12">
+<sc-for list="{{lines}}" as="l" hint-placeholder-count="2"><div style="display: flex; justify-content: space-between; padding: 13px 18px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 14px"><span style="color: #D4D4D8">{{l.id}} · {{l.cat}}</span><span>{{l.price}}</span></div></sc-for>
+<div style="display: flex; justify-content: space-between; padding: 16px 18px; font-size: 18px; font-weight: 600"><span>Total</span><span>{{total}}</span></div>
+</div>
+<span style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #A1A1AA"><span style="font-variant-numeric: tabular-nums; font-family: 'Geist Mono', monospace; color: #FAFAFA; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 5px 9px">{{clock}}</span>left to complete payment</span>
+</section>
+<section style="background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 16px">
+<span style="align-self: flex-start; font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #FF8A6E; border: 1px solid rgba(255,107,74,0.4); border-radius: 6px; padding: 5px 8px">TEST MODE · NO REAL PAYMENT IS TAKEN</span>
+<h2 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.03em">Payment</h2>
+<div style="display: flex; flex-direction: column; gap: 6px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 14px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">CARD NUMBER</span><span style="font-family: 'Geist Mono', monospace; font-size: 16px; color: #D4D4D8">4242 4242 4242 4242</span></div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px">
+<div style="display: flex; flex-direction: column; gap: 6px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 14px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">EXPIRY</span><span style="font-family: 'Geist Mono', monospace; font-size: 16px; color: #D4D4D8">12 / 30</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 14px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">CVC</span><span style="font-family: 'Geist Mono', monospace; font-size: 16px; color: #D4D4D8">123</span></div>
+</div>
+<button type="button" class="btn btn-c" onClick="{{pay}}" style="display: flex; align-items: center; justify-content: center; gap: 10px; background: #FF6B4A; color: #08080A; border: 0; border-radius: 12px; padding: 15px; font: 600 15px 'Geist', sans-serif; cursor: pointer">
+<sc-if value="{{paying}}" hint-placeholder-val="{{ false }}"><span class="spin" aria-hidden="true" style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(8,8,10,0.3); border-top-color: #08080A; display: inline-block"></span></sc-if>{{payLabel}}</button>
+<button type="button" onClick="{{release}}" style="background: none; border: 0; color: #A1A1AA; font: 400 13px 'Geist', sans-serif; text-decoration: underline; cursor: pointer">Cancel and release seats</button>
+</section>
+</main>
+</sc-if>
+
+<sc-if value="{{isTicket}}" hint-placeholder-val="{{ false }}">
+<main class="step-in" style="flex: 1; max-width: 1100px; width: 100%; box-sizing: border-box; margin: 0 auto; padding: 56px 32px 96px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 56px; align-items: center">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #4ADE80">BOOKING CONFIRMED</span>
+<h1 style="margin: 0; font-size: 64px; line-height: 0.98; font-weight: 600; letter-spacing: -0.05em">You're <span style="font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: #FF6B4A">going.</span></h1>
+<span class="line" aria-hidden="true" style="display: block; width: 120px; height: 3px; background: #FF6B4A; border-radius: 2px"></span>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #A1A1AA; max-width: 420px">{{count}} tickets for The Last Train to Lonavala, Sat 14 Nov at 7:30 PM. Show the code at the door.</p>
+<div style="display: flex; gap: 12px; flex-wrap: wrap">
+<a class="btn btn-w" href="#" style="background: #FAFAFA; color: #08080A; border-radius: 12px; padding: 14px 20px; font-size: 15px; font-weight: 600; text-decoration: none">Add to calendar</a>
+<a href="#" style="border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; padding: 14px 20px; font-size: 15px; text-decoration: none">My bookings</a>
+</div>
+<button type="button" onClick="{{restart}}" style="align-self: flex-start; background: none; border: 0; color: #71717A; font: 400 13px 'Geist', sans-serif; text-decoration: underline; cursor: pointer">Restart the demo</button>
+</div>
+<div style="position: relative; height: 470px">
+<sc-for list="{{tickets}}" as="t" hint-placeholder-count="2">
+<div class="{{t.cls}}" style="position: absolute; left: 20px; top: 0; width: 320px; background: #FAFAFA; color: #08080A; border-radius: 18px; overflow: hidden; box-shadow: 0 40px 80px rgba(0,0,0,0.5)">
+<div class="img i-th" aria-hidden="true" style="height: 120px"></div>
+<div style="padding: 18px 20px 14px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #52525B">ADMIT ONE · {{t.cat}}</span>
+<span style="font-size: 20px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1">The Last Train to Lonavala</span>
+<span style="font-size: 12px; color: #52525B">Sat 14 Nov · 7:30 PM · Rangdeep Theatre</span>
+<div style="display: flex; gap: 22px; margin-top: 8px; font-family: 'Geist Mono', monospace; font-size: 12px"><span>ROW {{t.row}}</span><span>SEAT {{t.num}}</span><span>{{t.price}}</span></div>
+</div>
+<div style="border-top: 2px dashed #D4D4D8; margin: 0 14px"></div>
+<div style="padding: 16px 20px 20px; display: flex; gap: 16px; align-items: center">
+<div aria-hidden="true" style="display: grid; grid-template-columns: repeat(9, 8px); gap: 1px"><sc-for list="{{t.qr}}" as="q" hint-placeholder-count="81"><span style="{{q}}"></span></sc-for></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #52525B">TICKET CODE</span><span style="font-family: 'Geist Mono', monospace; font-size: 14px; font-weight: 500">{{t.code}}</span></div>
+</div>
+</div>
+</sc-for>
+</div>
+</main>
+</sc-if>
+
+<sc-if value="{{isSeats}}" hint-placeholder-val="{{ true }}">
+<div aria-hidden="true" style="height: 0"></div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    this.live = setInterval(function () {
+      var st = self.state || {};
+      if ((st.step || 'seats') !== 'seats') return;
+      var avail = self.available || [];
+      if (!avail.length) return;
+      var pickIdx = Math.floor(Math.random() * avail.length);
+      var id = avail[pickIdx];
+      var extra = (st.extra || []).concat([id]);
+      var sel = st.sel || [];
+      if (sel.indexOf(id) !== -1) {
+        self.setState({ extra: extra, just: id, sel: sel.filter(function (x) { return x !== id; }), toast: id + ' was just taken by someone else. Pick another seat.' });
+      } else {
+        self.setState({ extra: extra, just: id });
+      }
+    }, 3800);
+    this.clockT = setInterval(function () {
+      var st = self.state || {};
+      var step = st.step || 'seats';
+      if (step === 'hold' || step === 'pay') {
+        var left = st.left === undefined ? 600 : st.left;
+        self.setState({ left: Math.max(0, left - 1) });
+      }
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.live); clearInterval(this.clockT); }
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var step = st.step || 'seats';
+    var sel = st.sel || [];
+    var extra = st.extra || [];
+    var zoom = st.zoom || 1;
+    var left = st.left === undefined ? 600 : st.left;
+    var hov = st.hov || sel[sel.length - 1] || 'E11';
+
+    var LBL = 'ABCDEFGHIJ';
+    var catOf = function (r) { return r < 2 ? ['VIP', 1199, '#FAFAFA'] : r < 6 ? ['Premium', 799, '#A1A1AA'] : ['Regular', 399, '#5B5B66']; };
+    var cx = 430, k = 0.00026;
+    var seats = [], rowLabels = [], available = [], info = {};
+    for (var r = 0; r < 10; r++) {
+      var n = 14 + r;
+      var a1 = Math.floor(n * 0.28), a2 = n - Math.floor(n * 0.28);
+      var total = n * 30 + 44;
+      var x0 = cx - total / 2;
+      var cat = catOf(r);
+      for (var s = 0; s < n; s++) {
+        var x = x0 + s * 30 + (s >= a1 ? 22 : 0) + (s >= a2 ? 22 : 0);
+        var dx = x + 11 - cx;
+        var y = 92 + r * 40 - k * dx * dx;
+        var ang = Math.atan(2 * k * dx) * 57.3;
+        var id = LBL[r] + (s + 1);
+        var baseTaken = ((r * 7 + s * 5) % 6 === 0) || (r < 2 && (s % 3 !== 0)) || (r === 3 && s > 4 && s < 9);
+        var taken = baseTaken || extra.indexOf(id) !== -1;
+        var on = sel.indexOf(id) !== -1;
+        if (!taken && !on) available.push(id);
+        info[id] = { r: r, cat: cat[0], price: cat[1], dx: dx };
+        if (s === 0) rowLabels.push({ label: LBL[r], style: 'position: absolute; left: ' + Math.round(x - 26) + 'px; top: ' + Math.round(y + 2) + 'px; font-family: Geist Mono, monospace; font-size: 10px; color: #52525B' });
+        var look = on ? 'background: #FF6B4A; border: 1.5px solid #FF6B4A; box-shadow: 0 0 16px rgba(255,107,74,0.5);'
+          : taken ? 'background: #1E1E23; border: 1.5px solid #1E1E23; cursor: not-allowed;'
+          : 'background: transparent; border: 1.5px solid ' + cat[2] + ';';
+        (function (id, taken, on, r, s, cat) {
+          seats.push({
+            cls: 'seat' + (on ? ' sel' : '') + (st.just === id ? ' just' : ''),
+            on: on ? 'true' : 'false',
+            aria: 'Row ' + LBL[r] + ', seat ' + (s + 1) + ', ' + cat[0] + ', ₹' + cat[1].toLocaleString('en-IN') + (on ? ', selected' : taken ? ', taken' : ', available'),
+            style: 'left: ' + Math.round(x) + 'px; top: ' + Math.round(y) + 'px; transform: rotate(' + (-ang).toFixed(1) + 'deg); ' + look,
+            pick: function () {
+              if (taken) return;
+              var cur = (self.state && self.state.sel) || [];
+              if (cur.indexOf(id) !== -1) { self.setState({ sel: cur.filter(function (z) { return z !== id; }), note: false, toast: '' }); return; }
+              if (cur.length >= 6) { self.setState({ note: true }); return; }
+              self.setState({ sel: cur.concat([id]), note: false, toast: '', hov: id });
+            },
+            hover: function () { self.setState({ hov: id }); }
+          });
+        })(id, taken, on, r, s, cat);
+      }
+    }
+    this.available = available;
+
+    var hi = info[hov] || info['E11'];
+    var scale = (1.55 - hi.r * 0.07).toFixed(2);
+    var shift = (-hi.dx * 0.05).toFixed(1);
+    var blur = hi.r > 6 ? 0.6 : 0;
+
+    var price = function (id) { return info[id] ? info[id].price : 0; };
+    var sum = sel.reduce(function (t, id) { return t + price(id); }, 0);
+    var money = function (v) { return '₹' + v.toLocaleString('en-IN'); };
+    var sorted = sel.slice().sort(function (a, b) { return a[0] === b[0] ? parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10) : (a < b ? -1 : 1); });
+
+    var order = ['seats', 'hold', 'pay', 'ticket'];
+    var names = ['Seats', 'Hold', 'Pay', 'Tickets'];
+    var idx = order.indexOf(step);
+    var steps = names.map(function (nm, i) {
+      var done = i < idx, cur = i === idx;
+      return {
+        label: (done ? '✓ ' : '') + nm, sep: i < 3, current: cur ? 'step' : 'false',
+        style: 'font-size: 12px; font-weight: 500; padding: 6px 11px; border-radius: 999px; ' + (cur ? 'background: #FAFAFA; color: #08080A;' : done ? 'background: rgba(255,107,74,0.14); color: #FF8A6E;' : 'color: #71717A; border: 1px solid rgba(255,255,255,0.1);')
+      };
+    });
+
+    var mm = Math.floor(left / 60), ss = left % 60;
+    var qrFor = function (code) {
+      var cells = [], h = 0;
+      for (var i = 0; i < code.length; i++) h = (h * 31 + code.charCodeAt(i)) % 9973;
+      for (var c = 0; c < 81; c++) {
+        var rr = Math.floor(c / 9), cc = c % 9;
+        var corner = (rr < 3 && cc < 3) || (rr < 3 && cc > 5) || (rr > 5 && cc < 3);
+        var on = corner ? !(rr % 2 === 1 && cc % 2 === 1 && (rr === 1 || rr === 7) && (cc === 1 || cc === 7)) : ((h >> (c % 13)) + c * 7) % 3 === 0;
+        cells.push('width: 8px; height: 8px; display: block; background: ' + (on ? '#08080A' : 'transparent'));
+      }
+      return cells;
+    };
+    var tickets = sorted.slice(0, 2).map(function (id, i) {
+      var code = 'FS-7K2Q-' + id;
+      return { cls: i === 0 ? 'fan1' : 'fan2', row: id[0], num: id.slice(1), cat: (info[id] ? info[id].cat : '').toUpperCase(), price: money(price(id)), code: code, qr: qrFor(code) };
+    }).reverse();
+
+    return {
+      steps: steps,
+      isSeats: step === 'seats', isHold: step === 'hold', isPay: step === 'pay', isTicket: step === 'ticket',
+      seats: seats, rowLabels: rowLabels, leftCount: available.length,
+      mapStyle: 'position: relative; width: 860px; height: 500px; margin: 0 auto; transform: scale(' + zoom + '); transform-origin: top center; transition: transform .35s ease;',
+      zoomPct: Math.round(zoom * 100) + '%',
+      zoomIn: function () { self.setState({ zoom: Math.min(1.4, (st.zoom || 1) + 0.1) }); },
+      zoomOut: function () { self.setState({ zoom: Math.max(0.7, (st.zoom || 1) - 0.1) }); },
+      viewSeat: hov, viewText: 'Row ' + hov[0] + (Math.abs(hi.dx) < 90 ? ', centre' : hi.dx < 0 ? ', left side' : ', right side') + ' · approximate view',
+      viewAlt: 'Approximate view of the stage from seat ' + hov,
+      viewStyle: 'position: absolute; inset: 0; transform: scale(' + scale + ') translateX(' + shift + 'px); filter: blur(' + blur + 'px);',
+      viewCat: hi.cat, viewPrice: money(hi.price),
+      chips: sorted.map(function (id) { return { id: id, aria: 'Remove seat ' + id, remove: function () { var cur = (self.state && self.state.sel) || []; self.setState({ sel: cur.filter(function (z) { return z !== id; }) }); } }; }),
+      count: sel.length, total: money(sum), empty: sel.length === 0, note: !!st.note, toast: st.toast || '',
+      holdLabel: sel.length ? 'Hold ' + sel.length + (sel.length === 1 ? ' seat' : ' seats') + ' · ' + money(sum) : 'Choose seats to continue',
+      holdStyle: 'display: flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 12px; padding: 15px; font: 600 15px Geist, sans-serif; cursor: ' + (sel.length ? 'pointer' : 'not-allowed') + '; background: ' + (sel.length ? '#FF6B4A' : '#27272A') + '; color: ' + (sel.length ? '#08080A' : '#71717A') + ';',
+      hold: function () { if (!sel.length) return; self.setState({ step: 'hold', left: 600, toast: '' }); },
+      lines: sorted.map(function (id) { return { id: id, cat: info[id] ? info[id].cat : '', price: money(price(id)) }; }),
+      clock: (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss,
+      ringOffset: (703.7 * (1 - left / 600)).toFixed(1), ringColor: left <= 60 ? '#FF6B4A' : '#FAFAFA',
+      toPay: function () { self.setState({ step: 'pay' }); },
+      release: function () { self.setState({ step: 'seats', sel: [], paying: false }); },
+      paying: !!st.paying, payLabel: st.paying ? 'Processing…' : 'Pay ' + money(sum),
+      pay: function () { if (st.paying) return; self.setState({ paying: true }); setTimeout(function () { self.setState({ step: 'ticket', paying: false }); }, 1400); },
+      tickets: tickets,
+      restart: function () { self.setState({ step: 'seats', sel: [], extra: [], left: 600, toast: '' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

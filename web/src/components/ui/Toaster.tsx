@@ -7,12 +7,12 @@ export function Toaster() {
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 top-20 z-[60] flex flex-col items-center gap-2 px-4"
+      className="fs-toaster pointer-events-none fixed inset-x-0 top-20 z-[60] flex flex-col items-center gap-2 px-4"
     >
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className="pointer-events-auto flex max-w-[34rem] items-center gap-4 border border-rule bg-surface py-3 pr-3 pl-4 text-[15px] text-text shadow-[0_12px_40px_rgb(0_0_0/0.5)] motion-safe:animate-rise"
+          className="fs-toast pointer-events-auto flex max-w-[34rem] items-center gap-4 border border-rule bg-surface py-3 pr-3 pl-4 text-[15px] text-text shadow-[0_12px_40px_rgb(0_0_0/0.5)] motion-safe:animate-rise"
         >
           <span aria-hidden="true" className="size-1.5 shrink-0 bg-lime" />
           <span className="min-w-0 flex-1">{toast.message}</span>

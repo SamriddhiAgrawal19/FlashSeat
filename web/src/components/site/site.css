@@ -369,3 +369,42 @@
 }
 /* Reduced motion: the global rule in styles/index.css stops every animation and transition, and
    each element above is already in its final state without them. */
+
+/* ------------------------------------------------------------- toasts on v2 pages
+   Unlayered on purpose: it has to beat the Tailwind utilities on components/ui/Toaster.tsx.
+   The design's toast (docs/booking-flow-design.html): bottom centre, rounded, slides up. */
+.v2 .fs-toaster {
+  top: auto;
+  bottom: 28px;
+}
+@media (max-width: 767px) {
+  /* Above the seat map's sticky bottom bar. */
+  .v2:has(.bk-bar) .fs-toaster {
+    bottom: 150px;
+  }
+}
+.v2 .fs-toast {
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: #18181b;
+  padding: 11px 10px 11px 16px;
+  font-family: var(--ff-sans);
+  font-size: 13px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  animation: site-toast 0.4s var(--ease-out) both;
+}
+.v2 .fs-toast > span[aria-hidden='true'] {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+@keyframes site-toast {
+  from { opacity: 0; transform: translateY(12px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2 .fs-toast {
+    animation: none;
+  }
+}

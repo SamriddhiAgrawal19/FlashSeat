@@ -1,52 +1,52 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router';
+import { Navigate, useNavigate, useParams } from 'react-router';
+import '../components/booking/booking.css';
+import { BookingHeader } from '../components/booking/BookingHeader';
+import { MiniCountdown } from '../components/booking/Countdown';
 import { HoldStatusPanel } from '../components/booking/HoldStatusPanel';
 import { OrderSummary } from '../components/booking/OrderSummary';
 import { PaymentPanel } from '../components/booking/PaymentPanel';
-import { StatusPill } from '../components/booking/StatusPill';
-import { Arrow, Button, ButtonLink } from '../components/ui/Button';
-import { Container } from '../components/ui/Container';
-import { Eyebrow } from '../components/ui/Section';
+import { BookingStatusPill } from '../components/booking/StatusPill';
+import { useEventPhoto } from '../components/booking/useEventPhoto';
+import { AccentButton, Arrow, Eyebrow, GhostButton, PrimaryButton } from '../components/site/ui';
 import { ApiError, releaseReservation, type Booking } from '../lib/api';
 import { HOLD_ENDED_CODES, isPaymentsDisabled, payWithRetry } from '../lib/booking/checkout';
 import { serverNow } from '../lib/booking/serverClock';
 import { isNotFound, useBooking } from '../lib/queries';
 import { showToast } from '../lib/toast';
 
+/** Also used by /bookings/:id (under the site header). */
 export function BookingNotFound() {
   useEffect(() => {
     document.title = 'Booking not found · FlashSeat';
   }, []);
   return (
-    <section className="pt-40 pb-28 md:pt-48">
-      <Container className="max-w-[42rem]">
-        <Eyebrow>404</Eyebrow>
-        <h1 className="mt-4 text-section font-medium text-text">Booking not found.</h1>
-        <p className="mt-4 text-text-2">This booking doesn't exist, or it belongs to another account.</p>
-        <ButtonLink to="/bookings" variant="secondary" className="mt-8">
-          My bookings <Arrow />
-        </ButtonLink>
-      </Container>
+    <section className="bk-main bk-narrow bk-step-in">
+      <Eyebrow>404</Eyebrow>
+      <h1 className="bk-h1-lg">
+        Booking not <span className="site-serif">found.</span>
+      </h1>
+      <p className="bk-lede">This booking doesn't exist, or it belongs to another account.</p>
+      <GhostButton to="/bookings" size="lg">
+        My bookings <Arrow />
+      </GhostButton>
     </section>
   );
 }
 
 export function PageSkeleton({ label }: { label: string }) {
-  const block = 'bg-text/[0.07] motion-safe:animate-breathe';
   return (
-    <section aria-busy="true" className="pt-32 pb-28">
+    <section aria-busy="true" className="bk-main bk-pay">
       <p className="sr-only" role="status">
         {label}
       </p>
-      <Container aria-hidden="true" className="grid gap-12 md:grid-cols-2">
-        <div>
-          <div className={`h-4 w-40 ${block}`} />
-          <div className={`mt-6 h-10 w-3/4 ${block}`} />
-          <div className={`mt-10 h-48 w-full ${block}`} />
-        </div>
-        <div className={`h-96 w-full ${block}`} />
-      </Container>
+      <div aria-hidden="true" className="bk-order">
+        <span className="site-skel" style={{ width: 160, height: 12 }} />
+        <span className="site-skel" style={{ width: '70%', height: 84, borderRadius: 14 }} />
+        <span className="site-skel" style={{ width: '100%', height: 180, borderRadius: 16 }} />
+      </div>
+      <span aria-hidden="true" className="site-skel" style={{ width: '100%', height: 420, borderRadius: 20 }} />
     </section>
   );
 }
@@ -74,9 +74,9 @@ function ClosedBooking({ booking }: { booking: Booking }) {
       tone="muted"
       title={text.title}
       action={
-        <ButtonLink to={`/events/${booking.event.id}`}>
+        <PrimaryButton to={`/events/${booking.event.id}`} size="sm">
           Back to the event <Arrow />
-        </ButtonLink>
+        </PrimaryButton>
       }
     >
       {text.body}
@@ -91,6 +91,7 @@ export function PayPage() {
   const queryClient = useQueryClient();
   const query = useBooking(bookingId);
   const booking = query.data;
+  const { photo, onError: onPhotoError } = useEventPhoto(booking?.event);
 
   const [paying, setPaying] = useState(false);
   const [payingNote, setPayingNote] = useState<string | null>(null);
@@ -105,26 +106,41 @@ export function PayPage() {
     document.title = booking ? `Pay · ${booking.event.title} · FlashSeat` : 'Pay · FlashSeat';
   }, [booking]);
 
-  if (query.isError && isNotFound(query.error)) return <BookingNotFound />;
-  if (query.isPending) return <PageSkeleton label="Loading your order" />;
+  if (query.isError && isNotFound(query.error)) {
+    return (
+      <>
+        <BookingHeader step="pay" />
+        <BookingNotFound />
+      </>
+    );
+  }
+  if (query.isPending) {
+    return (
+      <>
+        <BookingHeader step="pay" />
+        <PageSkeleton label="Loading your order" />
+      </>
+    );
+  }
   if (!booking) {
     return (
-      <section className="pt-40 pb-28">
-        <Container>
+      <>
+        <BookingHeader step="pay" />
+        <section className="bk-main bk-narrow">
           <HoldStatusPanel
             tone="error"
             role="alert"
             title="We couldn't load your order right now."
             action={
-              <Button variant="secondary" size="sm" onClick={() => void query.refetch()} disabled={query.isFetching}>
+              <GhostButton size="sm" onClick={() => void query.refetch()} disabled={query.isFetching}>
                 {query.isFetching ? 'Retrying…' : 'Try again'}
-              </Button>
+              </GhostButton>
             }
           >
             Check your connection, or try again in a moment.
           </HoldStatusPanel>
-        </Container>
-      </section>
+        </section>
+      </>
     );
   }
 
@@ -185,107 +201,99 @@ export function PayPage() {
     }
   }
 
+  const shownStatus = expiredHere && booking.status === 'PENDING_PAYMENT' ? 'EXPIRED' : booking.status;
+
   return (
-    <section aria-labelledby="pay-title" className="pt-28 pb-28 md:pt-32">
-      <Container>
-        <Link to={`/events/${booking.event.id}`} className="label-mono inline-block text-text-2 hover:text-lime">
-          ← Back to event
-        </Link>
-        <div className="mt-6 flex flex-wrap items-center gap-4">
-          <h1 id="pay-title" className="text-section font-medium text-text">
-            Checkout
-          </h1>
-          <StatusPill status={expiredHere && booking.status === 'PENDING_PAYMENT' ? 'EXPIRED' : booking.status} />
-        </div>
-
-        <div className="mt-12 grid gap-12 border-t border-rule pt-10 md:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] md:gap-16">
-          <OrderSummary booking={booking} />
-
-          <div>
-            {payable && payBefore ? (
-              <PaymentPanel
-                totalPaise={booking.totalPaise}
-                payBefore={payBefore}
-                paying={paying}
-                payingNote={payingNote}
-                onPay={() => void onPay()}
+    <>
+      <BookingHeader step="pay" event={booking.event} startsAt={booking.show.startsAt} venue={booking.show.venue} />
+      <div className="bk-main bk-pay bk-step-in">
+        <OrderSummary
+          booking={booking}
+          photo={photo}
+          onPhotoError={onPhotoError}
+          clock={
+            payable && payBefore ? (
+              <MiniCountdown
+                expiresAt={payBefore}
                 onExpire={() => {
                   setExpiredHere(true);
                   void query.refetch();
                 }}
-              >
-                {problem?.kind === 'ended' && (
-                  <HoldStatusPanel
-                    className="mt-6"
-                    tone="error"
-                    role="alert"
-                    title="Your hold ended before payment. Your seats may have been taken."
-                    action={
-                      <ButtonLink to={seatMapUrl} variant="secondary" size="sm">
-                        Seat map <Arrow />
-                      </ButtonLink>
-                    }
-                  />
-                )}
-                {problem?.kind === 'payments-off' && (
-                  <HoldStatusPanel className="mt-6" tone="error" role="alert" title="Payments are not available right now.">
-                    Your seats stay held until the timer runs out. Please try again later.
-                  </HoldStatusPanel>
-                )}
-                {problem?.kind === 'busy' && (
-                  <HoldStatusPanel className="mt-6" tone="error" role="alert" title="We're very busy right now.">
-                    Nothing was charged. Please try again in {problem.wait} second{problem.wait === 1 ? '' : 's'}.
-                  </HoldStatusPanel>
-                )}
-                {problem?.kind === 'failed' && (
-                  <HoldStatusPanel className="mt-6" tone="error" role="alert" title="The payment didn't go through.">
-                    Nothing was charged. Please try again.
-                  </HoldStatusPanel>
-                )}
+              />
+            ) : undefined
+          }
+        />
 
-                <div className="mt-6 border-t border-rule pt-5">
-                  {release === 'idle' ? (
-                    <button
-                      type="button"
-                      onClick={() => setRelease('confirm')}
-                      disabled={paying}
-                      className="text-[15px] text-text-2 underline decoration-text/25 underline-offset-4 hover:text-text disabled:opacity-50"
-                    >
-                      Cancel and release seats
-                    </button>
-                  ) : (
-                    <HoldStatusPanel
-                      tone="muted"
-                      title="Cancel this order?"
-                      action={
-                        <>
-                          <Button size="sm" variant="secondary" onClick={() => void onRelease()} disabled={release === 'releasing'}>
-                            {release === 'releasing' ? 'Releasing…' : 'Yes, release seats'}
-                          </Button>
-                          <Button size="sm" onClick={() => setRelease('idle')} disabled={release === 'releasing'}>
-                            Keep my order
-                          </Button>
-                        </>
-                      }
-                    >
-                      Your seats go back on sale straight away.
-                    </HoldStatusPanel>
-                  )}
-                  {releaseError && (
-                    <p role="alert" className="mt-4 text-[15px] text-danger">
-                      {releaseError}
-                    </p>
-                  )}
-                </div>
-              </PaymentPanel>
-            ) : booking.status === 'PENDING_PAYMENT' ? (
+        {payable && payBefore ? (
+          <PaymentPanel totalPaise={booking.totalPaise} paying={paying} payingNote={payingNote} onPay={() => void onPay()}>
+            {problem?.kind === 'ended' && (
+              <HoldStatusPanel
+                tone="error"
+                role="alert"
+                title="Your hold ended before payment. Your seats may have been taken."
+                action={
+                  <GhostButton to={seatMapUrl} size="sm">
+                    Seat map <Arrow />
+                  </GhostButton>
+                }
+              />
+            )}
+            {problem?.kind === 'payments-off' && (
+              <HoldStatusPanel tone="error" role="alert" title="Payments are not available right now.">
+                Your seats stay held until the timer runs out. Please try again later.
+              </HoldStatusPanel>
+            )}
+            {problem?.kind === 'busy' && (
+              <HoldStatusPanel tone="error" role="alert" title="We're very busy right now.">
+                Nothing was charged. Please try again in {problem.wait} second{problem.wait === 1 ? '' : 's'}.
+              </HoldStatusPanel>
+            )}
+            {problem?.kind === 'failed' && (
+              <HoldStatusPanel tone="error" role="alert" title="The payment didn't go through.">
+                Nothing was charged. Please try again.
+              </HoldStatusPanel>
+            )}
+
+            {release === 'idle' ? (
+              <button type="button" className="bk-textbtn is-sm is-center" onClick={() => setRelease('confirm')} disabled={paying}>
+                Cancel and release seats
+              </button>
+            ) : (
+              <HoldStatusPanel
+                tone="muted"
+                title="Cancel this order?"
+                action={
+                  <>
+                    <GhostButton size="sm" onClick={() => void onRelease()} disabled={release === 'releasing'}>
+                      {release === 'releasing' ? 'Releasing…' : 'Yes, release seats'}
+                    </GhostButton>
+                    <PrimaryButton size="sm" onClick={() => setRelease('idle')} disabled={release === 'releasing'}>
+                      Keep my order
+                    </PrimaryButton>
+                  </>
+                }
+              >
+                Your seats go back on sale straight away.
+              </HoldStatusPanel>
+            )}
+            {releaseError && (
+              <p role="alert" className="bk-error-text">
+                {releaseError}
+              </p>
+            )}
+          </PaymentPanel>
+        ) : (
+          <section aria-label="Payment" className="bk-card bk-paycard">
+            <BookingStatusPill status={shownStatus} />
+            <h2 className="bk-h2">Payment</h2>
+            {booking.status === 'PENDING_PAYMENT' ? (
               <HoldStatusPanel
                 tone="muted"
                 title="Your hold expired before payment."
                 action={
-                  <ButtonLink to={`/events/${booking.event.id}`}>
+                  <AccentButton to={`/events/${booking.event.id}`} size="sm">
                     Back to the event <Arrow />
-                  </ButtonLink>
+                  </AccentButton>
                 }
               >
                 The seats went back on sale. They may still be free.
@@ -293,9 +301,9 @@ export function PayPage() {
             ) : (
               <ClosedBooking booking={booking} />
             )}
-          </div>
-        </div>
-      </Container>
-    </section>
+          </section>
+        )}
+      </div>
+    </>
   );
 }

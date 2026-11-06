@@ -1,15 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
-import { Countdown } from '../components/booking/Countdown';
+import { useNavigate, useParams } from 'react-router';
+import '../components/booking/booking.css';
+import { BookingHeader } from '../components/booking/BookingHeader';
+import { CountdownRing } from '../components/booking/Countdown';
 import { HoldStatusPanel } from '../components/booking/HoldStatusPanel';
-import { Arrow, Button, ButtonLink } from '../components/ui/Button';
-import { Container } from '../components/ui/Container';
-import { Eyebrow } from '../components/ui/Section';
-import { ApiError, releaseReservation, type Reservation } from '../lib/api';
+import { SeatLines } from '../components/booking/OrderSummary';
+import { AccentButton, Arrow, Eyebrow, GhostButton, PrimaryButton } from '../components/site/ui';
+import { ApiError, releaseReservation } from '../lib/api';
 import { checkoutWithRetry, HOLD_ENDED_CODES } from '../lib/booking/checkout';
-import { seatCode } from '../lib/booking/seats';
-import { formatCategory, formatPaise, formatShowDate } from '../lib/format';
 import { isNotFound, useReservation } from '../lib/queries';
 import { showToast } from '../lib/toast';
 
@@ -18,48 +17,19 @@ function HoldNotFound() {
     document.title = 'Hold not found · FlashSeat';
   }, []);
   return (
-    <section className="pt-40 pb-28 md:pt-48">
-      <Container className="max-w-[42rem]">
+    <>
+      <BookingHeader step="hold" />
+      <section className="bk-main bk-narrow bk-step-in">
         <Eyebrow>404</Eyebrow>
-        <h1 className="mt-4 text-section font-medium text-text">Hold not found.</h1>
-        <p className="mt-4 text-text-2">This hold doesn't exist, or it belongs to another account.</p>
-        <ButtonLink to="/events" variant="secondary" className="mt-8">
+        <h1 className="bk-h1-lg">
+          Hold not <span className="site-serif">found.</span>
+        </h1>
+        <p className="bk-lede">This hold doesn't exist, or it belongs to another account.</p>
+        <GhostButton to="/events" size="lg">
           Browse events <Arrow />
-        </ButtonLink>
-      </Container>
-    </section>
-  );
-}
-
-function SeatList({ reservation }: { reservation: Reservation }) {
-  const sections = new Set(reservation.seats.map((s) => s.section));
-  return (
-    <div>
-      <p className="label-mono text-text-2">
-        Your seats · {reservation.seats.length}
-      </p>
-      <ul className="mt-4 border-t border-rule">
-        {reservation.seats.map((seat) => (
-          <li key={seat.id} className="flex items-baseline justify-between gap-6 border-b border-rule py-4">
-            <div className="min-w-0">
-              <p className="text-[17px] font-medium tracking-[-0.02em] text-text">
-                Row {seat.row}, seat {seat.number}
-                <span className="label-mono ml-3 text-text-2">{seatCode(seat)}</span>
-              </p>
-              <p className="label-mono mt-1 text-text-2">
-                {sections.size > 1 ? `${formatCategory(seat.section)} · ` : ''}
-                {formatCategory(seat.category)}
-              </p>
-            </div>
-            <p className="font-mono text-[15px] text-text">{formatPaise(seat.pricePaise)}</p>
-          </li>
-        ))}
-      </ul>
-      <div className="flex items-baseline justify-between gap-6 pt-5">
-        <p className="label-mono text-text-2">Total</p>
-        <p className="text-title font-medium text-text">{formatPaise(reservation.totalPricePaise)}</p>
-      </div>
-    </div>
+        </GhostButton>
+      </section>
+    </>
   );
 }
 
@@ -88,46 +58,50 @@ export function ReservationPage() {
 
   if (query.isPending) {
     return (
-      <section aria-busy="true" className="pt-32 pb-28">
-        <p className="sr-only" role="status">
-          Loading your hold
-        </p>
-        <Container aria-hidden="true">
-          <div className="h-4 w-40 bg-text/[0.07] motion-safe:animate-breathe" />
-          <div className="mt-6 h-12 w-2/3 max-w-xl bg-text/[0.07] motion-safe:animate-breathe" />
-          <div className="mt-10 h-28 w-80 bg-text/[0.07] motion-safe:animate-breathe" />
-        </Container>
-      </section>
+      <>
+        <BookingHeader step="hold" />
+        <section aria-busy="true" className="bk-main bk-hold">
+          <p className="sr-only" role="status">
+            Loading your hold
+          </p>
+          <div aria-hidden="true" className="bk-hold-left">
+            <span className="site-skel" style={{ width: 260, height: 260, borderRadius: '50%' }} />
+          </div>
+          <div aria-hidden="true" className="bk-hold-right">
+            <span className="site-skel" style={{ width: 120, height: 12 }} />
+            <span className="site-skel" style={{ width: '80%', height: 90 }} />
+            <span className="site-skel" style={{ width: '100%', height: 160, borderRadius: 16 }} />
+          </div>
+        </section>
+      </>
     );
   }
 
   if (!reservation) {
     return (
-      <section className="pt-40 pb-28">
-        <Container>
+      <>
+        <BookingHeader step="hold" />
+        <section className="bk-main bk-narrow">
           <HoldStatusPanel
             tone="error"
             role="alert"
             title="We couldn't load your hold right now."
             action={
-              <Button variant="secondary" size="sm" onClick={() => void query.refetch()} disabled={query.isFetching}>
+              <GhostButton size="sm" onClick={() => void query.refetch()} disabled={query.isFetching}>
                 {query.isFetching ? 'Retrying…' : 'Try again'}
-              </Button>
+              </GhostButton>
             }
           >
             Check your connection, or try again in a moment.
           </HoldStatusPanel>
-        </Container>
-      </section>
+        </section>
+      </>
     );
   }
 
   const seatMapUrl = `/shows/${reservation.showId}`;
   // The countdown reaching zero on the server clock means EXPIRED, even before a refetch says so.
   const status = reservation.status === 'ACTIVE' && expiredHere ? 'EXPIRED' : reservation.status;
-  const metaLine = [formatShowDate(reservation.show.startsAt), `${reservation.show.venue.name} · ${reservation.show.venue.city}`]
-    .filter(Boolean)
-    .join(' · ');
 
   // Idempotent on the server (one booking per reservation), so retries resend the same request.
   async function onCheckout() {
@@ -174,140 +148,159 @@ export function ReservationPage() {
     }
   }
 
+  const active = status === 'ACTIVE';
+  const lines = <SeatLines seats={reservation.seats} totalPaise={reservation.totalPricePaise} />;
+
+  const errors = (
+    <>
+      {checkoutError === 'ended' && (
+        <HoldStatusPanel
+          tone="error"
+          role="alert"
+          title="Your hold ended before checkout. Your seats may have been taken."
+          action={
+            <GhostButton to={seatMapUrl} size="sm">
+              Back to the seat map <Arrow />
+            </GhostButton>
+          }
+        />
+      )}
+      {(checkoutError === 'busy' || checkoutError === 'failed') && (
+        <HoldStatusPanel tone="error" role="alert" title={checkoutError === 'busy' ? "We're very busy right now." : "We couldn't start checkout."}>
+          Your seats are still held. Please try again in a moment.
+        </HoldStatusPanel>
+      )}
+      {releaseError && (
+        <p role="alert" className="bk-error-text">
+          {releaseError}
+        </p>
+      )}
+    </>
+  );
+
   return (
-    <section aria-labelledby="hold-title" className="pt-28 pb-28 md:pt-32">
-      <Container>
-        <Link to={seatMapUrl} className="label-mono inline-block text-text-2 hover:text-lime">
-          ← Seat map
-        </Link>
-        <p className="label-mono mt-6 text-text-2">Your hold</p>
-        <h1 id="hold-title" className="mt-3 max-w-[24ch] text-section font-medium text-text">
-          {event?.title ?? 'Your seats'}
-        </h1>
-        <p className="label-mono mt-4 min-h-4 text-text-2">{metaLine}</p>
+    <>
+      <BookingHeader step="hold" event={reservation.event} startsAt={reservation.show.startsAt} venue={reservation.show.venue} />
+      {active ? (
+        <section aria-labelledby="hold-title" className="bk-main bk-hold bk-step-in">
+          <div className="bk-hold-left">
+            <CountdownRing
+              expiresAt={reservation.expiresAt}
+              onExpire={() => {
+                setExpiredHere(true);
+                void query.refetch();
+              }}
+            />
+            <p className="bk-hold-caption">Nobody else can book these seats until the timer runs out.</p>
+          </div>
 
-        <div className="mt-12 grid gap-14 border-t border-rule pt-10 md:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] md:gap-20">
-          <div>
-            {status === 'ACTIVE' && (
-              <>
-                <Countdown
-                  expiresAt={reservation.expiresAt}
-                  onExpire={() => {
-                    setExpiredHere(true);
-                    void query.refetch();
-                  }}
-                />
-                <p className="mt-6 max-w-[44ch] text-text-2">
-                  These seats are yours until the timer runs out. Check out before then to book them.
-                </p>
-                <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <Button size="lg" onClick={() => void onCheckout()} disabled={checkingOut || release !== 'idle'} aria-busy={checkingOut}>
-                    {checkingOut ? 'Starting checkout…' : (
-                      <>
-                        Continue to checkout <Arrow />
-                      </>
-                    )}
-                  </Button>
-                  {release === 'idle' && !checkingOut && (
-                    <button
-                      type="button"
-                      onClick={() => setRelease('confirm')}
-                      className="self-start px-1 py-2 text-[15px] text-text-2 underline decoration-text/25 underline-offset-4 hover:text-text sm:self-auto"
-                    >
-                      Release seats
-                    </button>
-                  )}
-                </div>
-                {release !== 'idle' && (
-                  <HoldStatusPanel
-                    className="mt-8"
-                    tone="muted"
-                    title="Release these seats?"
-                    action={
-                      <>
-                        <Button size="sm" variant="secondary" onClick={() => void onRelease()} disabled={release === 'releasing'}>
-                          {release === 'releasing' ? 'Releasing…' : 'Yes, release them'}
-                        </Button>
-                        <Button size="sm" onClick={() => setRelease('idle')} disabled={release === 'releasing'}>
-                          Keep my seats
-                        </Button>
-                      </>
-                    }
-                  >
-                    Anyone will be able to take them straight away.
-                  </HoldStatusPanel>
+          <div className="bk-hold-right">
+            <Eyebrow>STEP 2 OF 4</Eyebrow>
+            <h1 id="hold-title" className="bk-h1-hold">
+              They're <span className="site-serif">yours</span>
+              <br />
+              <span className="bk-dim">for now.</span>
+            </h1>
+            {lines}
+            <div className="bk-actions">
+              <PrimaryButton size="lg" className="bk-btn-cta" onClick={() => void onCheckout()} disabled={checkingOut || release !== 'idle'} aria-busy={checkingOut}>
+                {checkingOut ? (
+                  <>
+                    <span aria-hidden="true" className="bk-spin is-dark" /> Starting checkout…
+                  </>
+                ) : (
+                  <>
+                    Continue to payment <Arrow />
+                  </>
                 )}
-              </>
+              </PrimaryButton>
+              {release === 'idle' && !checkingOut && (
+                <button type="button" className="bk-textbtn" onClick={() => setRelease('confirm')}>
+                  Release seats
+                </button>
+              )}
+            </div>
+            {release !== 'idle' && (
+              <HoldStatusPanel
+                tone="muted"
+                title="Release these seats?"
+                action={
+                  <>
+                    <GhostButton size="sm" onClick={() => void onRelease()} disabled={release === 'releasing'}>
+                      {release === 'releasing' ? 'Releasing…' : 'Yes, release them'}
+                    </GhostButton>
+                    <PrimaryButton size="sm" onClick={() => setRelease('idle')} disabled={release === 'releasing'}>
+                      Keep my seats
+                    </PrimaryButton>
+                  </>
+                }
+              >
+                Anyone will be able to take them straight away.
+              </HoldStatusPanel>
             )}
-
-            {status === 'EXPIRED' && (
+            {errors}
+          </div>
+        </section>
+      ) : (
+        <section aria-labelledby="hold-title" className="bk-main bk-narrow bk-step-in">
+          <Eyebrow>STEP 2 OF 4 · HOLD</Eyebrow>
+          {status === 'EXPIRED' && (
+            <>
+              <h1 id="hold-title" className="bk-h1-hold">
+                Time's <span className="site-serif">up.</span>
+              </h1>
               <HoldStatusPanel
                 tone="muted"
                 title="Your hold has expired."
                 action={
-                  <ButtonLink to={seatMapUrl}>
+                  <AccentButton to={seatMapUrl} size="sm">
                     Back to the seat map <Arrow />
-                  </ButtonLink>
+                  </AccentButton>
                 }
               >
                 The seats went back on sale. They may still be free.
               </HoldStatusPanel>
-            )}
-            {status === 'RELEASED' && (
+            </>
+          )}
+          {status === 'RELEASED' && (
+            <>
+              <h1 id="hold-title" className="bk-h1-hold">
+                Seats <span className="site-serif">released.</span>
+              </h1>
               <HoldStatusPanel
                 tone="muted"
                 title="You released these seats."
                 action={
-                  <ButtonLink to={seatMapUrl}>
+                  <AccentButton to={seatMapUrl} size="sm">
                     Back to the seat map <Arrow />
-                  </ButtonLink>
+                  </AccentButton>
                 }
               >
                 They are back on sale for everyone.
               </HoldStatusPanel>
-            )}
-            {status === 'CONFIRMED' && (
+            </>
+          )}
+          {status === 'CONFIRMED' && (
+            <>
+              <h1 id="hold-title" className="bk-h1-hold">
+                Already <span className="site-serif">booked.</span>
+              </h1>
               <HoldStatusPanel
                 title="Already booked."
                 action={
-                  <ButtonLink to="/bookings">
+                  <PrimaryButton to="/bookings" size="sm">
                     Your bookings <Arrow />
-                  </ButtonLink>
+                  </PrimaryButton>
                 }
               >
                 These seats are yours. Your tickets are in your bookings.
               </HoldStatusPanel>
-            )}
-
-            {checkoutError === 'ended' && (
-              <HoldStatusPanel
-                className="mt-8"
-                tone="error"
-                role="alert"
-                title="Your hold ended before checkout. Your seats may have been taken."
-                action={
-                  <ButtonLink to={seatMapUrl} variant="secondary">
-                    Back to the seat map <Arrow />
-                  </ButtonLink>
-                }
-              />
-            )}
-            {(checkoutError === 'busy' || checkoutError === 'failed') && (
-              <HoldStatusPanel className="mt-8" tone="error" role="alert" title={checkoutError === 'busy' ? "We're very busy right now." : "We couldn't start checkout."}>
-                Your seats are still held. Please try again in a moment.
-              </HoldStatusPanel>
-            )}
-
-            {releaseError && (
-              <p role="alert" className="mt-6 text-[15px] text-danger">
-                {releaseError}
-              </p>
-            )}
-          </div>
-
-          <SeatList reservation={reservation} />
-        </div>
-      </Container>
-    </section>
+            </>
+          )}
+          {errors}
+          <div className="bk-dimmed">{lines}</div>
+        </section>
+      )}
+    </>
   );
 }

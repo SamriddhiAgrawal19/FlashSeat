@@ -1,32 +1,18 @@
 import { useEffect } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
+import '../components/booking/booking.css';
 import { HoldStatusPanel } from '../components/booking/HoldStatusPanel';
-import { StatusPill } from '../components/booking/StatusPill';
+import { BookingStatusPill } from '../components/booking/StatusPill';
 import { Ticket } from '../components/booking/Ticket';
-import { Arrow, Button, ButtonLink } from '../components/ui/Button';
-import { Container } from '../components/ui/Container';
-import { Accent } from '../components/ui/Section';
+import { useEventPhoto, type EventPhoto } from '../components/booking/useEventPhoto';
+import { AccentButton, Arrow, GhostButton, PrimaryButton } from '../components/site/ui';
 import type { Booking } from '../lib/api';
 import { serverNow } from '../lib/booking/serverClock';
-import { formatPaise, formatShowDate, formatTime } from '../lib/format';
-import { isNotFound, useBooking } from '../lib/queries';
+import { cn } from '../lib/cn';
+import { formatPaise, formatShowDate, formatShowDay, formatTime } from '../lib/format';
+import { downloadIcs } from '../lib/ics';
+import { isNotFound, useBooking, useShowDetail } from '../lib/queries';
 import { BookingNotFound, PageSkeleton } from './PayPage';
-
-/** "You're going." right after payment: a lime rule draws across once (static with reduced motion). */
-function SuccessMoment({ title }: { title: string }) {
-  return (
-    <div role="status" className="mb-14 md:mb-20">
-      <p className="label-mono text-text-2">Payment confirmed</p>
-      <p className="mt-4 text-hero font-medium text-text">
-        You&apos;re <Accent>going.</Accent>
-      </p>
-      <p className="mt-4 max-w-[40ch] text-title text-text-2">{title}</p>
-      <div aria-hidden="true" className="mt-10 h-px w-full bg-rule">
-        <div className="h-px w-full origin-left bg-lime motion-safe:animate-[draw-line_1.2s_cubic-bezier(0.2,0.7,0.1,1)_both]" />
-      </div>
-    </div>
-  );
-}
 
 function payableNow(booking: Booking): boolean {
   return booking.status === 'PENDING_PAYMENT' && !!booking.payBefore && Date.parse(booking.payBefore) > serverNow();
@@ -35,9 +21,9 @@ function payableNow(booking: Booking): boolean {
 /** What a booking without live tickets means, and what to do next. */
 function StatusNotice({ booking }: { booking: Booking }) {
   const eventLink = (
-    <ButtonLink to={`/events/${booking.event.id}`} variant="secondary">
+    <GhostButton to={`/events/${booking.event.id}`} size="sm">
       Back to the event <Arrow />
-    </ButtonLink>
+    </GhostButton>
   );
   switch (booking.status) {
     case 'PENDING_PAYMENT':
@@ -45,9 +31,9 @@ function StatusNotice({ booking }: { booking: Booking }) {
         <HoldStatusPanel
           title="Payment pending."
           action={
-            <ButtonLink to={`/pay/${booking.id}`}>
+            <AccentButton to={`/pay/${booking.id}`} size="sm">
               Continue to payment <Arrow />
-            </ButtonLink>
+            </AccentButton>
           }
         >
           Your seats are held until {formatTime(booking.payBefore ?? '')}. Pay before then to get your tickets.
@@ -92,6 +78,62 @@ function StatusNotice({ booking }: { booking: Booking }) {
   }
 }
 
+/** "Add to calendar": an .ics built in the browser from the show's start/end and the venue. */
+function AddToCalendar({ booking }: { booking: Booking }) {
+  const show = useShowDetail(booking.event.id, booking.show.id);
+  const detail = show.data;
+  const onClick = () => {
+    if (!detail) return;
+    const seats = booking.seats.map((s) => `${s.row}${s.number}`).join(', ');
+    downloadIcs({
+      uid: `${booking.id}@flashseat`,
+      title: booking.event.title,
+      startIso: detail.starts_at,
+      endIso: detail.ends_at,
+      location: [detail.venue_name, detail.venue_address].filter(Boolean).join(', '),
+      description: `FlashSeat booking ${booking.id}. Seats: ${seats}.`,
+    });
+  };
+  return (
+    <PrimaryButton size="lg" className="bk-btn-cta" onClick={onClick} disabled={!detail} title={show.isError ? "The show's details couldn't be loaded." : undefined}>
+      Add to calendar
+    </PrimaryButton>
+  );
+}
+
+const FAN = ['bk-fan-1', 'bk-fan-2', 'bk-fan-3'];
+
+/** Right after paying: the first tickets fan in (the first one on top). */
+function TicketFan({ booking, photo }: { booking: Booking; photo: EventPhoto | null }) {
+  const fan = booking.seats.slice(0, 3);
+  return (
+    <div className={cn('bk-fan', `has-${fan.length}`)} aria-hidden="true">
+      {[...fan].reverse().map((seat) => {
+        const i = fan.indexOf(seat);
+        return <Ticket key={seat.id} booking={booking} seat={seat} photo={photo} className={cn('bk-fan-card', FAN[i])} />;
+      })}
+    </div>
+  );
+}
+
+function TicketList({ booking, photo, voided }: { booking: Booking; photo: EventPhoto | null; voided: boolean }) {
+  return (
+    <section aria-labelledby="tickets-title" className="bk-tickets">
+      <h2 id="tickets-title" className="site-eyebrow">
+        YOUR TICKETS · {booking.seats.length}
+        {booking.status === 'CONFIRMED' ? ' · SHOW THE QR CODE AT THE DOOR' : ' · VOID'}
+      </h2>
+      <ol className="bk-ticket-grid">
+        {booking.seats.map((seat) => (
+          <li key={seat.id}>
+            <Ticket booking={booking} seat={seat} photo={photo} void={voided} />
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 /** /bookings/:bookingId (?new=1 right after paying): the booking and one ticket per seat. */
 export function BookingPage() {
   const { bookingId = '' } = useParams();
@@ -99,6 +141,7 @@ export function BookingPage() {
   const query = useBooking(bookingId);
   const booking = query.data;
   const isNew = searchParams.get('new') === '1';
+  const { photo } = useEventPhoto(booking?.event);
 
   useEffect(() => {
     document.title = booking ? `${booking.status === 'CONFIRMED' ? 'Tickets' : 'Booking'} · ${booking.event.title} · FlashSeat` : 'Booking · FlashSeat';
@@ -108,92 +151,100 @@ export function BookingPage() {
   if (query.isPending) return <PageSkeleton label="Loading your booking" />;
   if (!booking) {
     return (
-      <section className="pt-40 pb-28">
-        <Container>
-          <HoldStatusPanel
-            tone="error"
-            role="alert"
-            title="We couldn't load this booking right now."
-            action={
-              <Button variant="secondary" size="sm" onClick={() => void query.refetch()} disabled={query.isFetching}>
-                {query.isFetching ? 'Retrying…' : 'Try again'}
-              </Button>
-            }
-          >
-            Check your connection, or try again in a moment.
-          </HoldStatusPanel>
-        </Container>
+      <section className="bk-main bk-narrow">
+        <HoldStatusPanel
+          tone="error"
+          role="alert"
+          title="We couldn't load this booking right now."
+          action={
+            <GhostButton size="sm" onClick={() => void query.refetch()} disabled={query.isFetching}>
+              {query.isFetching ? 'Retrying…' : 'Try again'}
+            </GhostButton>
+          }
+        >
+          Check your connection, or try again in a moment.
+        </HoldStatusPanel>
       </section>
     );
   }
 
   const voided = booking.status === 'REFUND_PENDING' || booking.status === 'REFUNDED';
   const showTickets = booking.status === 'CONFIRMED' || voided;
+  const confirmed = booking.status === 'CONFIRMED';
+  const count = booking.seats.length;
+
+  if (isNew && confirmed) {
+    return (
+      <div className="bk-wrap">
+        <section aria-labelledby="booking-title" className="bk-confirm bk-step-in">
+          <div role="status" className="bk-confirm-text">
+            <span className="bk-confirmed-label">BOOKING CONFIRMED</span>
+            <h1 id="booking-title" className="bk-h1-going">
+              You're <span className="site-serif">going.</span>
+            </h1>
+            <span aria-hidden="true" className="bk-drawline" />
+            <p className="bk-lede">
+              {count} {count === 1 ? 'ticket' : 'tickets'} for {booking.event.title}, {formatShowDay(booking.show.startsAt)} at {formatTime(booking.show.startsAt)}. Show
+              the code at the door.
+            </p>
+            <div className="bk-actions">
+              <AddToCalendar booking={booking} />
+              <GhostButton to="/bookings" size="lg" className="bk-btn-cta">
+                My bookings
+              </GhostButton>
+            </div>
+          </div>
+          <TicketFan booking={booking} photo={photo} />
+        </section>
+        <TicketList booking={booking} photo={photo} voided={false} />
+      </div>
+    );
+  }
 
   return (
-    <section aria-labelledby="booking-title" className="pt-28 pb-28 md:pt-32">
-      <Container>
-        <Link to="/bookings" className="label-mono inline-block text-text-2 hover:text-lime">
+    <div className="bk-wrap bk-step-in">
+      <section aria-labelledby="booking-title" className="bk-booking-head">
+        <GhostButton to="/bookings" size="sm" className="bk-back">
           ← My bookings
-        </Link>
-
-        <div className="mt-8">
-          {isNew && booking.status === 'CONFIRMED' && <SuccessMoment title={booking.event.title} />}
-
-          <div className="flex flex-wrap items-center gap-4">
-            <StatusPill status={booking.status} />
-            <p className="label-mono text-text-3">
-              Booking <span className="font-mono normal-case tracking-normal text-text-2">{booking.id}</span>
-            </p>
-          </div>
-          <h1 id="booking-title" className="mt-5 max-w-[24ch] text-section font-medium text-text">
-            {booking.event.title}
-          </h1>
-
-          <dl className="mt-8 grid grid-cols-2 gap-x-8 gap-y-5 border-y border-rule py-6 md:grid-cols-4">
-            <div>
-              <dt className="label-mono text-text-2">Date &amp; time</dt>
-              <dd className="mt-1 text-text">{formatShowDate(booking.show.startsAt)}</dd>
-            </div>
-            <div>
-              <dt className="label-mono text-text-2">Venue</dt>
-              <dd className="mt-1 text-text">
-                {booking.show.venue.name}, {booking.show.venue.city}
-              </dd>
-            </div>
-            <div>
-              <dt className="label-mono text-text-2">Seats</dt>
-              <dd className="mt-1 text-text">{booking.seats.length}</dd>
-            </div>
-            <div>
-              <dt className="label-mono text-text-2">Total</dt>
-              <dd className="mt-1 text-text">{formatPaise(booking.totalPaise)}</dd>
-            </div>
-          </dl>
+        </GhostButton>
+        <div className="bk-booking-status">
+          <BookingStatusPill status={booking.status} />
+          <span className="site-eyebrow">
+            BOOKING <span className="bk-id">{booking.id}</span>
+          </span>
         </div>
-
-        {booking.status !== 'CONFIRMED' && (
-          <div className="mt-8">
-            <StatusNotice booking={booking} />
+        <h1 id="booking-title" className="bk-h1-lg">
+          {booking.event.title}
+        </h1>
+        <dl className="bk-facts">
+          <div>
+            <dt>DATE &amp; TIME</dt>
+            <dd>{formatShowDate(booking.show.startsAt)}</dd>
+          </div>
+          <div>
+            <dt>VENUE</dt>
+            <dd>
+              {booking.show.venue.name}, {booking.show.venue.city}
+            </dd>
+          </div>
+          <div>
+            <dt>SEATS</dt>
+            <dd>{count}</dd>
+          </div>
+          <div>
+            <dt>TOTAL</dt>
+            <dd>{formatPaise(booking.totalPaise)}</dd>
+          </div>
+        </dl>
+        {confirmed && (
+          <div className="bk-actions">
+            <AddToCalendar booking={booking} />
           </div>
         )}
+        {!confirmed && <StatusNotice booking={booking} />}
+      </section>
 
-        {showTickets && (
-          <div className="mt-14">
-            <p className="label-mono text-text-2">
-              {booking.seats.length} ticket{booking.seats.length === 1 ? '' : 's'}
-              {booking.status === 'CONFIRMED' ? ' · Show the QR code at the door' : ' · Void'}
-            </p>
-            <ol className="mt-6 flex flex-col gap-6">
-              {booking.seats.map((seat) => (
-                <li key={seat.id}>
-                  <Ticket booking={booking} seat={seat} void={voided} />
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
-      </Container>
-    </section>
+      {showTickets && <TicketList booking={booking} photo={photo} voided={voided} />}
+    </div>
   );
 }

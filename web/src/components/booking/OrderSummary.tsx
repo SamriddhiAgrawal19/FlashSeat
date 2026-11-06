@@ -1,39 +1,76 @@
-import type { Booking } from '../../lib/api';
+import type { Booking, ReservationSeat } from '../../lib/api';
 import { seatCode } from '../../lib/booking/seats';
-import { formatCategory, formatPaise, formatShowDate } from '../../lib/format';
+import { formatCategory, formatPaise, formatShowDay, formatTime } from '../../lib/format';
+import type { ReactNode } from 'react';
+import { seatCategoryLabel } from './seatLayout';
+import type { EventPhoto } from './useEventPhoto';
 
-/** Event, date, venue, the seats with category and price, and the total. */
-export function OrderSummary({ booking }: { booking: Booking }) {
-  const sections = new Set(booking.seats.map((s) => s.section));
+/** "PAVILION · " when a booking spans several sections, so "A5" stays unambiguous. */
+function sectionPrefix(seats: ReservationSeat[], seat: ReservationSeat): string {
+  return new Set(seats.map((s) => s.section)).size > 1 ? `${formatCategory(seat.section)} · ` : '';
+}
+
+/** The hold page's seat lines (coral seat tag, category, price) and the total. */
+export function SeatLines({ seats, totalPaise }: { seats: ReservationSeat[]; totalPaise: number }) {
   return (
-    <div>
-      <p className="label-mono text-text-2">Order summary</p>
-      <h2 className="mt-4 text-title font-medium text-text">{booking.event.title}</h2>
-      <p className="label-mono mt-3 text-text-2">
-        {formatShowDate(booking.show.startsAt)} · {booking.show.venue.name} · {booking.show.venue.city}
-      </p>
-
-      <ul className="mt-8 border-t border-rule">
-        {booking.seats.map((seat) => (
-          <li key={seat.id} className="flex items-baseline justify-between gap-6 border-b border-rule py-4">
-            <div className="min-w-0">
-              <p className="text-[17px] font-medium tracking-[-0.02em] text-text">
-                Row {seat.row}, seat {seat.number}
-                <span className="label-mono ml-3 text-text-2">{seatCode(seat)}</span>
-              </p>
-              <p className="label-mono mt-1 text-text-2">
-                {sections.size > 1 ? `${formatCategory(seat.section)} · ` : ''}
-                {formatCategory(seat.category)}
-              </p>
-            </div>
-            <p className="font-mono text-[15px] text-text">{formatPaise(seat.pricePaise)}</p>
+    <div className="bk-lines">
+      <ul aria-label={`Your seats · ${seats.length}`}>
+        {seats.map((seat) => (
+          <li key={seat.id} className="bk-line">
+            <span className="bk-line-left">
+              <span className="bk-tag" aria-label={`Row ${seat.row}, seat ${seat.number}`}>
+                {seatCode(seat)}
+              </span>
+              <span className="bk-line-cat">
+                {sectionPrefix(seats, seat)}
+                {seatCategoryLabel(seat.category)}
+              </span>
+            </span>
+            <span>{formatPaise(seat.pricePaise)}</span>
           </li>
         ))}
       </ul>
-      <div className="flex items-baseline justify-between gap-6 pt-5">
-        <p className="label-mono text-text-2">Total</p>
-        <p className="text-title font-medium text-text">{formatPaise(booking.totalPaise)}</p>
+      <div className="bk-line-total">
+        <span>Total</span>
+        <span>{formatPaise(totalPaise)}</span>
       </div>
     </div>
+  );
+}
+
+/** The pay page's order: event photo, title, date · venue, the seats, the total and the clock. */
+export function OrderSummary({ booking, photo, onPhotoError, clock }: { booking: Booking; photo: EventPhoto | null; onPhotoError: () => void; clock?: ReactNode }) {
+  const when = [formatShowDay(booking.show.startsAt), formatTime(booking.show.startsAt)].filter(Boolean).join(' · ');
+  return (
+    <section aria-labelledby="order-title" className="bk-order">
+      <span className="site-eyebrow">STEP 3 OF 4 · ORDER</span>
+      <div className="bk-order-head">
+        <div className="bk-thumb">{photo && <img src={photo.src} alt="" onError={onPhotoError} decoding="async" />}</div>
+        <div className="bk-order-title">
+          <h2 id="order-title">{booking.event.title}</h2>
+          <span>
+            {when} · {booking.show.venue.name}, {booking.show.venue.city}
+          </span>
+        </div>
+      </div>
+      <div className="bk-lines">
+        <ul aria-label={`Your seats · ${booking.seats.length}`}>
+          {booking.seats.map((seat) => (
+            <li key={seat.id} className="bk-line is-plain">
+              <span className="bk-line-cat">
+                {sectionPrefix(booking.seats, seat)}
+                {seatCode(seat)} · {seatCategoryLabel(seat.category)}
+              </span>
+              <span>{formatPaise(seat.pricePaise)}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="bk-line-total is-lg">
+          <span>Total</span>
+          <span>{formatPaise(booking.totalPaise)}</span>
+        </div>
+      </div>
+      {clock}
+    </section>
   );
 }

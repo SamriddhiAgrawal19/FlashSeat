@@ -28,7 +28,12 @@ export function Layout() {
   const { pathname } = useLocation();
   const isLanding = pathname === '/';
   const isAuth = pathname === '/login' || pathname === '/register';
-  const isV2 = isLanding || isAuth || pathname === '/events' || pathname.startsWith('/events/');
+  // The booking steps (seats, hold, pay) render their own BookingHeader and no footer
+  // (docs/booking-flow-design.html); /bookings and /bookings/:id use the site header and footer.
+  const isBookingStep = /^\/(shows|reservations|pay)\//.test(pathname);
+  const isBookings = pathname === '/bookings' || pathname.startsWith('/bookings/');
+  const isV2 = isLanding || isAuth || isBookingStep || isBookings || pathname === '/events' || pathname.startsWith('/events/');
+  const bare = isAuth || isBookingStep;
 
   return (
     <div className={cn('flex min-h-dvh flex-col', isV2 && 'v2', isLanding && 'lp')}>
@@ -38,11 +43,11 @@ export function Layout() {
       >
         Skip to content
       </a>
-      {isAuth ? null : isV2 ? <SiteHeader /> : <Navbar />}
+      {bare ? null : isV2 ? <SiteHeader /> : <Navbar />}
       <main id="main" className="flex-1">
         <Outlet />
       </main>
-      {isAuth ? null : isV2 ? <SiteFooter /> : <Footer />}
+      {bare ? null : isV2 ? <SiteFooter /> : <Footer />}
       <Toaster />
     </div>
   );

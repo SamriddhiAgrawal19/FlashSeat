@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
 import QRCode from 'qrcode';
 import type { Booking, BookingSeat } from '../../lib/api';
-import { seatCode } from '../../lib/booking/seats';
 import { cn } from '../../lib/cn';
-import { formatCategory, formatFullDate, formatPaise, formatTime } from '../../lib/format';
+import { formatCategory, formatPaise, formatShowDay, formatTime } from '../../lib/format';
+import type { EventPhoto } from './useEventPhoto';
 
 /** The ticket code as a QR code: one SVG path drawn from the module matrix (no network, no innerHTML). */
-function QrCode({ value, size = 132 }: { value: string; size?: number }) {
+function QrCode({ value, size = 96 }: { value: string; size?: number }) {
   const { path, count } = useMemo(() => {
     const { modules } = QRCode.create(value, { errorCorrectionLevel: 'M' });
     let d = '';
@@ -26,81 +26,62 @@ function QrCode({ value, size = 132 }: { value: string; size?: number }) {
       height={size}
       viewBox={`${-quiet} ${-quiet} ${count + quiet * 2} ${count + quiet * 2}`}
       shapeRendering="crispEdges"
-      className="block bg-text"
+      className="bk-qr"
     >
-      <path d={path} fill="#0c0c0c" />
+      <path d={path} fill="#08080A" />
     </svg>
-  );
-}
-
-function Field({ label, value, className }: { label: string; value: string; className?: string }) {
-  return (
-    <div className={cn('min-w-0', className)}>
-      <p className="label-mono text-bg/55">{label}</p>
-      <p className="mt-1 truncate text-[17px] font-medium tracking-[-0.02em]">{value}</p>
-    </div>
   );
 }
 
 interface TicketProps {
   booking: Booking;
   seat: BookingSeat;
+  photo: EventPhoto | null;
   /** Cancelled event (REFUND_PENDING / REFUNDED): greyed with a VOID stamp. */
   void?: boolean;
+  className?: string;
 }
 
 /**
- * One seat's ticket: warm-white paper, sharp corners, a dashed perforation with side notches,
- * and a stub with the QR code and ticket code. Stacks vertically on narrow screens.
+ * One seat's ticket (docs/booking-flow-design.html): white card, event photo strip, ADMIT ONE ·
+ * CATEGORY, title, date / time / venue, ROW / SEAT / price, a dashed perforation, and the real QR
+ * code of the ticket code.
  */
-export function Ticket({ booking, seat, void: isVoid = false }: TicketProps) {
+export function Ticket({ booking, seat, photo, void: isVoid = false, className }: TicketProps) {
   const code = seat.ticketCode;
+  const when = [formatShowDay(booking.show.startsAt), formatTime(booking.show.startsAt)].filter(Boolean).join(' · ');
   return (
-    <article
-      aria-label={`Ticket: row ${seat.row}, seat ${seat.number}${isVoid ? ' (void)' : ''}`}
-      className={cn('relative flex flex-col overflow-hidden bg-text text-bg md:flex-row', isVoid && 'opacity-55 grayscale')}
-    >
-      <div className="flex-1 p-6 md:p-8">
-        <p className="label-mono flex items-center justify-between gap-4 text-bg/55">
-          <span>FlashSeat · Admit one</span>
-          <span>{seatCode(seat)}</span>
-        </p>
-        <h3 className="mt-4 text-title font-medium">{booking.event.title}</h3>
-        <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4">
-          <Field label="Date" value={formatFullDate(booking.show.startsAt) ?? ''} className="col-span-2" />
-          <Field label="Time" value={formatTime(booking.show.startsAt) ?? ''} />
-          <Field label="Price" value={formatPaise(seat.pricePaise)} />
-          <Field label="Venue" value={`${booking.show.venue.name}, ${booking.show.venue.city}`} className="col-span-2" />
-          <Field label="Row · Seat" value={`${seat.row} · ${seat.number}`} />
-          <Field label="Category" value={formatCategory(seat.category)} />
+    <article aria-label={`Ticket: row ${seat.row}, seat ${seat.number}${isVoid ? ' (void)' : ''}`} className={cn('bk-ticket', isVoid && 'is-void', className)}>
+      <div className="bk-ticket-photo">{photo && <img src={photo.src} alt="" decoding="async" />}</div>
+      <div className="bk-ticket-body">
+        <span className="bk-ticket-kicker">ADMIT ONE · {formatCategory(seat.category).toUpperCase()}</span>
+        <h3 className="bk-ticket-title">{booking.event.title}</h3>
+        <span className="bk-ticket-meta">
+          {when} · {booking.show.venue.name}, {booking.show.venue.city}
+        </span>
+        <div className="bk-ticket-facts">
+          {new Set(booking.seats.map((s) => s.section)).size > 1 && <span>{seat.section}</span>}
+          <span>ROW {seat.row}</span>
+          <span>SEAT {seat.number}</span>
+          <span>{formatPaise(seat.pricePaise)}</span>
         </div>
       </div>
-
-      {/* Perforation: dashed rule with a notch cut at each end. */}
-      <div aria-hidden="true" className="relative mx-0 h-0 border-t-2 border-dashed border-bg/25 md:h-auto md:w-0 md:border-t-0 md:border-l-2">
-        <span className="absolute -top-[13px] -left-3 size-6 rounded-full bg-bg md:-top-3 md:-left-[13px]" />
-        <span className="absolute -top-[13px] -right-3 size-6 rounded-full bg-bg md:top-auto md:right-auto md:-bottom-3 md:-left-[13px]" />
-      </div>
-
-      <div className="flex items-center gap-5 p-6 md:w-60 md:flex-col md:items-start md:justify-center md:p-8">
+      <div aria-hidden="true" className="bk-ticket-perf" />
+      <div className="bk-ticket-stub">
         {code && !isVoid ? (
           <QrCode value={code} />
         ) : (
-          <div aria-hidden="true" className="grid size-[132px] shrink-0 place-items-center border border-dashed border-bg/30 label-mono text-bg/45">
-            No code
+          <div aria-hidden="true" className="bk-qr-none">
+            NO CODE
           </div>
         )}
-        <div className="min-w-0">
-          <p className="label-mono text-bg/55">Ticket code</p>
-          <p className="mt-1 font-mono text-[12px] leading-snug break-all">{code ?? '—'}</p>
+        <div className="bk-ticket-code">
+          <span>TICKET CODE</span>
+          <span>{code ?? '—'}</span>
         </div>
       </div>
-
       {isVoid && (
-        <p
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 border-4 border-bg px-5 py-1 font-mono text-[2.5rem] font-bold tracking-[0.2em] text-bg"
-        >
+        <p aria-hidden="true" className="bk-void">
           VOID
         </p>
       )}

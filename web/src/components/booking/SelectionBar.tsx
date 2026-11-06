@@ -1,11 +1,10 @@
 import type { SeatInfo } from '../../lib/booking/seats';
-import { HOLD_MINUTES, seatCode } from '../../lib/booking/seats';
-import { formatCategory, formatPaise } from '../../lib/format';
+import { HOLD_MINUTES, MAX_SEATS_PER_HOLD, seatCode } from '../../lib/booking/seats';
 import { cn } from '../../lib/cn';
-import { Button } from '../ui/Button';
-import { Container } from '../ui/Container';
+import { formatPaise } from '../../lib/format';
 
-interface SelectionBarProps {
+interface SelectionProps {
+  /** Selected seats, already sorted in map order. */
   seats: SeatInfo[];
   holding: boolean;
   /** "Retrying…" status while the hold request backs off. */
@@ -17,62 +16,91 @@ interface SelectionBarProps {
 }
 
 function Spinner() {
-  return <span aria-hidden="true" className="inline-block size-4 animate-spin rounded-full border-2 border-bg/30 border-t-bg" />;
+  return <span aria-hidden="true" className="bk-spin" />;
 }
 
-/** Sticky bottom bar: picked seats as removable chips, the total and "Hold seats". */
-export function SelectionBar({ seats, holding, holdingNote, note, onRemove, onHold }: SelectionBarProps) {
+function holdLabel(seats: SeatInfo[], total: number): string {
+  if (seats.length === 0) return 'Choose seats to continue';
+  return `Hold ${seats.length} ${seats.length === 1 ? 'seat' : 'seats'} · ${formatPaise(total)}`;
+}
+
+function HoldButton({ seats, total, holding, onHold, compact = false }: { seats: SeatInfo[]; total: number; holding: boolean; onHold: () => void; compact?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onHold}
+      disabled={seats.length === 0 || holding}
+      aria-busy={holding}
+      className={cn('site-btn site-btn-accent bk-btn-block bk-hold-btn', holding && 'is-busy', compact && 'is-compact')}
+    >
+      {holding ? (
+        <>
+          <Spinner /> Holding…
+        </>
+      ) : (
+        <>
+          {compact && seats.length > 0 ? `Hold ${seats.length}` : holdLabel(seats, total)} <span className="site-arr" aria-hidden="true">→</span>
+        </>
+      )}
+    </button>
+  );
+}
+
+function Chips({ seats, holding, onRemove }: Pick<SelectionProps, 'seats' | 'holding' | 'onRemove'>) {
+  return (
+    <ul aria-label="Your seats" className="bk-chips">
+      {seats.map((seat) => (
+        <li key={seat.id}>
+          <button type="button" className="bk-chip" onClick={() => onRemove(seat.id)} disabled={holding} aria-label={`Remove row ${seat.row}, seat ${seat.number}`}>
+            {seatCode(seat)} <span aria-hidden="true">×</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Right panel (768px and up): chips, total, "Hold N seats · ₹X", the seat limit and the hold time. */
+export function SelectionCard({ seats, holding, holdingNote, note, onRemove, onHold }: SelectionProps) {
   const total = seats.reduce((sum, s) => sum + s.pricePaise, 0);
   return (
-    <div className="sticky bottom-0 z-30 border-t border-rule bg-bg/95 backdrop-blur-md">
-      <Container className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between md:gap-8">
-        <div className="min-w-0">
-          {seats.length === 0 ? (
-            <p className="text-[15px] text-text-2">Tap a seat to pick it.</p>
-          ) : (
-            <ul aria-label="Your seats" className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 md:flex-wrap md:overflow-visible">
-              {seats.map((seat) => (
-                <li key={seat.id} className="shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => onRemove(seat.id)}
-                    disabled={holding}
-                    aria-label={`Remove row ${seat.row}, seat ${seat.number}`}
-                    className="group flex h-9 items-center gap-2 rounded-[2px] border border-lime/60 pr-2 pl-3 text-[14px] text-text transition-colors hover:border-lime disabled:opacity-50"
-                  >
-                    <span className="font-medium">{seatCode(seat)}</span>
-                    <span className="label-mono text-text-2">{formatCategory(seat.category)}</span>
-                    <span aria-hidden="true" className="text-text-2 group-hover:text-lime">
-                      ✕
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p aria-live="polite" className="mt-2 min-h-4 text-[13px] text-text-2">
-            {note ?? holdingNote ?? `Seats are held for you for ${HOLD_MINUTES} minutes while you check out.`}
-          </p>
-        </div>
+    <div className="bk-card bk-selcard">
+      <div className="bk-selhead">
+        <span className="bk-mono-label">
+          YOUR SEATS · {seats.length}/{MAX_SEATS_PER_HOLD}
+        </span>
+        <span className="bk-total">{formatPaise(total)}</span>
+      </div>
+      <div className="bk-chips-wrap">
+        {seats.length > 0 ? <Chips seats={seats} holding={holding} onRemove={onRemove} /> : <span className="bk-hint">Tap a seat on the map. Hover to preview the view.</span>}
+      </div>
+      <p aria-live="polite" className={cn('bk-note', !note && !holdingNote && 'is-empty')}>
+        {note ?? holdingNote}
+      </p>
+      <HoldButton seats={seats} total={total} holding={holding} onHold={onHold} />
+      <span className="bk-small">Your seats are kept for you for {HOLD_MINUTES} minutes while you check out.</span>
+    </div>
+  );
+}
 
-        <div className="flex shrink-0 items-center justify-between gap-6 md:justify-end">
-          <p className="flex flex-col">
-            <span className="label-mono text-text-2">
-              {seats.length} seat{seats.length === 1 ? '' : 's'} · Total
-            </span>
-            <span className="text-title font-medium text-text">{formatPaise(total)}</span>
-          </p>
-          <Button onClick={onHold} disabled={seats.length === 0 || holding} aria-busy={holding} className={cn('min-w-40', holding && 'disabled:opacity-100')}>
-            {holding ? (
-              <>
-                <Spinner /> Holding…
-              </>
-            ) : (
-              'Hold seats'
-            )}
-          </Button>
+/** Below 768px: a sticky bottom bar with the chips, count, total and the hold button. */
+export function MobileSelectionBar({ seats, holding, holdingNote, note, onRemove, onHold }: SelectionProps) {
+  const total = seats.reduce((sum, s) => sum + s.pricePaise, 0);
+  return (
+    <div className="bk-bar">
+      {seats.length > 0 && <Chips seats={seats} holding={holding} onRemove={onRemove} />}
+      <p aria-live="polite" className="bk-note">
+        {note ?? holdingNote ?? (seats.length === 0 ? `Tap a seat to pick it. Up to ${MAX_SEATS_PER_HOLD} seats, held for ${HOLD_MINUTES} minutes.` : '')}
+      </p>
+      <div className="bk-bar-row">
+        <div className="bk-bar-sum">
+          <span className="bk-mono-label">
+            {seats.length}/{MAX_SEATS_PER_HOLD} SEATS
+          </span>
+          <span className="bk-bar-total">{formatPaise(total)}</span>
         </div>
-      </Container>
+        <HoldButton seats={seats} total={total} holding={holding} onHold={onHold} compact />
+      </div>
     </div>
   );
 }
