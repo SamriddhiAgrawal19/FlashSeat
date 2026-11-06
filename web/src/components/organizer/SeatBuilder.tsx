@@ -3,7 +3,6 @@
 // per-request cap is split by rows into several requests.
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
 import { describeNetworkOrRateLimit } from '../auth/FormParts';
 import {
   ApiError,
@@ -16,13 +15,12 @@ import {
   type VenueLayout,
   type VenueSeatLimitDetails,
 } from '../../lib/api';
-import { cn } from '../../lib/cn';
 import { describeRows, formatCount, normalizeTag, parseRowLabels } from '../../lib/organizer';
 import { invalidateVenueCaches } from '../../lib/organizerQueries';
 import { showToast } from '../../lib/toast';
-import { CategoryTotals, LayoutPreview, orderCategories, previewTotals, type PreviewSection } from './LayoutPreview';
+import { categoriesInOrder, categoryColor, CategoryTotals, layoutToPreview, orderCategories, PreviewRows, previewTotals, type PreviewSection } from './LayoutPreview';
 import { CATEGORY_SUGGESTIONS, RowGroupEditor, type GroupCheck, type GroupDraft } from './RowGroupEditor';
-import { Action, InlineAlert } from './ui';
+import { Action, Arr, InlineAlert } from './ui';
 
 type Mode = 'GRID' | 'GENERAL_ADMISSION';
 
@@ -184,7 +182,10 @@ export function SeatBuilder({ venueId, venueName, layout }: Props) {
   const adding = [...totals.values()].reduce((a, b) => a + b, 0);
   const existingCount = layout?.seat_count ?? 0;
   const overVenueCap = existingCount + adding > MAX_SEATS_PER_VENUE;
-  const order = orderCategories([...(layout?.categories ?? []), ...totals.keys()]);
+  // Presentation: the current layout (drawn dimmed above the new groups) and the shade order,
+  // categories in the order they appear (existing rows first, then the new groups).
+  const existingPreview = useMemo(() => (layout ? layoutToPreview(layout) : []), [layout]);
+  const order = orderCategories([...categoriesInOrder(existingPreview), ...totals.keys()]);
   const allValid = checks.every((c) => Object.keys(c.errors).length === 0);
 
   function update(index: number, group: GroupDraft) {
@@ -231,109 +232,128 @@ export function SeatBuilder({ venueId, venueName, layout }: Props) {
     }
   }
 
+  const addGroup = () =>
+    setGroups((gs) => [...gs, mode === 'GRID' ? { ...newGrid(), category: gs[gs.length - 1]?.category ?? 'REGULAR', section: gs[gs.length - 1]?.section ?? 'MAIN' } : { ...newStanding(), section: '' }]);
+
   return (
-    <div className="space-y-6">
+    <div className="og-sb">
       <datalist id="seat-category-suggestions">
         {CATEGORY_SUGGESTIONS.map((c) => (
           <option key={c} value={c} />
         ))}
       </datalist>
 
-      <div role="radiogroup" aria-label="Seating type" className="inline-grid grid-cols-2 border border-rule p-0.5">
-        {(
-          [
-            ['GRID', 'Numbered seats'],
-            ['GENERAL_ADMISSION', 'General admission'],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={mode === value}
-            disabled={saving}
-            onClick={() => {
-              setMode(value);
-              setAttempted(false);
-              setSaveError(null);
-            }}
-            className={cn(
-              'h-8 rounded-[1px] px-3 text-[13px] transition-colors',
-              mode === value ? 'bg-text/[0.09] text-text' : 'text-text-2 hover:text-text',
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <p className="-mt-3 text-[13px] text-text-3">
-        {mode === 'GRID'
-          ? 'Rows of numbered seats. Each group is a set of rows with the same length and category.'
-          : 'Unnumbered capacity, e.g. a standing floor. Each zone needs its own section name.'}
-      </p>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
-        <div className="space-y-3">
-          {groups.map((group, i) => (
-            <RowGroupEditor
-              key={group.key}
-              index={i}
-              group={group}
-              check={checks[i] ?? { errors: {}, rows: [], seats: 0 }}
-              showErrors={attempted || touched.has(group.key)}
-              disabled={saving}
-              removable={groups.length > 1}
-              onChange={(g) => update(i, g)}
-              onRemove={() => setGroups((gs) => gs.filter((_, k) => k !== i))}
-            />
-          ))}
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => setGroups((gs) => [...gs, mode === 'GRID' ? { ...newGrid(), category: gs[gs.length - 1]?.category ?? 'REGULAR', section: gs[gs.length - 1]?.section ?? 'MAIN' } : { ...newStanding(), section: '' }])}
-            className="flex h-10 w-full items-center justify-center gap-2 border border-dashed border-rule text-[14px] text-text-2 transition-colors hover:border-text/40 hover:text-text"
-          >
-            <Plus aria-hidden="true" className="size-4" /> {mode === 'GRID' ? 'Add row group' : 'Add zone'}
-          </button>
+      <section aria-labelledby="groups-title" className="og-card og-sb-left">
+        <div className="og-sb-head">
+          <h2 id="groups-title" className="og-card-title">
+            {mode === 'GRID' ? 'Row groups' : 'Standing zones'}
+          </h2>
+          <Action small disabled={saving} onClick={addGroup}>
+            {mode === 'GRID' ? '+ Add group' : '+ Add zone'}
+          </Action>
         </div>
 
-        <div className="min-w-0 border border-rule">
-          <div className="flex items-center justify-between gap-3 border-b border-rule px-4 py-2.5">
-            <p className="label-mono text-text-2">Preview · new seats</p>
-            <p className="font-mono text-[12px] text-text-3">
-              {formatCount(existingCount)} → <span className="text-text">{formatCount(existingCount + adding)}</span>
-            </p>
-          </div>
-          <div className="p-4">
-            {adding === 0 ? (
-              <p className="py-8 text-center text-[13px] text-text-3">Fill in a group to see it here.</p>
-            ) : (
+        <div role="radiogroup" aria-label="Seating type" className="og-seg">
+          {(
+            [
+              ['GRID', 'Numbered'],
+              ['GENERAL_ADMISSION', 'General admission'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={mode === value}
+              disabled={saving}
+              onClick={() => {
+                setMode(value);
+                setAttempted(false);
+                setSaveError(null);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="og-hint" style={{ margin: 0 }}>
+          {mode === 'GRID'
+            ? 'Rows of numbered seats. Each group is a set of rows with the same length and category.'
+            : 'Unnumbered capacity, e.g. a standing floor. Each zone needs its own section name.'}
+        </p>
+
+        {groups.map((group, i) => (
+          <RowGroupEditor
+            key={group.key}
+            index={i}
+            group={group}
+            check={checks[i] ?? { errors: {}, rows: [], seats: 0 }}
+            showErrors={attempted || touched.has(group.key)}
+            disabled={saving}
+            removable={groups.length > 1}
+            shade={categoryColor(normalizeTag(group.category, 'REGULAR'), order)}
+            onChange={(g) => update(i, g)}
+            onRemove={() => setGroups((gs) => gs.filter((_, k) => k !== i))}
+          />
+        ))}
+
+        {overVenueCap && (
+          <InlineAlert>
+            A venue can have at most {formatCount(MAX_SEATS_PER_VENUE)} seats. This venue has {formatCount(existingCount)}, so you can add{' '}
+            {formatCount(Math.max(0, MAX_SEATS_PER_VENUE - existingCount))} more.
+          </InlineAlert>
+        )}
+        {saveError && <InlineAlert>{saveError}</InlineAlert>}
+        {attempted && !allValid && !saveError && <InlineAlert>Fix the highlighted fields first.</InlineAlert>}
+
+        <div className="og-sb-foot">
+          {adding > 0 ? <CategoryTotals totals={totals} order={order} /> : <span>Fill in a group to add seats.</span>}
+          <Action tone="accent" busy={saving} onClick={() => void save()} disabled={adding === 0 && allValid}>
+            {saving ? 'Saving…' : (
               <>
-                <LayoutPreview sections={preview} order={order} label="Preview of the seats to add" />
-                <CategoryTotals totals={totals} order={order} className="mt-4 border-t border-rule pt-3" />
+                Save layout <Arr />
               </>
             )}
-          </div>
+          </Action>
         </div>
-      </div>
-
-      {overVenueCap && (
-        <InlineAlert>
-          A venue can have at most {formatCount(MAX_SEATS_PER_VENUE)} seats. This venue has {formatCount(existingCount)}, so you can add{' '}
-          {formatCount(Math.max(0, MAX_SEATS_PER_VENUE - existingCount))} more.
-        </InlineAlert>
-      )}
-      {saveError && <InlineAlert>{saveError}</InlineAlert>}
-      {attempted && !allValid && !saveError && <InlineAlert>Fix the highlighted fields first.</InlineAlert>}
-
-      <div className="flex flex-wrap items-center gap-3 border-t border-rule pt-5">
-        <Action tone="primary" busy={saving} onClick={() => void save()} disabled={adding === 0 && allValid}>
-          {saving ? 'Saving…' : adding > 0 ? `Save ${formatCount(adding)} seats` : 'Save seats'}
-        </Action>
-        <p className="text-[13px] text-text-3">
+        <p className="og-hint" style={{ margin: 0 }}>
           Seats can't be edited or removed after saving, and shows copy the layout when they're created.
         </p>
-      </div>
+      </section>
+
+      <section aria-labelledby="preview-title" className="og-preview">
+        <div className="og-preview-head">
+          <span id="preview-title">LIVE PREVIEW</span>
+          <span>
+            {formatCount(existingCount)} → <span style={{ color: 'var(--text)' }}>{formatCount(existingCount + adding)}</span> SEATS
+          </span>
+        </div>
+        <figure className="og-preview-scroll" style={{ margin: 0 }}>
+          <figcaption className="sr-only">
+            Preview of {venueName}: {formatCount(existingCount)} existing seats, {formatCount(adding)} new seats.
+          </figcaption>
+          <div aria-hidden="true" className="og-preview-in">
+            <div className="og-stage" />
+            <span className="og-stage-label">STAGE</span>
+            {existingPreview.length > 0 && (
+              <>
+                <span className="og-existing-label">CURRENT LAYOUT · READ-ONLY</span>
+                <div className="og-existing">
+                  <PreviewRows sections={existingPreview} order={order} />
+                </div>
+              </>
+            )}
+            {adding > 0 ? (
+              <>
+                {existingPreview.length > 0 && <span className="og-new-label">NEW SEATS</span>}
+                <PreviewRows sections={preview} order={order} />
+              </>
+            ) : (
+              <p className="og-preview-empty">Fill in a group to see it here.</p>
+            )}
+          </div>
+        </figure>
+      </section>
     </div>
   );
 }

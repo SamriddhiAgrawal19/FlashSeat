@@ -73,9 +73,9 @@ export function EventForm({ idPrefix, initial, serverErrors, hadPoster = false, 
 
   return (
     <form noValidate onSubmit={submit}>
-      <fieldset disabled={disabled} className="space-y-5">
+      <fieldset disabled={disabled} className="og-form">
         {alert}
-        <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_13rem]">
+        <div className="og-form-grid">
           <Input id={`${idPrefix}-title`} label="Title" value={values.title} onChange={(e) => set('title', e.target.value)} error={shown.title} autoComplete="off" />
           <Select id={`${idPrefix}-category`} label="Category" value={values.category} onChange={(e) => set('category', e.target.value)} error={shown.category}>
             <option value="" disabled>
@@ -109,9 +109,9 @@ export function EventForm({ idPrefix, initial, serverErrors, hadPoster = false, 
           onChange={(e) => set('posterUrl', e.target.value)}
           error={shown.posterUrl}
           hint="A link to a landscape image. Without one, the event uses a category photo."
-          inputClassName="font-mono text-[13px]"
+          inputClassName="is-mono"
         />
-        <div className="flex flex-wrap items-center gap-2 border-t border-rule pt-5">{footer}</div>
+        <div className="og-form-foot">{footer}</div>
       </fieldset>
     </form>
   );

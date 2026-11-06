@@ -32,8 +32,10 @@ export function Layout() {
   // (docs/booking-flow-design.html); /bookings and /bookings/:id use the site header and footer.
   const isBookingStep = /^\/(shows|reservations|pay)\//.test(pathname);
   const isBookings = pathname === '/bookings' || pathname.startsWith('/bookings/');
-  const isV2 = isLanding || isAuth || isBookingStep || isBookings || pathname === '/events' || pathname.startsWith('/events/');
-  const bare = isAuth || isBookingStep;
+  // The organizer dashboard has its own sidebar shell (docs/organizer-dashboard-design.html).
+  const isOrganizer = pathname === '/organizer' || pathname.startsWith('/organizer/');
+  const isV2 = isLanding || isAuth || isBookingStep || isBookings || isOrganizer || pathname === '/events' || pathname.startsWith('/events/');
+  const bare = isAuth || isBookingStep || isOrganizer;
 
   return (
     <div className={cn('flex min-h-dvh flex-col', isV2 && 'v2', isLanding && 'lp')}>

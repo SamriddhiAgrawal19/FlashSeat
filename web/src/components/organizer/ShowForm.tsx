@@ -3,7 +3,7 @@ import { describeNetworkOrRateLimit } from '../auth/FormParts';
 import { ApiError, createShow, type CreatedShow, type MyVenue } from '../../lib/api';
 import { formatPaise } from '../../lib/format';
 import { formatCount, fromLocalInput, localZoneName, rupeesToPaise, toLocalInput } from '../../lib/organizer';
-import { Action, ActionLink, InlineAlert, Input, Select } from './ui';
+import { Action, ActionLink, Arr, Input, Select } from './ui';
 
 type FieldKey = 'venueId' | 'startsAt' | 'endsAt' | 'salesOpenAt' | 'prices';
 type Errors = Partial<Record<FieldKey, string>> & { priceFor?: Record<string, string> };
@@ -120,9 +120,9 @@ export function ShowForm({ eventId, venues, onCreated, onCancel }: Props) {
 
   if (usable.length === 0) {
     return (
-      <div className="border border-dashed border-rule px-4 py-6 text-[14px] text-text-2">
-        <p>Shows need a venue with seats, and none of your venues has any yet.</p>
-        <ActionLink to={venues[0] ? `/organizer/venues/${venues[0].id}/seats` : '/organizer/venues/new'} className="mt-4">
+      <div className="og-alert is-info">
+        <p style={{ margin: 0 }}>Shows need a venue with seats, and none of your venues has any yet.</p>
+        <ActionLink to={venues[0] ? `/organizer/venues/${venues[0].id}/seats` : '/organizer/venues/new'} small className="mt-3">
           {venues.length > 0 ? 'Add seats to a venue' : 'Add a venue'}
         </ActionLink>
       </div>
@@ -130,14 +130,14 @@ export function ShowForm({ eventId, venues, onCreated, onCancel }: Props) {
   }
 
   return (
-    <form noValidate onSubmit={(e) => void submit(e)} className="border border-rule">
-      <fieldset disabled={busy} className="space-y-5 p-4 sm:p-5">
+    <form noValidate onSubmit={(e) => void submit(e)}>
+      <fieldset disabled={busy} className="og-showform" style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
         <legend className="sr-only">New show</legend>
-        {formError && <InlineAlert>{formError}</InlineAlert>}
 
         <Select
           id="show-venue"
           label="Venue"
+          className="is-span2"
           value={venueId}
           onChange={(e) => {
             setVenueId(e.target.value);
@@ -156,38 +156,25 @@ export function ShowForm({ eventId, venues, onCreated, onCancel }: Props) {
           ))}
         </Select>
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Input
-            id="show-starts"
-            label="Starts"
-            type="datetime-local"
-            min={minStart}
-            value={startsAt}
-            onChange={(e) => {
-              const value = e.target.value;
-              setStartsAt(value);
-              // Suggest a two-hour show until the end has been set by hand.
-              const start = fromLocalInput(value);
-              if (start && (!endsAt || (fromLocalInput(endsAt)?.getTime() ?? 0) <= start.getTime())) {
-                setEndsAt(toLocalInput(new Date(start.getTime() + DEFAULT_DURATION_MS)));
-              }
-            }}
-            error={errors.startsAt}
-            hint={`Local time (${localZoneName()})`}
-            inputClassName="font-mono"
-          />
-          <Input
-            id="show-ends"
-            label="Ends"
-            type="datetime-local"
-            min={startsAt || minStart}
-            value={endsAt}
-            onChange={(e) => setEndsAt(e.target.value)}
-            error={errors.endsAt}
-            inputClassName="font-mono"
-          />
-        </div>
-
+        <Input
+          id="show-starts"
+          label="Starts"
+          type="datetime-local"
+          min={minStart}
+          value={startsAt}
+          onChange={(e) => {
+            const value = e.target.value;
+            setStartsAt(value);
+            // Suggest a two-hour show until the end has been set by hand.
+            const start = fromLocalInput(value);
+            if (start && (!endsAt || (fromLocalInput(endsAt)?.getTime() ?? 0) <= start.getTime())) {
+              setEndsAt(toLocalInput(new Date(start.getTime() + DEFAULT_DURATION_MS)));
+            }
+          }}
+          error={errors.startsAt}
+          hint={`Local time (${localZoneName()})`}
+        />
+        <Input id="show-ends" label="Ends" type="datetime-local" min={startsAt || minStart} value={endsAt} onChange={(e) => setEndsAt(e.target.value)} error={errors.endsAt} />
         <Input
           id="show-sales"
           label="Sales open"
@@ -197,48 +184,52 @@ export function ShowForm({ eventId, venues, onCreated, onCancel }: Props) {
           max={startsAt || undefined}
           onChange={(e) => setSalesOpenAt(e.target.value)}
           error={errors.salesOpenAt}
-          hint="Leave empty to open sales as soon as the event is published."
-          inputClassName="font-mono"
-          className="sm:max-w-[calc(50%-0.625rem)]"
+          hint="Empty: on sale as soon as the event is published."
         />
 
-        {venue && (
-          <div>
-            <p className="label-mono text-text-2">Prices</p>
-            <p className="mt-1 text-[13px] text-text-3">One price per seat category at {venue.name}, in rupees.</p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {categories.map((category) => {
-                const paise = rupeesToPaise(prices[category] ?? '');
-                return (
-                  <Input
-                    key={category}
-                    id={`price-${category}`}
-                    label={category}
-                    prefix="₹"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    placeholder="0"
-                    value={prices[category] ?? ''}
-                    onChange={(e) => setPrices((p) => ({ ...p, [category]: e.target.value }))}
-                    error={errors.priceFor?.[category]}
-                    hint={paise !== null && paise > 0 ? formatPaise(paise) : paise === 0 ? 'Free' : undefined}
-                    inputClassName="font-mono"
-                  />
-                );
-              })}
-            </div>
-            {errors.prices && !errors.priceFor && <p className="mt-2 text-[13px] text-danger">{errors.prices}</p>}
-          </div>
+        {venue &&
+          categories.map((category) => {
+            const paise = rupeesToPaise(prices[category] ?? '');
+            return (
+              <Input
+                key={category}
+                id={`price-${category}`}
+                label={`${category} · ₹`}
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0"
+                value={prices[category] ?? ''}
+                onChange={(e) => setPrices((p) => ({ ...p, [category]: e.target.value }))}
+                error={errors.priceFor?.[category]}
+                hint={paise !== null && paise > 0 ? formatPaise(paise) : paise === 0 ? 'Free' : undefined}
+                inputClassName="is-mono"
+              />
+            );
+          })}
+        {venue && errors.prices && !errors.priceFor && (
+          <p role="alert" className="og-error-text is-full">
+            {errors.prices}
+          </p>
         )}
 
-        <div className="flex flex-wrap gap-2 border-t border-rule pt-4">
-          <Action type="submit" tone="primary" busy={busy}>
-            {busy ? 'Adding show…' : 'Add show'}
+        <div className="og-showform-foot">
+          <Action type="submit" tone="accent" busy={busy}>
+            {busy ? 'Adding show…' : (
+              <>
+                Add show <Arr />
+              </>
+            )}
           </Action>
           <Action tone="ghost" onClick={onCancel}>
             Cancel
           </Action>
+          {venue && <span className="og-hint">One price per seat category at {venue.name}, in rupees.</span>}
         </div>
+        {formError && (
+          <p role="alert" className="og-error-text is-full">
+            {formError}
+          </p>
+        )}
       </fieldset>
     </form>
   );

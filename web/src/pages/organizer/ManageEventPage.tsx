@@ -1,18 +1,18 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
 import { describeNetworkOrRateLimit } from '../../components/auth/FormParts';
+import { EventImage } from '../../components/events/EventImage';
 import { ConfirmPanel } from '../../components/organizer/ConfirmPanel';
 import { EventForm, toEventInput, type EventFormErrors, type EventFormValues } from '../../components/organizer/EventForm';
 import { ShowForm } from '../../components/organizer/ShowForm';
-import { ShowStatsBar } from '../../components/organizer/ShowStatsBar';
-import { EventStatusPill } from '../../components/organizer/StatusPill';
-import { Action, ActionLink, InlineAlert, PageHeader, Panel, Skeleton } from '../../components/organizer/ui';
-import { ApiError, cancelEvent, publishEvent, updateEvent, type EventInput, type OrganizerEvent, type OrganizerShow } from '../../lib/api';
+import { ShowStatsBar, type ShowStats } from '../../components/organizer/ShowStatsBar';
+import { EventStatusPill, Pill } from '../../components/organizer/StatusPill';
+import { Action, ActionLink, Breadcrumbs, InlineAlert, PageHeader, Panel, Skeleton } from '../../components/organizer/ui';
+import { ApiError, cancelEvent, getSeatMap, publishEvent, updateEvent, type EventInput, type OrganizerEvent, type OrganizerShow } from '../../lib/api';
 import { fieldErrorsFrom } from '../../lib/auth/formErrors';
 import { categoryLabel } from '../../lib/categories';
-import { formatShowDate, formatTime } from '../../lib/format';
+import { formatShowDate, formatShowDay, formatTime, showDateParts } from '../../lib/format';
 import { formatCount, seatTotals } from '../../lib/organizer';
 import { invalidateEventCaches, useMyEvents, useMyVenues, useShowStats } from '../../lib/organizerQueries';
 import { showToast } from '../../lib/toast';
@@ -22,50 +22,90 @@ function errorText(error: unknown): string {
   return describeNetworkOrRateLimit(error.code, error.retryAfterSeconds) ?? error.message;
 }
 
+/** "2h 30m" */
+function duration(startIso: string, endIso: string): string {
+  const minutes = Math.max(0, Math.round((Date.parse(endIso) - Date.parse(startIso)) / 60_000));
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}h${m ? ` ${m}m` : ''}` : `${m}m`;
+}
+
+const weekdayLong = new Intl.DateTimeFormat('en-IN', { weekday: 'long' });
+
+/** The show's state pill: ON SALE / SALES OPEN <date> / ENDED / CANCELLED (DRAFT while the event is a draft). */
+function ShowState({ show, event, now }: { show: OrganizerShow; event: OrganizerEvent; now: number }) {
+  if (show.status === 'CANCELLED') return <Pill tone="coral">CANCELLED</Pill>;
+  if (show.status === 'COMPLETED' || Date.parse(show.starts_at) <= now) return <Pill>ENDED</Pill>;
+  if (event.status === 'DRAFT') return <Pill>DRAFT</Pill>;
+  if (show.sales_open_at && Date.parse(show.sales_open_at) > now) return <Pill tone="white">{`SALES OPEN ${(formatShowDay(show.sales_open_at) ?? '').toUpperCase()}`}</Pill>;
+  return <Pill tone="green">ON SALE</Pill>;
+}
+
 function ShowRow({ show, event }: { show: OrganizerShow; event: OrganizerEvent }) {
   const isDraft = event.status === 'DRAFT';
   const live = event.status === 'PUBLISHED' && show.status === 'SCHEDULED';
   const stats = useShowStats(show.id, { enabled: !isDraft, live });
   const fallback = { total: show.seats_total, booked: show.seats_booked, held: 0, available: show.seats_total - show.seats_booked };
-  const salesOpen = show.sales_open_at && Date.parse(show.sales_open_at) > Date.now() ? show.sales_open_at : null;
+  const p = showDateParts(show.starts_at);
 
   return (
-    <li className="grid gap-x-6 gap-y-3 border-b border-rule py-4 last:border-b-0 md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="font-mono text-[13px] text-text">{formatShowDate(show.starts_at)}</p>
-          {show.status !== 'SCHEDULED' && <EventStatusPill status={show.status} compact />}
-        </div>
-        <p className="mt-1 truncate text-[13px] text-text-2">
-          {show.venue_name} · <span className="label-mono text-text-3">{show.venue_city}</span>
-        </p>
-        <p className="label-mono mt-1 text-text-3">
-          Ends {formatTime(show.ends_at)}
-          {salesOpen && <> · Sales open {formatShowDate(salesOpen)}</>}
-        </p>
-      </div>
-      <div className="min-w-0 self-center">
+    <li className="og-srow">
+      <span className="og-date is-lg" aria-hidden="true">
+        <span className="og-date-day">{p?.day.padStart(2, '0')}</span>
+        <span className="og-date-mon">{p?.month.toUpperCase()}</span>
+      </span>
+      <span className="og-srow-when">
+        <span>
+          {weekdayLong.format(new Date(show.starts_at))} · {formatTime(show.starts_at)}
+          <span className="sr-only"> · {formatShowDate(show.starts_at)}</span>
+        </span>
+        <span>
+          {show.venue_name}, {show.venue_city} · {duration(show.starts_at, show.ends_at)}
+        </span>
+      </span>
+      <span className="og-sbar-wrap">
         {stats.isPending && !isDraft ? (
-          <Skeleton className="h-6 w-full" />
+          <Skeleton style={{ height: 8, width: '100%' }} />
         ) : (
           <ShowStatsBar stats={stats.data ?? fallback} muted={show.status === 'CANCELLED'} />
         )}
-        {stats.isError && <p className="mt-1 text-[12px] text-text-3">Live counts unavailable; showing the last known numbers.</p>}
-      </div>
+        {stats.isError && <span className="og-nums-note">Live counts unavailable; showing the last known numbers.</span>}
+      </span>
+      <ShowState show={show} event={event} now={Date.now()} />
     </li>
   );
 }
 
 function NotFound() {
   return (
-    <div>
-      <PageHeader crumbs={[{ label: 'Overview', to: '/organizer' }, { label: 'Events', to: '/organizer/events' }, { label: 'Not found' }]} title="Event not found" />
-      <p className="mt-6 text-[15px] text-text-2">It may belong to another account, or the link is wrong.</p>
-      <ActionLink to="/organizer/events" className="mt-6">
-        All events
-      </ActionLink>
+    <div className="og-view">
+      <PageHeader crumbs={[{ label: 'Events', to: '/organizer/events' }, { label: 'Not found' }]} title="Event not found" small />
+      <p className="og-sub">It may belong to another account, or the link is wrong.</p>
+      <div>
+        <ActionLink to="/organizer/events">All events</ActionLink>
+      </div>
     </div>
   );
+}
+
+/**
+ * Seats held right now across the event's shows: the same ['seatMap', showId] summaries the show
+ * rows refresh every 15 s (this only reads them; the rows drive the refresh).
+ */
+function useHeldNow(event: OrganizerEvent | undefined): number | null {
+  const shows = event?.status === 'PUBLISHED' ? event.shows : [];
+  const results = useQueries({
+    queries: shows.map((s) => ({
+      queryKey: ['seatMap', s.id],
+      queryFn: ({ signal }: { signal: AbortSignal }) => getSeatMap(s.id, signal),
+      select: (map: Awaited<ReturnType<typeof getSeatMap>>): ShowStats => map.summary,
+      staleTime: 0,
+      retry: 1,
+    })),
+  });
+  if (event?.status !== 'PUBLISHED' || shows.length === 0) return null;
+  if (results.some((r) => !r.data)) return null;
+  return results.reduce((n, r) => n + (r.data?.held ?? 0), 0);
 }
 
 type Confirm = 'publish' | 'cancel' | null;
@@ -148,23 +188,30 @@ export function ManageEventPage() {
     },
   });
 
+  const heldNow = useHeldNow(event);
+
   if (events.isPending) {
     return (
-      <div aria-busy="true" className="space-y-4">
-        <Skeleton className="h-3 w-48" />
-        <Skeleton className="h-9 w-80" />
-        <Skeleton className="mt-8 h-48" />
+      <div aria-busy="true" className="og-view">
+        <Skeleton style={{ width: 200, height: 11 }} />
+        <div style={{ display: 'flex', gap: 22, alignItems: 'center' }}>
+          <Skeleton style={{ width: 96, height: 96, borderRadius: 16 }} />
+          <Skeleton style={{ width: 320, maxWidth: '60%', height: 34 }} />
+        </div>
+        <Skeleton style={{ height: 240, borderRadius: 18 }} />
       </div>
     );
   }
   if (events.isError) {
     return (
-      <InlineAlert>
-        <p>We couldn't load this event.</p>
-        <Action className="mt-3" onClick={() => void events.refetch()} busy={events.isFetching}>
-          Try again
-        </Action>
-      </InlineAlert>
+      <div className="og-view">
+        <InlineAlert>
+          <p style={{ margin: 0 }}>We couldn't load this event.</p>
+          <Action className="mt-3" small onClick={() => void events.refetch()} busy={events.isFetching}>
+            Try again
+          </Action>
+        </InlineAlert>
+      </div>
     );
   }
   if (!event) return <NotFound />;
@@ -183,22 +230,17 @@ export function ManageEventPage() {
     posterUrl: event.poster_url ?? '',
   };
 
+  const venuesLine = [...new Set(event.shows.map((s) => `${s.venue_name}, ${s.venue_city}`))].join(' · ');
+
   const actions =
-    event.status === 'DRAFT' ? (
+    event.status === 'CANCELLED' ? null : (
       <>
-        <Action tone="primary" onClick={() => openConfirm('publish')} disabled={confirm !== null || publish.isPending}>
-          Publish
-        </Action>
-        <Action onClick={() => setEditing(true)} disabled={editing}>
-          Edit
-        </Action>
-        <Action tone="ghost" onClick={() => openConfirm('cancel')} disabled={confirm !== null}>
-          Cancel event
-        </Action>
-      </>
-    ) : event.status === 'PUBLISHED' ? (
-      <>
-        <ActionLink to={`/events/${event.id}`}>View public page ↗</ActionLink>
+        {event.status === 'PUBLISHED' && <ActionLink to={`/events/${event.id}`}>View public page ↗</ActionLink>}
+        {event.status === 'DRAFT' && (
+          <Action tone="primary" onClick={() => openConfirm('publish')} disabled={confirm !== null || publish.isPending}>
+            Publish
+          </Action>
+        )}
         <Action onClick={() => setEditing(true)} disabled={editing}>
           Edit
         </Action>
@@ -206,187 +248,237 @@ export function ManageEventPage() {
           Cancel event
         </Action>
       </>
-    ) : (
-      <ActionLink to={`/events/${event.id}`}>View public page ↗</ActionLink>
     );
 
-  return (
-    <div>
-      <PageHeader
-        crumbs={[{ label: 'Overview', to: '/organizer' }, { label: 'Events', to: '/organizer/events' }, { label: event.title }]}
-        title={event.title}
-        actions={actions}
-      >
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <EventStatusPill status={event.status} />
-          <span className="label-mono text-text-3">{categoryLabel(event.category)}</span>
-          <span className="label-mono text-text-3">
-            {event.shows.length} show{event.shows.length === 1 ? '' : 's'}
-          </span>
-          {event.status === 'PUBLISHED' && (
-            <span className="label-mono text-text-3">
-              <span className="text-lime">{formatCount(booked)}</span> / {formatCount(total)} sold
-            </span>
-          )}
-        </div>
-      </PageHeader>
+  const stats = [
+    {
+      label: 'SEATS SOLD',
+      value:
+        total > 0 ? (
+          <>
+            {formatCount(booked)} <small>/ {formatCount(total)}</small>
+          </>
+        ) : (
+          '—'
+        ),
+    },
+    { label: 'HELD RIGHT NOW', value: heldNow === null ? '—' : formatCount(heldNow) },
+    { label: 'FILL RATE', value: total > 0 ? `${Math.round((booked / total) * 100)}%` : '—' },
+  ];
 
-      <div className="mt-6 space-y-6">
-        {event.status === 'CANCELLED' && (
-          <div role="status" className="border-l-2 border-text/40 bg-surface px-4 py-3 text-[14px] text-text-2">
-            <p className="font-medium text-text">This event was cancelled{event.cancelled_at ? ` on ${formatShowDate(event.cancelled_at)}` : ''}.</p>
-            <p className="mt-1">
+  return (
+    <div className="og-view">
+      <Breadcrumbs items={[{ label: 'Events', to: '/organizer/events' }, { label: event.title }]} />
+
+      <header className="og-ehead">
+        <div className="og-ephoto">
+          <EventImage event={event} />
+        </div>
+        <div className="og-ehead-text">
+          <div className="og-ehead-title">
+            <h1 className="og-h1 is-sm">{event.title}</h1>
+            <EventStatusPill status={event.status} />
+          </div>
+          <span className="og-sub">
+            {categoryLabel(event.category)} · {event.shows.length} show{event.shows.length === 1 ? '' : 's'}
+            {venuesLine && ` · ${venuesLine}`}
+          </span>
+        </div>
+        {actions && <div className="og-head-actions">{actions}</div>}
+      </header>
+
+      {event.status === 'CANCELLED' && (
+        <div role="status" className="og-banner">
+          <i aria-hidden="true" className="og-banner-dot" />
+          <div>
+            <p className="og-banner-title">This event was cancelled{event.cancelled_at ? ` on ${formatShowDate(event.cancelled_at)}` : ''}.</p>
+            <p className="og-banner-text">
               All shows are cancelled and it can no longer be edited. Paid bookings are marked for refund; attendees see it under Cancelled.
             </p>
           </div>
-        )}
+        </div>
+      )}
 
-        {confirm === 'publish' && (
-          <ConfirmPanel
-            title="Publish this event?"
-            tone="primary"
-            confirmLabel="Publish now"
-            cancelLabel="Not yet"
-            busyLabel="Publishing…"
-            busy={publish.isPending}
-            error={confirmError}
-            onConfirm={() => publish.mutate()}
-            onCancel={() => setConfirm(null)}
-          >
-            <p>Publishing makes this event visible to everyone.</p>
-            <p className="mt-1">
-              {event.shows.length === 0
-                ? 'It has no shows yet, so it cannot be published until you add one.'
-                : `${scheduled} show${scheduled === 1 ? '' : 's'} go${scheduled === 1 ? 'es' : ''} on sale (or when its sales open time arrives). A published event can't go back to draft.`}
-            </p>
-          </ConfirmPanel>
-        )}
-
-        {confirm === 'cancel' && (
-          <ConfirmPanel
-            title="Cancel this event?"
-            tone="danger"
-            confirmLabel="Cancel event"
-            busyLabel="Cancelling…"
-            busy={cancel.isPending}
-            requireText={event.title}
-            error={confirmError}
-            onConfirm={() => cancel.mutate()}
-            onCancel={() => setConfirm(null)}
-          >
-            <p>This can't be undone. In one step:</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 marker:text-text-3">
-              <li>
-                {event.shows.length === 1 ? 'Its show is' : `All ${event.shows.length} shows are`} cancelled and nothing more can be sold.
-              </li>
-              <li>Seats people are holding right now are released.</li>
-              <li>Bookings waiting for payment are cancelled.</li>
-              <li>
-                Paid bookings are marked for refund
-                {booked > 0 ? ` (${formatCount(booked)} booked seat${booked === 1 ? '' : 's'} right now)` : ''}; their tickets become void.
-              </li>
-            </ul>
-          </ConfirmPanel>
-        )}
-
-        {editing && event.status !== 'CANCELLED' && (
-          <Panel title="Edit details">
-            <EventForm
-              idPrefix="edit-event"
-              initial={initialValues}
-              serverErrors={editErrors}
-              hadPoster={event.poster_url !== null}
-              disabled={update.isPending}
-              alert={editError ? <InlineAlert>{editError}</InlineAlert> : undefined}
-              onSubmit={(values) => {
-                setEditError(null);
-                setEditErrors({});
-                const next = toEventInput(values);
-                // Send only what changed (PATCH accepts title, description, category, posterUrl).
-                const body: Partial<EventInput> = {};
-                if (next.title !== event.title) body.title = next.title;
-                if (next.category !== event.category) body.category = next.category;
-                if ((next.description ?? '') !== event.description) body.description = next.description;
-                if (next.posterUrl !== undefined && next.posterUrl !== event.poster_url) body.posterUrl = next.posterUrl;
-                if (Object.keys(body).length === 0) {
-                  setEditing(false);
-                  return;
-                }
-                update.mutate(body);
-              }}
-              footer={
-                <>
-                  <Action type="submit" tone="primary" busy={update.isPending}>
-                    {update.isPending ? 'Saving…' : 'Save changes'}
-                  </Action>
-                  <Action tone="ghost" onClick={() => setEditing(false)}>
-                    Discard
-                  </Action>
-                </>
-              }
-            />
-          </Panel>
-        )}
-
-        <Panel
-          title="Shows"
-          meta={event.status === 'PUBLISHED' ? 'Live · refreshes every 15 s' : event.status === 'DRAFT' ? 'Draft · not on sale' : undefined}
-          actions={
-            event.status !== 'CANCELLED' && !addingShow ? (
-              <Action tone={event.shows.length === 0 ? 'primary' : 'secondary'} onClick={() => setAddingShow(true)}>
-                <Plus aria-hidden="true" className="size-4" /> Add show
-              </Action>
-            ) : undefined
-          }
+      {confirm === 'publish' && (
+        <ConfirmPanel
+          title="Publish this event?"
+          tone="primary"
+          confirmLabel="Publish now"
+          cancelLabel="Not yet"
+          busyLabel="Publishing…"
+          busy={publish.isPending}
+          error={confirmError}
+          onConfirm={() => publish.mutate()}
+          onCancel={() => setConfirm(null)}
         >
-          {addingShow && (
-            <div className="mb-5">
-              {venues.isPending ? (
-                <Skeleton className="h-40" />
-              ) : venues.isError ? (
-                <InlineAlert>We couldn't load your venues. Try again in a moment.</InlineAlert>
-              ) : (
-                <ShowForm
-                  eventId={event.id}
-                  venues={venues.data}
-                  onCancel={() => setAddingShow(false)}
-                  onCreated={async (show) => {
-                    await refresh();
-                    setAddingShow(false);
-                    showToast(`Show added for ${formatShowDate(show.starts_at)} · ${formatCount(show.seatCount)} seats.`);
-                  }}
-                />
-              )}
-            </div>
-          )}
-          {event.shows.length === 0 ? (
-            !addingShow && (
-              <div className="py-6 text-center">
-                <p className="text-[14px] text-text-2">No shows yet. Add one to schedule the event at a venue.</p>
-                {event.status === 'DRAFT' && <p className="mt-1 text-[13px] text-text-3">An event needs at least one show before it can be published.</p>}
-              </div>
-            )
-          ) : (
-            <ul className="-my-4">
-              {event.shows.map((show) => (
-                <ShowRow key={show.id} show={show} event={event} />
-              ))}
-            </ul>
-          )}
-        </Panel>
-
-        {event.description && !editing && (
-          <Panel title="Description">
-            <p className="text-[14px] leading-relaxed whitespace-pre-line text-text-2">{event.description}</p>
-          </Panel>
-        )}
-
-        {event.status === 'DRAFT' && event.shows.length > 0 && confirm === null && (
-          <p className="text-[13px] text-text-3">
-            Ready? <button type="button" className="text-text underline decoration-text/30 underline-offset-4 hover:decoration-lime" onClick={() => openConfirm('publish')}>Publish the event</button> to put it on sale.
+          <p style={{ margin: 0 }}>Publishing makes this event visible to everyone.</p>
+          <p style={{ margin: '4px 0 0' }}>
+            {event.shows.length === 0
+              ? 'It has no shows yet, so it cannot be published until you add one.'
+              : `${scheduled} show${scheduled === 1 ? '' : 's'} go${scheduled === 1 ? 'es' : ''} on sale (or when its sales open time arrives). A published event can't go back to draft.`}
           </p>
+        </ConfirmPanel>
+      )}
+
+      {confirm === 'cancel' && (
+        <ConfirmPanel
+          title="Cancel this event?"
+          tone="danger"
+          confirmLabel="Cancel event"
+          busyLabel="Cancelling…"
+          busy={cancel.isPending}
+          requireText={event.title}
+          error={confirmError}
+          onConfirm={() => cancel.mutate()}
+          onCancel={() => setConfirm(null)}
+        >
+          <p style={{ margin: 0 }}>This can't be undone. In one step:</p>
+          <ul>
+            <li>{event.shows.length === 1 ? 'Its show is' : `All ${event.shows.length} shows are`} cancelled and nothing more can be sold.</li>
+            <li>Seats people are holding right now are released.</li>
+            <li>Bookings waiting for payment are cancelled.</li>
+            <li>
+              Paid bookings are marked for refund
+              {booked > 0 ? ` (${formatCount(booked)} booked seat${booked === 1 ? '' : 's'} right now)` : ''}; their tickets become void.
+            </li>
+          </ul>
+        </ConfirmPanel>
+      )}
+
+      {editing && event.status !== 'CANCELLED' && (
+        <Panel title="Edit details" className="og-panel-in">
+          <EventForm
+            idPrefix="edit-event"
+            initial={initialValues}
+            serverErrors={editErrors}
+            hadPoster={event.poster_url !== null}
+            disabled={update.isPending}
+            alert={editError ? <InlineAlert>{editError}</InlineAlert> : undefined}
+            onSubmit={(values) => {
+              setEditError(null);
+              setEditErrors({});
+              const next = toEventInput(values);
+              // Send only what changed (PATCH accepts title, description, category, posterUrl).
+              const body: Partial<EventInput> = {};
+              if (next.title !== event.title) body.title = next.title;
+              if (next.category !== event.category) body.category = next.category;
+              if ((next.description ?? '') !== event.description) body.description = next.description;
+              if (next.posterUrl !== undefined && next.posterUrl !== event.poster_url) body.posterUrl = next.posterUrl;
+              if (Object.keys(body).length === 0) {
+                setEditing(false);
+                return;
+              }
+              update.mutate(body);
+            }}
+            footer={
+              <>
+                <Action type="submit" tone="primary" busy={update.isPending}>
+                  {update.isPending ? 'Saving…' : 'Save changes'}
+                </Action>
+                <Action tone="ghost" onClick={() => setEditing(false)}>
+                  Discard
+                </Action>
+              </>
+            }
+          />
+        </Panel>
+      )}
+
+      <dl className="og-stats">
+        {stats.map((s) => (
+          <div key={s.label} className="og-stat">
+            <dt className="og-kpi-label">{s.label}</dt>
+            <dd className="og-stat-value" style={{ margin: 0 }}>
+              {s.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <section aria-labelledby="shows-title" className="og-card is-clip">
+        <div className="og-card-head">
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+            <h2 id="shows-title" className="og-card-title">
+              Shows
+            </h2>
+            <span className="og-card-meta">
+              {event.status === 'PUBLISHED' ? 'Live · refreshes every 15 s' : event.status === 'DRAFT' ? 'Draft · not on sale' : 'Cancelled'}
+            </span>
+          </div>
+          <div className="og-legend">
+            <span>
+              <i aria-hidden="true" className="og-sw" style={{ background: 'var(--accent)' }} />
+              Booked
+            </span>
+            <span>
+              <i aria-hidden="true" className="og-sw" style={{ background: 'var(--text)' }} />
+              Held
+            </span>
+            <span>
+              <i aria-hidden="true" className="og-sw" style={{ background: '#27272A' }} />
+              Available
+            </span>
+            {event.status !== 'CANCELLED' && (
+              <Action tone="primary" small aria-expanded={addingShow} aria-controls="add-show-panel" onClick={() => setAddingShow((v) => !v)}>
+                {addingShow ? 'Close' : '+ Add show'}
+              </Action>
+            )}
+          </div>
+        </div>
+
+        {addingShow && (
+          <div id="add-show-panel" className="og-addpanel og-panel-in">
+            {venues.isPending ? (
+              <Skeleton style={{ height: 160 }} />
+            ) : venues.isError ? (
+              <InlineAlert>We couldn't load your venues. Try again in a moment.</InlineAlert>
+            ) : (
+              <ShowForm
+                eventId={event.id}
+                venues={venues.data}
+                onCancel={() => setAddingShow(false)}
+                onCreated={async (show) => {
+                  await refresh();
+                  setAddingShow(false);
+                  showToast(`Show added for ${formatShowDate(show.starts_at)} · ${formatCount(show.seatCount)} seats.`);
+                }}
+              />
+            )}
+          </div>
         )}
-      </div>
+
+        {event.shows.length === 0 ? (
+          !addingShow && (
+            <div className="og-empty-list">
+              <p style={{ margin: 0 }}>No shows yet. Add one to schedule the event at a venue.</p>
+              {event.status === 'DRAFT' && <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-3)' }}>An event needs at least one show before it can be published.</p>}
+            </div>
+          )
+        ) : (
+          <ul className="og-list">
+            {event.shows.map((show) => (
+              <ShowRow key={show.id} show={show} event={event} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {event.description && !editing && (
+        <Panel title="Description">
+          <p className="og-desc">{event.description}</p>
+        </Panel>
+      )}
+
+      {event.status === 'DRAFT' && event.shows.length > 0 && confirm === null && (
+        <p className="og-sub" style={{ fontSize: 13 }}>
+          Ready?{' '}
+          <button type="button" className="og-textbtn" onClick={() => openConfirm('publish')}>
+            Publish the event
+          </button>{' '}
+          to put it on sale.
+        </p>
+      )}
     </div>
   );
 }
+

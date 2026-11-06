@@ -1,4 +1,3 @@
-import { X } from 'lucide-react';
 import { MAX_SEATS_PER_BULK_CALL, MAX_SEATS_PER_ROW, SEAT_TAG_MAX } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import { formatCount } from '../../lib/organizer';
@@ -40,65 +39,40 @@ interface Props {
   showErrors: boolean;
   disabled: boolean;
   removable: boolean;
+  /** The category's preview shade (left bar of the category field). */
+  shade?: string;
   onChange: (group: GroupDraft) => void;
   onRemove: () => void;
 }
 
-/** One row group ("A–C × 12, REGULAR") or one standing zone. */
-export function RowGroupEditor({ index, group, check, showErrors, disabled, removable, onChange, onRemove }: Props) {
+/** One row group ("A–C × 12, REGULAR") or one standing zone, as one compact row. */
+export function RowGroupEditor({ index, group, check, showErrors, disabled, removable, shade, onChange, onRemove }: Props) {
   const id = `group-${group.key}`;
   const err = (k: keyof GroupCheck['errors']) => (showErrors ? check.errors[k] : undefined);
   const valid = Object.keys(check.errors).length === 0;
+  const name = group.kind === 'GRID' ? `row group ${index + 1}` : `zone ${index + 1}`;
 
   return (
-    <fieldset disabled={disabled} className="border border-rule">
-      <legend className="sr-only">
-        {group.kind === 'GRID' ? `Row group ${index + 1}` : `Standing zone ${index + 1}`}
-      </legend>
-      <div className="flex items-center justify-between gap-3 border-b border-rule px-3 py-2">
-        <p className="label-mono text-text-3">
-          {group.kind === 'GRID' ? 'Rows' : 'Zone'} <span className="text-text-2">{String(index + 1).padStart(2, '0')}</span>
-        </p>
-        <div className="flex items-center gap-3">
-          <p className={cn('font-mono text-[12px]', valid ? 'text-text' : 'text-text-3')}>
-            {valid
-              ? group.kind === 'GRID'
-                ? `${check.rows.length} × ${group.seatsPerRow} = ${formatCount(check.seats)} seats`
-                : `${formatCount(check.seats)} seats`
-              : '—'}
-          </p>
-          {removable && (
-            <button
-              type="button"
-              onClick={onRemove}
-              aria-label={`Remove ${group.kind === 'GRID' ? 'row group' : 'zone'} ${index + 1}`}
-              className="grid size-7 place-items-center rounded-[2px] text-text-3 hover:bg-text/[0.06] hover:text-text"
-            >
-              <X aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,0.9fr)]">
+    <fieldset disabled={disabled} className="og-group">
+      <legend className="sr-only">{group.kind === 'GRID' ? `Row group ${index + 1}` : `Standing zone ${index + 1}`}</legend>
+      <div className={cn('og-group-grid', group.kind !== 'GRID' && 'is-ga')}>
         {group.kind === 'GRID' ? (
           <>
             <Input
               id={`${id}-rows`}
-              label="Row labels"
+              label="Rows"
               value={group.rows}
-              placeholder="A–C or A, B, F"
+              placeholder="A–C"
               autoCapitalize="characters"
               autoComplete="off"
               spellCheck={false}
               onChange={(e) => onChange({ ...group, rows: e.target.value })}
               error={err('rows')}
-              hint={check.rows.length > 0 && !check.errors.rows ? check.rows.join(' ').slice(0, 60) : 'Range or comma list'}
-              inputClassName="font-mono uppercase"
+              inputClassName="is-mono is-upper"
             />
             <Input
               id={`${id}-per-row`}
-              label="Seats per row"
+              label="Seats / row"
               type="number"
               inputMode="numeric"
               min={1}
@@ -106,7 +80,7 @@ export function RowGroupEditor({ index, group, check, showErrors, disabled, remo
               value={group.seatsPerRow}
               onChange={(e) => onChange({ ...group, seatsPerRow: e.target.value })}
               error={err('seatsPerRow')}
-              inputClassName="font-mono"
+              inputClassName="is-mono"
             />
           </>
         ) : (
@@ -120,9 +94,7 @@ export function RowGroupEditor({ index, group, check, showErrors, disabled, remo
             value={group.count}
             onChange={(e) => onChange({ ...group, count: e.target.value })}
             error={err('count')}
-            hint={`Up to ${formatCount(MAX_SEATS_PER_BULK_CALL)} per zone`}
-            inputClassName="font-mono"
-            className="lg:col-span-2"
+            inputClassName="is-mono"
           />
         )}
         <Input
@@ -135,7 +107,8 @@ export function RowGroupEditor({ index, group, check, showErrors, disabled, remo
           autoComplete="off"
           onChange={(e) => onChange({ ...group, category: e.target.value })}
           error={err('category')}
-          inputClassName="font-mono uppercase"
+          inputClassName="is-mono is-upper og-cat"
+          inputStyle={{ borderLeftColor: shade ?? 'rgba(255,255,255,0.12)' }}
         />
         <Input
           id={`${id}-section`}
@@ -146,9 +119,28 @@ export function RowGroupEditor({ index, group, check, showErrors, disabled, remo
           autoComplete="off"
           onChange={(e) => onChange({ ...group, section: e.target.value })}
           error={err('section')}
-          inputClassName="font-mono uppercase"
+          inputClassName="is-mono is-upper"
         />
+        <button type="button" className="og-x" onClick={onRemove} aria-label={`Remove ${name}`} hidden={!removable}>
+          ×
+        </button>
       </div>
+      <p className={cn('og-group-foot', valid && 'is-ok')} style={{ marginBottom: 0 }}>
+        <span>
+          {group.kind === 'GRID'
+            ? check.rows.length > 0 && !check.errors.rows
+              ? check.rows.join(' ').slice(0, 48)
+              : 'Range (A–C) or list (A, B, F)'
+            : `Up to ${formatCount(MAX_SEATS_PER_BULK_CALL)} per zone`}
+        </span>
+        <span>
+          {valid
+            ? group.kind === 'GRID'
+              ? `${check.rows.length} × ${group.seatsPerRow} = ${formatCount(check.seats)} seats`
+              : `${formatCount(check.seats)} seats`
+            : '—'}
+        </span>
+      </p>
     </fieldset>
   );
 }

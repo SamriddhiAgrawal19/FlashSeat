@@ -2,7 +2,7 @@ import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { describeNetworkOrRateLimit } from '../../components/auth/FormParts';
-import { Action, ActionLink, InlineAlert, Input, PageHeader } from '../../components/organizer/ui';
+import { Action, ActionLink, Arr, InlineAlert, Input, PageHeader } from '../../components/organizer/ui';
 import { ApiError, createVenue } from '../../lib/api';
 import { fieldErrorsFrom } from '../../lib/auth/formErrors';
 import { organizerKeys } from '../../lib/organizerQueries';
@@ -56,36 +56,39 @@ export function NewVenuePage() {
   const set = (key: Fields) => (e: ChangeEvent<HTMLInputElement>) => setValues((v) => ({ ...v, [key]: e.target.value }));
 
   return (
-    <div className="max-w-[40rem]">
-      <PageHeader
-        crumbs={[{ label: 'Overview', to: '/organizer' }, { label: 'Venues', to: '/organizer/venues' }, { label: 'New venue' }]}
-        title="New venue"
-      >
-        <p className="mt-2 text-[14px] text-text-2">Next you'll lay out its seats.</p>
+    <div className="og-view is-narrow">
+      <PageHeader crumbs={[{ label: 'Venues', to: '/organizer/venues' }, { label: 'New venue' }]} title={<>New <span className="site-serif">venue</span></>} small>
+        <p className="og-sub">Next you'll lay out its seats.</p>
       </PageHeader>
 
-      <form noValidate onSubmit={onSubmit} className="mt-8 space-y-5">
-        {formError && <InlineAlert>{formError}</InlineAlert>}
-        <Input id="venue-name" label="Name" value={values.name} onChange={set('name')} error={errors.name} autoComplete="off" placeholder="e.g. Riverside Hall" />
-        <Input id="venue-address" label="Address" value={values.address} onChange={set('address')} error={errors.address} autoComplete="street-address" />
-        <Input
-          id="venue-city"
-          label="City"
-          value={values.city}
-          onChange={set('city')}
-          error={errors.city}
-          autoComplete="address-level2"
-          hint="Shown on event cards and used by the city filter."
-        />
-        <div className="flex flex-wrap gap-2 border-t border-rule pt-5">
-          <Action type="submit" tone="primary" busy={mutation.isPending}>
-            {mutation.isPending ? 'Creating…' : 'Create venue and add seats'}
-          </Action>
-          <ActionLink to="/organizer/venues" tone="ghost">
-            Cancel
-          </ActionLink>
-        </div>
-      </form>
+      <section className="og-card og-form-card" aria-label="Venue details">
+        <form noValidate onSubmit={onSubmit} className="og-form">
+          {formError && <InlineAlert>{formError}</InlineAlert>}
+          <Input id="venue-name" label="Name" value={values.name} onChange={set('name')} error={errors.name} autoComplete="off" placeholder="e.g. Riverside Hall" />
+          <Input id="venue-address" label="Address" value={values.address} onChange={set('address')} error={errors.address} autoComplete="street-address" />
+          <Input
+            id="venue-city"
+            label="City"
+            value={values.city}
+            onChange={set('city')}
+            error={errors.city}
+            autoComplete="address-level2"
+            hint="Shown on event cards and used by the city filter."
+          />
+          <div className="og-form-foot">
+            <Action type="submit" tone="primary" busy={mutation.isPending}>
+              {mutation.isPending ? 'Creating…' : (
+                <>
+                  Create venue and add seats <Arr />
+                </>
+              )}
+            </Action>
+            <ActionLink to="/organizer/venues" tone="ghost">
+              Cancel
+            </ActionLink>
+          </div>
+        </form>
+      </section>
     </div>
   );
 }

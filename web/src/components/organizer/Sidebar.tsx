@@ -1,94 +1,97 @@
-import { ArrowLeft, CalendarDays, LayoutGrid, MapPin } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router';
-import { useAuth } from '../../lib/auth/useAuth';
-import { cn } from '../../lib/cn';
+import { initials, useAuth } from '../../lib/auth/useAuth';
+import { TicketMark } from '../site/SiteHeader';
+import './organizer.css';
 
 const ITEMS = [
-  { label: 'Overview', to: '/organizer', icon: LayoutGrid, match: (p: string) => p === '/organizer' || p === '/organizer/' },
-  { label: 'Events', to: '/organizer/events', icon: CalendarDays, match: (p: string) => p.startsWith('/organizer/events') },
-  { label: 'Venues', to: '/organizer/venues', icon: MapPin, match: (p: string) => p.startsWith('/organizer/venues') },
+  { label: 'Overview', to: '/organizer', match: (p: string) => p === '/organizer' || p === '/organizer/' },
+  { label: 'Events', to: '/organizer/events', match: (p: string) => p.startsWith('/organizer/events') },
+  { label: 'Venues', to: '/organizer/venues', match: (p: string) => p.startsWith('/organizer/venues') },
 ];
 
-/** Desktop: a slim left column. Phones and tablets: a tab bar under the site navbar. */
+/**
+ * The organizer sidebar (docs/organizer-dashboard-design.html): logo, organization card, nav with
+ * the coral dot on the current item, "Back to site" and the user chip. Below 900px it becomes a
+ * sticky top bar with the nav as tabs.
+ */
 export function Sidebar() {
   const { pathname } = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const org = user?.organizationName ?? null;
 
   return (
-    <>
-      <aside aria-label="Organizer" className="hidden w-52 shrink-0 border-r border-rule lg:block">
-        <div className="sticky top-16 flex h-[calc(100dvh-4rem)] flex-col px-3 py-8">
-          <p className="label-mono truncate px-3 text-text-3" title={user?.organizationName ?? undefined}>
-            {user?.organizationName ?? 'Organizer'}
-          </p>
-          <nav aria-label="Organizer sections" className="mt-4">
-            <ul className="flex flex-col gap-0.5">
-              {ITEMS.map(({ label, to, icon: Icon, match }) => {
-                const current = match(pathname);
-                return (
-                  <li key={to}>
-                    <Link
-                      to={to}
-                      aria-current={current ? 'page' : undefined}
-                      className={cn(
-                        'relative flex h-9 items-center gap-3 rounded-[2px] px-3 text-[14px] transition-colors',
-                        current ? 'bg-text/[0.06] text-text' : 'text-text-2 hover:bg-text/[0.03] hover:text-text',
-                      )}
-                    >
-                      {current && <span aria-hidden="true" className="absolute inset-y-2 left-0 w-0.5 bg-lime" />}
-                      <Icon aria-hidden="true" strokeWidth={1.5} className="size-4" />
-                      {label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-          <Link to="/" className="mt-auto flex h-9 items-center gap-3 rounded-[2px] px-3 text-[14px] text-text-3 transition-colors hover:text-text">
-            <ArrowLeft aria-hidden="true" strokeWidth={1.5} className="size-4" />
-            Back to site
+    <aside aria-label="Organizer" className="og-side">
+      <div className="og-side-in">
+        <div className="og-side-top">
+          <Link to="/" className="og-logo">
+            <TicketMark />
+            FlashSeat
           </Link>
-        </div>
-      </aside>
-
-      <nav aria-label="Organizer sections" className="sticky top-16 z-30 border-b border-rule bg-bg/95 backdrop-blur-md lg:hidden">
-        <ul className="no-scrollbar flex overflow-x-auto px-4 sm:px-6">
-          {ITEMS.map(({ label, to, match }) => {
-            const current = match(pathname);
-            return (
-              <li key={to} className="shrink-0">
-                <Link
-                  to={to}
-                  aria-current={current ? 'page' : undefined}
-                  className={cn(
-                    '-mb-px flex h-11 items-center border-b-2 px-3 text-[14px] transition-colors first:pl-0',
-                    current ? 'border-lime text-text' : 'border-transparent text-text-2 hover:text-text',
-                  )}
-                >
-                  {label}
-                </Link>
-              </li>
-            );
-          })}
-          <li className="ml-auto shrink-0 pl-3">
-            <Link to="/" className="flex h-11 items-center gap-1.5 text-[14px] text-text-3 hover:text-text">
-              <ArrowLeft aria-hidden="true" strokeWidth={1.5} className="size-3.5" />
-              Site
+          <div className="og-top-only">
+            {org && <span className="og-top-org">{org}</span>}
+            <Link to="/" className="og-back">
+              ← Site
             </Link>
-          </li>
-        </ul>
-      </nav>
-    </>
+          </div>
+        </div>
+
+        <div className="og-org">
+          <span className="og-org-label">ORGANIZER</span>
+          <span className="og-org-name">{org ?? user?.name ?? 'Your organization'}</span>
+        </div>
+
+        <nav aria-label="Organizer sections" className="og-nav">
+          <ul>
+            {ITEMS.map(({ label, to, match }) => {
+              const current = match(pathname);
+              return (
+                <li key={to}>
+                  <Link to={to} className="og-navl" aria-current={current ? 'page' : undefined}>
+                    <span aria-hidden="true" className="og-dot" />
+                    {label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        <div className="og-side-foot">
+          <Link to="/" className="og-back">
+            ← Back to site
+          </Link>
+          {user && (
+            <div className="og-user">
+              <span aria-hidden="true" className="og-avatar">
+                {initials(user)}
+              </span>
+              <span className="og-user-text">
+                <span className="og-user-name">{user.name ?? 'Organizer'}</span>
+                {user.email && (
+                  <span className="og-user-mail" title={user.email}>
+                    {user.email}
+                  </span>
+                )}
+              </span>
+              <button type="button" className="og-logout" onClick={() => void logout()}>
+                Log out
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </aside>
   );
 }
 
-/** The /organizer frame: sidebar (or tabs) plus the page. Sits under the fixed 64px site navbar. */
+/** The /organizer frame: sidebar (or top bar) plus the page, which fades in on every navigation. */
 export function OrganizerShell() {
+  const { pathname } = useLocation();
   return (
-    <div className="pt-16 lg:flex">
+    <div className="og-shell">
       <Sidebar />
-      <div className="min-w-0 flex-1">
-        <div className="mx-auto w-full max-w-[72rem] px-4 pt-6 pb-24 sm:px-6 lg:px-10 lg:pt-10">
+      <div className="og-main">
+        <div key={pathname}>
           <Outlet />
         </div>
       </div>

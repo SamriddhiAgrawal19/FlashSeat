@@ -1,6 +1,7 @@
-// A read-only, compact seat layout: stage at the top, one line per row, seats as small squares
-// shaded by category. Rows are drawn as segments (a repeating gradient per run of same-category
-// seats), not one element per seat, so a 20,000-seat venue stays cheap to render.
+// A read-only seat layout (docs/organizer-dashboard-design.html "LIVE PREVIEW"): stage line, then
+// one line per row with seat-shaped cells outlined in the category's shade. Big layouts (a venue
+// can have 20,000 seats) draw each run of same-category seats as one striped segment instead.
+import type { CSSProperties } from 'react';
 import type { VenueLayout } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import { formatCount } from '../../lib/organizer';
@@ -20,35 +21,46 @@ export interface PreviewRow {
 export interface PreviewSection {
   section: string;
   rows: PreviewRow[];
-  /** A general-admission zone (row G): drawn as a block, not as squares. */
+  /** A general-admission zone (row G): drawn as a block, not as seats. */
   standing?: { count: number; category: string; conflict?: boolean };
 }
 
-const SEAT = 7;
-const PITCH = 9;
-// Shades of the text color, cheapest/most common first. No new colors: lime stays for actions.
-const ALPHAS = [0.3, 0.6, 0.92, 0.16, 0.45, 0.75];
-const KNOWN_ORDER = ['REGULAR', 'STANDARD', 'PREMIUM', 'VIP'];
+/** Shade by order of categories: first #FAFAFA, then #A1A1AA, #5B5B66, #3F3F46, … */
+const SHADES = ['#FAFAFA', '#A1A1AA', '#5B5B66', '#3F3F46', '#34343B', '#2B2B31'];
+/** Above this many seats in one drawing, rows are drawn as striped segments. */
+const MAX_CELLS = 3000;
+const CELL = 12;
+const GAP = 4;
 
-/** Categories in shading order: the known tiers first (cheapest to priciest), then alphabetical. */
+/** Categories in first-seen order (deduplicated). The order drives the shades. */
 export function orderCategories(categories: Iterable<string>): string[] {
-  return [...new Set(categories)].sort((a, b) => {
-    const ia = KNOWN_ORDER.indexOf(a);
-    const ib = KNOWN_ORDER.indexOf(b);
-    if (ia !== -1 || ib !== -1) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-    return a.localeCompare(b);
-  });
+  return [...new Set(categories)];
+}
+
+/** Categories as they appear walking the sections and rows (for the shade order). */
+export function categoriesInOrder(sections: PreviewSection[]): string[] {
+  const out: string[] = [];
+  for (const s of sections) {
+    for (const r of s.rows) for (const seg of r.segments) out.push(seg.category);
+    if (s.standing) out.push(s.standing.category);
+  }
+  return orderCategories(out);
 }
 
 export function categoryColor(category: string, order: string[]): string {
   const i = Math.max(0, order.indexOf(category));
-  return `rgb(242 239 233 / ${ALPHAS[i % ALPHAS.length]})`;
+  return SHADES[Math.min(i, SHADES.length - 1)] ?? '#3F3F46';
 }
 
 /** Convert the API layout into preview sections (runs of same-category seats per row). */
 export function layoutToPreview(layout: VenueLayout): PreviewSection[] {
   return layout.sections.map(({ section, rows }) => {
     const out: PreviewSection = { section, rows: [] };
+    // The API stores a general-admission zone as the section's only row, G.
+    if (rows.length === 1 && rows[0]?.row === 'G' && new Set(rows[0].seats.map((s) => s.category)).size === 1 && rows[0].seats.length > 40) {
+      out.standing = { count: rows[0].seats.length, category: rows[0].seats[0]?.category ?? '' };
+      return out;
+    }
     for (const { row, seats } of rows) {
       const segments: PreviewSegment[] = [];
       for (const seat of seats) {
@@ -72,97 +84,96 @@ export function previewTotals(sections: PreviewSection[]): Map<string, number> {
   return totals;
 }
 
-function Segment({ segment, order }: { segment: PreviewSegment; order: string[] }) {
-  const color = categoryColor(segment.category, order);
-  return (
-    <span
-      className="block shrink-0"
-      style={{
-        width: segment.count * PITCH - (PITCH - SEAT),
-        height: SEAT,
-        marginRight: PITCH - SEAT,
-        backgroundImage: `repeating-linear-gradient(90deg, ${color} 0 ${SEAT}px, transparent ${SEAT}px ${PITCH}px)`,
-      }}
-    />
-  );
-}
-
+/** "VIP 24 · PREMIUM 56 · REGULAR 64 · TOTAL 144" with a shade dot per category. */
 export function CategoryTotals({ totals, order, className }: { totals: Map<string, number>; order: string[]; className?: string }) {
   const total = [...totals.values()].reduce((a, b) => a + b, 0);
   return (
-    <dl className={cn('flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[12px]', className)}>
+    <dl className={cn('og-breakdown', className)} style={{ margin: 0 }}>
       {order
         .filter((c) => totals.has(c))
         .map((c) => (
-          <div key={c} className="flex items-center gap-2">
-            <span aria-hidden="true" className="size-2.5" style={{ backgroundColor: categoryColor(c, order) }} />
-            <dt className="text-text-2">{c}</dt>
-            <dd className="text-text">{formatCount(totals.get(c) ?? 0)}</dd>
-          </div>
+          <span key={c}>
+            <i aria-hidden="true" className="og-sw" style={{ width: 8, height: 8, background: categoryColor(c, order) }} />
+            <dt>{c}</dt>
+            <dd style={{ margin: 0, color: 'var(--text)' }}>{formatCount(totals.get(c) ?? 0)}</dd>
+          </span>
         ))}
-      <div className="flex items-center gap-2 border-l border-rule pl-5">
-        <dt className="text-text-3">TOTAL</dt>
-        <dd className="text-lime">{formatCount(total)}</dd>
-      </div>
+      <span>
+        <dt style={{ color: 'var(--text-3)' }}>TOTAL</dt>
+        <dd style={{ margin: 0, color: 'var(--text)' }}>{formatCount(total)}</dd>
+      </span>
     </dl>
   );
 }
 
-/** The drawing. `label` names it for screen readers; the totals give the same facts as text. */
-export function LayoutPreview({ sections, order, label, className }: { sections: PreviewSection[]; order: string[]; label: string; className?: string }) {
-  const widest = Math.max(
-    1,
-    ...sections.flatMap((s) => s.rows.map((r) => r.segments.reduce((n, seg) => n + seg.count, 0))),
+function countCells(sections: PreviewSection[]): number {
+  return sections.reduce((n, s) => n + s.rows.reduce((m, r) => m + r.segments.reduce((k, seg) => k + seg.count, 0), 0), 0);
+}
+
+function Row({ row, order, cells }: { row: PreviewRow; order: string[]; cells: boolean }) {
+  return (
+    <div className="og-prow">
+      <span className={cn('og-prow-label', row.conflict && 'is-conflict')}>{row.row}</span>
+      {row.segments.map((seg, i) => {
+        const c = categoryColor(seg.category, order);
+        if (cells) {
+          return Array.from({ length: seg.count }, (_, j) => <span key={`${i}-${j}`} className="og-pseat" style={{ '--c': c } as CSSProperties} />);
+        }
+        const width = seg.count * (CELL + GAP) - GAP;
+        return (
+          <span
+            key={i}
+            className="og-pseg"
+            style={{ width, backgroundImage: `repeating-linear-gradient(90deg, ${c} 0 ${CELL}px, transparent ${CELL}px ${CELL + GAP}px)`, opacity: 0.8 }}
+          />
+        );
+      })}
+      <span className="og-prow-label" aria-hidden="true" />
+    </div>
   );
-  const width = widest * PITCH;
+}
+
+/** The rows of some sections (no stage). Section names show when there are several, or not MAIN. */
+export function PreviewRows({ sections, order, cells }: { sections: PreviewSection[]; order: string[]; cells?: boolean }) {
+  const drawCells = cells ?? countCells(sections) <= MAX_CELLS;
+  return (
+    <>
+      {sections.map((s) => (
+        <div key={s.section} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: GAP }}>
+          {(sections.length > 1 || s.section !== 'MAIN') && <span className="og-psec">{s.section}</span>}
+          {s.rows.map((r) => (
+            <Row key={r.row} row={r} order={order} cells={drawCells} />
+          ))}
+          {s.standing && (
+            <div
+              className="og-pstand"
+              style={{ '--c': s.standing.conflict ? '#FF8A6E' : categoryColor(s.standing.category, order) } as CSSProperties}
+            >
+              {formatCount(s.standing.count)} standing · {s.standing.category}
+            </div>
+          )}
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** Stage line plus the rows. `label` names the drawing for screen readers; the totals give the same facts. */
+export function LayoutPreview({ sections, order, label, className }: { sections: PreviewSection[]; order: string[]; label: string; className?: string }) {
   const totals = previewTotals(sections);
   const summary = order
     .filter((c) => totals.has(c))
     .map((c) => `${formatCount(totals.get(c) ?? 0)} ${c}`)
     .join(', ');
-
   return (
-    <figure className={cn('min-w-0', className)}>
+    <figure className={cn('og-preview-scroll', className)} style={{ margin: 0 }}>
       <figcaption className="sr-only">
         {label}: {summary || 'no seats'}.
       </figcaption>
-      <div aria-hidden="true" className="overflow-x-auto pb-2">
-        <div className="mx-auto w-max min-w-full">
-          <div className="mx-auto mb-5 flex h-6 max-w-[min(100%,28rem)] items-center justify-center border border-text/25 bg-text/[0.04]" style={{ minWidth: Math.min(width, 160) }}>
-            <span className="label-mono text-[10px] text-text-3">Stage</span>
-          </div>
-          <div className="space-y-5">
-            {sections.map((s) => (
-              <div key={s.section}>
-                {(sections.length > 1 || s.section !== 'MAIN') && <p className="label-mono mb-2 text-center text-[10px] text-text-3">{s.section}</p>}
-                <div className="flex flex-col items-center gap-[3px]">
-                  {s.rows.map((r) => (
-                    <div key={r.row} className="flex items-center gap-2">
-                      <span className={cn('w-7 shrink-0 text-right font-mono text-[10px] leading-none', r.conflict ? 'text-danger' : 'text-text-3')}>{r.row}</span>
-                      <span className={cn('flex', r.conflict && 'outline outline-1 outline-offset-2 outline-danger/70')}>
-                        {r.segments.map((seg, i) => (
-                          <Segment key={i} segment={seg} order={order} />
-                        ))}
-                      </span>
-                      <span className="w-7 shrink-0" />
-                    </div>
-                  ))}
-                  {s.standing && (
-                    <div
-                      className={cn(
-                        'flex h-12 w-full max-w-[28rem] min-w-40 items-center justify-center gap-2 border border-dashed font-mono text-[11px]',
-                        s.standing.conflict ? 'border-danger/70 text-danger' : 'border-text/30 text-text-2',
-                      )}
-                      style={{ backgroundColor: `${categoryColor(s.standing.category, order).replace(/\/ [\d.]+\)/, '/ 0.08)')}` }}
-                    >
-                      {formatCount(s.standing.count)} standing · {s.standing.category}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div aria-hidden="true" className="og-preview-in">
+        <div className="og-stage" />
+        <span className="og-stage-label">STAGE</span>
+        <PreviewRows sections={sections} order={order} />
       </div>
     </figure>
   );

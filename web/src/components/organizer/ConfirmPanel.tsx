@@ -38,14 +38,15 @@ export function ConfirmPanel({ title, children, confirmLabel, cancelLabel = 'Kee
       onKeyDown={(e) => {
         if (e.key === 'Escape' && !busy) onCancel();
       }}
-      className={cn('border-l-2 bg-surface px-4 py-4 focus:outline-none sm:px-5', tone === 'danger' ? 'border-danger' : 'border-lime')}
+      className={cn('og-confirm og-panel-in', tone === 'danger' && 'is-danger')}
     >
-      <h2 id={headingId} className="text-[15px] font-medium text-text">
+      <h2 id={headingId}>
         {title}
       </h2>
-      <div className="mt-2 text-[14px] leading-relaxed text-text-2">{children}</div>
+      <div className="og-confirm-body">{children}</div>
       <form
-        className="mt-4"
+        className="og-form"
+        style={{ marginTop: 16 }}
         onSubmit={(e) => {
           e.preventDefault();
           if (matches && !busy) onConfirm();
@@ -55,17 +56,21 @@ export function ConfirmPanel({ title, children, confirmLabel, cancelLabel = 'Kee
           <Input
             id={`${headingId}-confirm`}
             label={`Type the event title to confirm`}
-            hint={<span className="font-mono text-text-2">{requireText}</span>}
+            hint={<span style={{ fontFamily: 'var(--ff-mono)', color: 'var(--text-2)' }}>{requireText}</span>}
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             autoComplete="off"
             spellCheck={false}
             disabled={busy}
-            className="max-w-[28rem]"
+            className="og-confirm-input"
           />
         )}
-        {error && <div className="mt-3 text-[14px] text-danger">{error}</div>}
-        <div className="mt-4 flex flex-wrap gap-2">
+        {error && (
+          <div role="alert" className="og-error-text">
+            {error}
+          </div>
+        )}
+        <div className="og-head-actions">
           <Action type="submit" tone={tone} busy={busy} disabled={!matches}>
             {busy ? busyLabel : confirmLabel}
           </Action>

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { describeNetworkOrRateLimit } from '../../components/auth/FormParts';
 import { EMPTY_EVENT, EventForm, toEventInput, type EventFormErrors } from '../../components/organizer/EventForm';
-import { Action, ActionLink, InlineAlert, PageHeader } from '../../components/organizer/ui';
+import { Action, ActionLink, Arr, InlineAlert, PageHeader } from '../../components/organizer/ui';
 import { ApiError, createEvent } from '../../lib/api';
 import { fieldErrorsFrom } from '../../lib/auth/formErrors';
 import { organizerKeys } from '../../lib/organizerQueries';
@@ -39,11 +39,11 @@ export function NewEventPage() {
   });
 
   return (
-    <div className="max-w-[44rem]">
-      <PageHeader crumbs={[{ label: 'Overview', to: '/organizer' }, { label: 'Events', to: '/organizer/events' }, { label: 'New event' }]} title="New event">
-        <p className="mt-2 text-[14px] text-text-2">It starts as a draft: only you can see it until you publish.</p>
+    <div className="og-view is-narrow">
+      <PageHeader crumbs={[{ label: 'Events', to: '/organizer/events' }, { label: 'New event' }]} title={<>New <span className="site-serif">event</span></>} small>
+        <p className="og-sub">It starts as a draft: only you can see it until you publish.</p>
       </PageHeader>
-      <div className="mt-8">
+      <section className="og-card og-form-card" aria-label="Event details">
         <EventForm
           idPrefix="new-event"
           initial={EMPTY_EVENT}
@@ -58,7 +58,11 @@ export function NewEventPage() {
           footer={
             <>
               <Action type="submit" tone="primary" busy={mutation.isPending}>
-                {mutation.isPending ? 'Creating…' : 'Create draft'}
+                {mutation.isPending ? 'Creating…' : (
+                  <>
+                    Create draft <Arr />
+                  </>
+                )}
               </Action>
               <ActionLink to="/organizer" tone="ghost">
                 Cancel
@@ -66,7 +70,7 @@ export function NewEventPage() {
             </>
           }
         />
-      </div>
+      </section>
     </div>
   );
 }

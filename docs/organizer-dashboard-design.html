@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FlashSeat · Organizer dashboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@1&amp;display=swap">
+<style>
+body{margin:0;background:#08080A}
+a{color:#FAFAFA}a:hover{color:#FF6B4A}
+.i-th{background-image:url(/_blob/7df0742ca1cea4320eb6d405433566d1)}
+.i-cm{background-image:url(/_blob/cff78853c76ba89e65dbc34c0e4cd426)}
+.img{background-size:cover;background-position:center}
+.nav{transition:background .2s ease,color .2s ease;cursor:pointer}
+.nav:hover{background:rgba(255,255,255,.04);color:#FAFAFA}
+.nav:focus-visible,.rowbtn:focus-visible,.tab:focus-visible{outline:2px solid #FAFAFA;outline-offset:2px}
+.view{animation:viewin .45s cubic-bezier(.2,.7,.2,1) both}
+@keyframes viewin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.rowbtn{transition:background .2s ease;cursor:pointer}
+.rowbtn:hover{background:rgba(255,255,255,.03)}
+.rowbtn:hover .go{transform:translateX(3px);color:#FAFAFA}
+.go{transition:transform .2s ease,color .2s ease}
+.fill{transform-origin:left;animation:fill 1.4s cubic-bezier(.2,.7,.2,1) both}
+@keyframes fill{from{transform:scaleX(0)}}
+.kpi{animation:viewin .6s cubic-bezier(.2,.7,.2,1) both}
+.panel{animation:panel .4s cubic-bezier(.2,.7,.2,1) both}
+@keyframes panel{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.seatp{transition:background .3s ease,transform .3s ease}
+.btn .arr{display:inline-block;transition:transform .25s ease}.btn:hover .arr{transform:translateX(4px)}
+.btn-c{transition:background .2s ease}.btn-c:hover{background:#FF8466}
+.btn-w{transition:background .2s ease}.btn-w:hover{background:#E4E4E7}
+.btn-g{transition:border-color .2s ease}.btn-g:hover{border-color:rgba(255,255,255,.35)}
+.pulse{animation:pulse 2s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(74,222,128,.6)}100%{box-shadow:0 0 0 7px rgba(74,222,128,0)}}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #08080A; color: #FAFAFA; font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif; display: flex; flex-wrap: wrap">
+
+<aside style="flex: 1 1 232px; max-width: 260px; min-width: 220px; border-right: 1px solid rgba(255,255,255,0.07); padding: 22px 14px; display: flex; flex-direction: column; gap: 22px; box-sizing: border-box; background: #0A0A0C">
+<a href="#" style="display: flex; align-items: center; gap: 10px; padding: 0 10px; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; text-decoration: none"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FAFAFA" stroke-width="1.6"><path d="M3 7a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-3a2 2 0 0 0 0-4z"></path><path d="M9 5v14" stroke-dasharray="2 2"></path></svg>FlashSeat</a>
+<div style="padding: 12px; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #8B8B94">ORGANIZER</span>
+<span style="font-size: 14px; font-weight: 500">Chaupal Theatre Company</span>
+</div>
+<nav aria-label="Organizer" style="display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="3">
+<button type="button" class="nav" aria-current="{{n.current}}" onClick="{{n.go}}" style="{{n.style}}"><span aria-hidden="true" style="{{n.dot}}"></span>{{n.label}}</button>
+</sc-for>
+</nav>
+<div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px">
+<a href="#" style="padding: 8px 10px; font-size: 13px; color: #A1A1AA; text-decoration: none">← Back to site</a>
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px; border-top: 1px solid rgba(255,255,255,0.07)"><span style="width: 30px; height: 30px; border-radius: 50%; background: #27272A; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600">KS</span><span style="display: flex; flex-direction: column"><span style="font-size: 13px">Kabir</span><span style="font-size: 11px; color: #71717A">demo-kabir@flashseat.test</span></span></div>
+</div>
+</aside>
+
+<main style="flex: 999 1 640px; min-width: 0; padding: 32px 40px 64px; box-sizing: border-box">
+
+<sc-if value="{{isOverview}}" hint-placeholder-val="{{ true }}">
+<div class="view" style="display: flex; flex-direction: column; gap: 32px; max-width: 1120px">
+<div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8B8B94">OVERVIEW</span>
+<h1 style="margin: 0; font-size: 40px; font-weight: 600; letter-spacing: -0.04em; line-height: 1.05">Good evening, <span style="font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: #FF6B4A">Kabir.</span></h1>
+</div>
+<div style="display: flex; gap: 10px">
+<button type="button" class="btn btn-g" onClick="{{toVenues}}" style="background: none; border: 1px solid rgba(255,255,255,0.16); color: #FAFAFA; border-radius: 10px; padding: 11px 16px; font: 500 14px 'Geist', sans-serif; cursor: pointer">Venues</button>
+<button type="button" class="btn btn-w" style="background: #FAFAFA; color: #08080A; border: 0; border-radius: 10px; padding: 11px 16px; font: 600 14px 'Geist', sans-serif; cursor: pointer">New event <span class="arr">→</span></button>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+<div class="kpi" style="{{k.style}}">
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #8B8B94">{{k.label}}</span>
+<span style="font-size: 34px; font-weight: 600; letter-spacing: -0.04em; line-height: 1">{{k.value}}</span>
+<span style="font-size: 12px; color: #71717A">{{k.sub}}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; align-items: start">
+<section style="background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; overflow: hidden">
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid rgba(255,255,255,0.06)"><h2 style="margin: 0; font-size: 16px; font-weight: 600">Your events</h2><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #71717A">4 EVENTS</span></div>
+<sc-for list="{{events}}" as="e" hint-placeholder-count="4">
+<button type="button" class="rowbtn" onClick="{{e.open}}" style="width: 100%; display: grid; grid-template-columns: 44px 1fr auto; gap: 14px; align-items: center; padding: 14px 20px; border: 0; border-bottom: 1px solid rgba(255,255,255,0.05); background: none; color: #FAFAFA; text-align: left; font-family: 'Geist', sans-serif">
+<span class="{{e.img}}" style="width: 44px; height: 44px; border-radius: 10px; display: block"></span>
+<span style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
+<span style="display: flex; gap: 10px; align-items: center"><span style="font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{e.title}}</span><span style="{{e.pill}}">{{e.status}}</span></span>
+<span style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: #8B8B94"><span style="width: 90px; height: 4px; border-radius: 2px; background: #27272A; overflow: hidden; display: inline-block"><span class="fill" style="{{e.bar}}"></span></span>{{e.meta}}</span>
+</span>
+<span class="go" style="color: #71717A; font-size: 16px">→</span>
+</button>
+</sc-for>
+</section>
+
+<section style="background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px"><h2 style="margin: 0; font-size: 16px; font-weight: 600">Coming up</h2><span style="display: flex; align-items: center; gap: 7px; font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #4ADE80"><i class="pulse" style="width: 6px; height: 6px; border-radius: 50%; background: #4ADE80; display: inline-block"></i>LIVE</span></div>
+<sc-for list="{{upcoming}}" as="u" hint-placeholder-count="5">
+<div style="display: grid; grid-template-columns: 48px 1fr auto; gap: 14px; align-items: center; padding: 10px 0; border-top: 1px solid rgba(255,255,255,0.05)">
+<span style="display: flex; flex-direction: column; align-items: center"><span style="font-size: 20px; font-weight: 600; letter-spacing: -0.03em; line-height: 1">{{u.day}}</span><span style="font-family: 'Geist Mono', monospace; font-size: 10px; color: #8B8B94">{{u.mon}}</span></span>
+<span style="display: flex; flex-direction: column; gap: 3px; min-width: 0"><span style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{u.title}}</span><span style="font-size: 12px; color: #71717A">{{u.when}}</span></span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: #D4D4D8">{{u.sold}}</span>
+</div>
+</sc-for>
+</section>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isEvent}}" hint-placeholder-val="{{ false }}">
+<div class="view" style="display: flex; flex-direction: column; gap: 26px; max-width: 1120px">
+<nav aria-label="Breadcrumb" style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #8B8B94; display: flex; gap: 8px"><button type="button" onClick="{{toOverview}}" style="background: none; border: 0; padding: 0; color: #8B8B94; font: inherit; letter-spacing: inherit; cursor: pointer">EVENTS</button><span>/</span><span style="color: #D4D4D8">THE LAST TRAIN TO LONAVALA</span></nav>
+<div style="display: flex; gap: 22px; align-items: center; flex-wrap: wrap">
+<div class="img i-th" role="img" aria-label="Event photo" style="width: 96px; height: 96px; border-radius: 16px"></div>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 260px">
+<div style="display: flex; align-items: center; gap: 12px"><h1 style="margin: 0; font-size: 34px; font-weight: 600; letter-spacing: -0.04em">The Last Train to Lonavala</h1><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #4ADE80; border: 1px solid rgba(74,222,128,0.35); border-radius: 6px; padding: 4px 8px">PUBLISHED</span></div>
+<span style="font-size: 14px; color: #A1A1AA">Theatre · 4 shows · Rangdeep Theatre, Pune</span>
+</div>
+<div style="display: flex; gap: 10px">
+<a href="#" class="btn-g" style="border: 1px solid rgba(255,255,255,0.16); border-radius: 10px; padding: 10px 14px; font-size: 14px; text-decoration: none">View public page ↗</a>
+<button type="button" style="background: none; border: 1px solid rgba(255,107,74,0.4); color: #FF8A6E; border-radius: 10px; padding: 10px 14px; font: 500 14px 'Geist', sans-serif; cursor: pointer">Cancel event</button>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px">
+<div style="border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #8B8B94">SEATS SOLD</span><span style="font-size: 26px; font-weight: 600">381 <span style="font-size: 14px; color: #71717A; font-weight: 400">/ 1,200</span></span></div>
+<div style="border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #8B8B94">HELD RIGHT NOW</span><span style="font-size: 26px; font-weight: 600">6</span></div>
+<div style="border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #8B8B94">FILL RATE</span><span style="font-size: 26px; font-weight: 600">32%</span></div>
+</div>
+
+<section style="background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; overflow: hidden">
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); gap: 12px; flex-wrap: wrap">
+<h2 style="margin: 0; font-size: 16px; font-weight: 600">Shows</h2>
+<div style="display: flex; gap: 16px; align-items: center; font-size: 12px; color: #A1A1AA">
+<span style="display: flex; gap: 6px; align-items: center"><i style="width: 10px; height: 10px; border-radius: 2px; background: #FF6B4A; display: inline-block"></i>Booked</span>
+<span style="display: flex; gap: 6px; align-items: center"><i style="width: 10px; height: 10px; border-radius: 2px; background: #FAFAFA; display: inline-block"></i>Held</span>
+<span style="display: flex; gap: 6px; align-items: center"><i style="width: 10px; height: 10px; border-radius: 2px; background: #27272A; display: inline-block"></i>Available</span>
+<button type="button" class="btn btn-w" onClick="{{toggleAdd}}" style="background: #FAFAFA; color: #08080A; border: 0; border-radius: 9px; padding: 9px 14px; font: 600 13px 'Geist', sans-serif; cursor: pointer">{{addLabel}}</button>
+</div>
+</div>
+<sc-if value="{{adding}}" hint-placeholder-val="{{ false }}">
+<form class="panel" style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); background: #0C0C0F; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: end">
+<label style="display: flex; flex-direction: column; gap: 6px; grid-column: span 2"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">VENUE</span><select style="background: #131317; color: #FAFAFA; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 10px 12px; font: 400 14px 'Geist', sans-serif"><option>Rangdeep Theatre, Pune · 300 seats</option><option>The Back Bench Comedy Room, Mumbai · 120 seats</option></select></label>
+<label style="display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">DATE</span><input type="date" value="2026-11-29" style="background: #131317; color: #FAFAFA; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 9px 12px; font: 400 14px 'Geist', sans-serif; color-scheme: dark"></label>
+<label style="display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">STARTS</span><input type="time" value="19:30" style="background: #131317; color: #FAFAFA; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 9px 12px; font: 400 14px 'Geist', sans-serif; color-scheme: dark"></label>
+<label style="display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">ENDS</span><input type="time" value="22:00" style="background: #131317; color: #FAFAFA; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 9px 12px; font: 400 14px 'Geist', sans-serif; color-scheme: dark"></label>
+<label style="display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">VIP · ₹</span><input inputmode="numeric" value="1199" style="background: #131317; color: #FAFAFA; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 9px 12px; font: 400 14px 'Geist Mono', monospace"></label>
+<label style="display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">PREMIUM · ₹</span><input inputmode="numeric" value="799" style="background: #131317; color: #FAFAFA; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 9px 12px; font: 400 14px 'Geist Mono', monospace"></label>
+<label style="display: flex; flex-direction: column; gap: 6px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">REGULAR · ₹</span><input inputmode="numeric" value="399" style="background: #131317; color: #FAFAFA; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 9px 12px; font: 400 14px 'Geist Mono', monospace"></label>
+<button type="button" class="btn btn-c" style="background: #FF6B4A; color: #08080A; border: 0; border-radius: 10px; padding: 11px 14px; font: 600 14px 'Geist', sans-serif; cursor: pointer">Add show <span class="arr">→</span></button>
+<span role="alert" style="grid-column: 1 / -1; font-size: 13px; color: #FF8A6E">This venue already has a show at that time.</span>
+</form>
+</sc-if>
+<sc-for list="{{shows}}" as="s" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: 52px minmax(160px, 1fr) minmax(200px, 2fr) auto; gap: 18px; align-items: center; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.05)">
+<span style="display: flex; flex-direction: column; align-items: center"><span style="font-size: 22px; font-weight: 600; letter-spacing: -0.03em; line-height: 1">{{s.day}}</span><span style="font-family: 'Geist Mono', monospace; font-size: 10px; color: #8B8B94">{{s.mon}}</span></span>
+<span style="display: flex; flex-direction: column; gap: 3px"><span style="font-size: 14px">{{s.when}}</span><span style="font-size: 12px; color: #71717A">{{s.sub}}</span></span>
+<span style="display: flex; flex-direction: column; gap: 6px">
+<span style="display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: #27272A"><span class="fill" style="{{s.booked}}"></span><span class="fill" style="{{s.held}}"></span></span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #A1A1AA">{{s.nums}}</span>
+</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #4ADE80; border: 1px solid rgba(74,222,128,0.3); border-radius: 6px; padding: 4px 8px">ON SALE</span>
+</div>
+</sc-for>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{isVenues}}" hint-placeholder-val="{{ false }}">
+<div class="view" style="display: flex; flex-direction: column; gap: 26px; max-width: 1120px">
+<div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap">
+<div style="display: flex; flex-direction: column; gap: 8px"><span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8B8B94">VENUES / RANGDEEP THEATRE</span><h1 style="margin: 0; font-size: 34px; font-weight: 600; letter-spacing: -0.04em">Seat <span style="font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; color: #FF6B4A">builder</span></h1></div>
+<span style="font-size: 14px; color: #A1A1AA">Rangdeep Theatre · Pune · <span style="color: #FAFAFA">{{seatTotal}} seats</span></span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start">
+<section style="background: #0F0F12; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; align-items: center"><h2 style="margin: 0; font-size: 16px; font-weight: 600">Row groups</h2><button type="button" onClick="{{addGroup}}" style="background: none; border: 1px solid rgba(255,255,255,0.16); color: #FAFAFA; border-radius: 9px; padding: 7px 12px; font: 500 13px 'Geist', sans-serif; cursor: pointer">+ Add group</button></div>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+<div class="panel" style="display: grid; grid-template-columns: 1fr 1fr 1.2fr auto; gap: 8px; align-items: end; padding: 12px; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px">
+<label style="display: flex; flex-direction: column; gap: 5px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">ROWS</span><input value="{{g.rows}}" style="background: #131317; color: #FAFAFA; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 8px 10px; font: 400 13px 'Geist Mono', monospace; min-width: 0"></label>
+<label style="display: flex; flex-direction: column; gap: 5px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">SEATS / ROW</span><input value="{{g.per}}" style="background: #131317; color: #FAFAFA; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 8px 10px; font: 400 13px 'Geist Mono', monospace; min-width: 0"></label>
+<label style="display: flex; flex-direction: column; gap: 5px"><span style="font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #8B8B94">CATEGORY</span><span style="{{g.catStyle}}">{{g.cat}}</span></label>
+<button type="button" aria-label="{{g.aria}}" onClick="{{g.remove}}" style="background: none; border: 0; color: #71717A; font-size: 18px; cursor: pointer; padding: 6px">×</button>
+</div>
+</sc-for>
+<div style="display: flex; justify-content: space-between; align-items: center; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 13px; color: #A1A1AA"><span>{{breakdown}}</span><button type="button" class="btn btn-c" style="background: #FF6B4A; color: #08080A; border: 0; border-radius: 10px; padding: 10px 14px; font: 600 13px 'Geist', sans-serif; cursor: pointer">Save layout <span class="arr">→</span></button></div>
+</section>
+<section style="background: #0B0B0E; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; overflow: hidden">
+<span style="align-self: flex-start; font-family: 'Geist Mono', monospace; font-size: 10px; letter-spacing: 0.12em; color: #8B8B94">LIVE PREVIEW</span>
+<div aria-hidden="true" style="width: 60%; height: 3px; border-radius: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent); margin-top: 8px"></div>
+<span style="font-family: 'Geist Mono', monospace; font-size: 9px; letter-spacing: 0.3em; color: #71717A; margin-bottom: 8px">STAGE</span>
+<sc-for list="{{preview}}" as="pr" hint-placeholder-count="8">
+<div style="display: flex; gap: 4px; align-items: center"><span style="width: 14px; font-family: 'Geist Mono', monospace; font-size: 9px; color: #52525B">{{pr.label}}</span><sc-for list="{{pr.cells}}" as="c" hint-placeholder-count="12"><span class="seatp" style="{{c}}"></span></sc-for></div>
+</sc-for>
+</section>
+</div>
+</div>
+</sc-if>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var view = st.view || 'overview';
+    var go = function (v) { return function () { self.setState({ view: v }); }; };
+    var nav = [['overview', 'Overview'], ['event', 'Events'], ['venues', 'Venues']].map(function (n) {
+      var on = view === n[0];
+      return { label: n[1], current: on ? 'page' : 'false', go: go(n[0]),
+        style: 'display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; border-radius: 9px; padding: 9px 10px; font: 500 14px Geist, sans-serif; background: ' + (on ? 'rgba(255,255,255,0.07)' : 'transparent') + '; color: ' + (on ? '#FAFAFA' : '#A1A1AA') + ';',
+        dot: 'width: 6px; height: 6px; border-radius: 50%; background: ' + (on ? '#FF6B4A' : 'transparent') + ';' };
+    });
+    var kpis = [
+      ['LIVE EVENTS', '3', '1 draft · 0 cancelled'], ['UPCOMING SHOWS', '9', 'next: Sat 14 Nov'],
+      ['SEATS SOLD', '612', 'across all upcoming shows'], ['AVERAGE FILL', '38%', 'booked ÷ total seats']
+    ].map(function (k, i) { return { label: k[0], value: k[1], sub: k[2], style: 'display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: #0F0F12; animation-delay: ' + (0.07 * i).toFixed(2) + 's' }; });
+    var pill = function (s) {
+      var c = s === 'PUBLISHED' ? ['#4ADE80', 'rgba(74,222,128,0.3)'] : s === 'DRAFT' ? ['#A1A1AA', 'rgba(255,255,255,0.15)'] : ['#FF8A6E', 'rgba(255,107,74,0.35)'];
+      return 'font-family: Geist Mono, monospace; font-size: 9px; letter-spacing: 0.1em; color: ' + c[0] + '; border: 1px solid ' + c[1] + '; border-radius: 5px; padding: 3px 6px; flex: none;';
+    };
+    var events = [
+      ['img i-th', 'The Last Train to Lonavala', 'PUBLISHED', 32, '4 shows · 381 / 1,200 sold'],
+      ['img i-th', 'Chai, Chess and Other Arguments', 'PUBLISHED', 10, '2 shows · sales open Fri'],
+      ['img i-cm', 'Tuesday Open Mic at The Back Bench', 'PUBLISHED', 18, '3 shows · 64 / 360 sold'],
+      ['img i-th', 'A Midsummer Monsoon (work in progress)', 'DRAFT', 0, '1 show · not published']
+    ].map(function (e) { return { img: e[0], title: e[1], status: e[2], pill: pill(e[2]), bar: 'display: block; height: 100%; width: ' + e[3] + '%; background: #FF6B4A;', meta: e[4], open: go('event') }; });
+    var upcoming = [['10', 'NOV', 'Tuesday Open Mic', 'Tue · 8:00 PM · Mumbai', '42/120'], ['14', 'NOV', 'The Last Train to Lonavala', 'Sat · 7:30 PM · Pune', '165/300'], ['15', 'NOV', 'The Last Train to Lonavala', 'Sun · 4:00 PM · Pune', '120/300'], ['17', 'NOV', 'Tuesday Open Mic', 'Tue · 8:00 PM · Mumbai', '18/120'], ['21', 'NOV', 'The Last Train to Lonavala', 'Sat · 7:30 PM · Pune', '66/300']]
+      .map(function (u) { return { day: u[0], mon: u[1], title: u[2], when: u[3], sold: u[4] }; });
+    var shows = [['14', 'NOV', 'Saturday · 7:30 PM', 'Rangdeep Theatre · 2h 30m', 165, 4], ['15', 'NOV', 'Sunday · 4:00 PM', 'Rangdeep Theatre · 2h 30m', 120, 2], ['21', 'NOV', 'Saturday · 7:30 PM', 'Rangdeep Theatre · 2h 30m', 66, 0], ['22', 'NOV', 'Sunday · 7:30 PM', 'Rangdeep Theatre · 2h 30m', 30, 0]]
+      .map(function (s) { return { day: s[0], mon: s[1], when: s[2], sub: s[3],
+        booked: 'display: block; height: 100%; width: ' + (s[4] / 3).toFixed(1) + '%; background: #FF6B4A;',
+        held: 'display: block; height: 100%; width: ' + (s[5] / 3).toFixed(1) + '%; background: #FAFAFA;',
+        nums: s[4] + ' BOOKED · ' + s[5] + ' HELD · ' + (300 - s[4] - s[5]) + ' AVAILABLE' }; });
+
+    var groups = st.groups || [
+      { rows: 'A–B', n: 2, per: 12, cat: 'VIP' },
+      { rows: 'C–F', n: 4, per: 14, cat: 'PREMIUM' },
+      { rows: 'G–J', n: 4, per: 16, cat: 'REGULAR' }
+    ];
+    var catCol = { VIP: '#FAFAFA', PREMIUM: '#A1A1AA', REGULAR: '#5B5B66', BALCONY: '#3F3F46' };
+    var LBL = 'ABCDEFGHIJKLMN';
+    var preview = [], ri = 0, total = 0, by = {};
+    groups.forEach(function (g) {
+      for (var i = 0; i < g.n; i++) {
+        var cells = [];
+        for (var c = 0; c < g.per; c++) cells.push('width: 12px; height: 11px; border-radius: 4px 4px 2px 2px; display: block; border: 1.5px solid ' + catCol[g.cat] + ';');
+        preview.push({ label: LBL[ri] || '', cells: cells });
+        ri++;
+        total += g.per;
+        by[g.cat] = (by[g.cat] || 0) + g.per;
+      }
+    });
+    var gv = groups.map(function (g, i) {
+      return { rows: g.rows, per: String(g.per), cat: g.cat, aria: 'Remove rows ' + g.rows,
+        catStyle: 'display: flex; align-items: center; gap: 8px; background: #131317; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 8px 10px; font: 400 13px Geist Mono, monospace; border-left: 3px solid ' + catCol[g.cat] + ';',
+        remove: function () { var cur = (self.state && self.state.groups) || groups; self.setState({ groups: cur.filter(function (_, j) { return j !== i; }) }); } };
+    });
+    return {
+      nav: nav, isOverview: view === 'overview', isEvent: view === 'event', isVenues: view === 'venues',
+      toVenues: go('venues'), toOverview: go('overview'),
+      kpis: kpis, events: events, upcoming: upcoming, shows: shows,
+      adding: !!st.adding, addLabel: st.adding ? 'Close' : '+ Add show',
+      toggleAdd: function () { self.setState({ adding: !st.adding }); },
+      groups: gv, preview: preview, seatTotal: total,
+      breakdown: Object.keys(by).map(function (k) { return k + ' ' + by[k]; }).join(' · '),
+      addGroup: function () {
+        var cur = (self.state && self.state.groups) || groups;
+        var used = cur.reduce(function (t, g) { return t + g.n; }, 0);
+        if (used >= 14) return;
+        var a = LBL[used], b = LBL[Math.min(13, used + 1)];
+        self.setState({ groups: cur.concat([{ rows: a + '–' + b, n: Math.min(2, 14 - used), per: 18, cat: 'BALCONY' }]) });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

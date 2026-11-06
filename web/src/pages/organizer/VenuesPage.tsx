@@ -1,16 +1,19 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router';
-import { Plus } from 'lucide-react';
-import { Action, ActionLink, InlineAlert, PageHeader, Skeleton } from '../../components/organizer/ui';
+import { Action, ActionLink, Arr, InlineAlert, PageHeader, Skeleton } from '../../components/organizer/ui';
 import { formatCount } from '../../lib/organizer';
 import { useMyVenues } from '../../lib/organizerQueries';
 
+// Category chips use the seat-builder shades in the venue's own category order.
+const SHADES = ['#FAFAFA', '#A1A1AA', '#5B5B66', '#3F3F46'];
+
 export function CategoryTags({ categories }: { categories: string[] }) {
-  if (categories.length === 0) return <span className="label-mono text-text-3">No seats yet</span>;
+  if (categories.length === 0) return <span className="og-tag">NO SEATS YET</span>;
   return (
-    <span className="flex flex-wrap gap-1">
-      {categories.map((c) => (
-        <span key={c} className="label-mono rounded-[2px] border border-rule px-1.5 py-px text-text-2">
+    <span className="og-tags">
+      {categories.map((c, i) => (
+        <span key={c} className="og-tag">
+          <i aria-hidden="true" className="og-sw" style={{ width: 7, height: 7, background: SHADES[Math.min(i, SHADES.length - 1)] }} />
           {c}
         </span>
       ))}
@@ -27,79 +30,83 @@ export function VenuesPage() {
   }, []);
 
   return (
-    <div>
+    <div className="og-view">
       <PageHeader
         crumbs={[{ label: 'Overview', to: '/organizer' }, { label: 'Venues' }]}
         title="Venues"
+        small
         actions={
           <ActionLink to="/organizer/venues/new" tone="primary">
-            <Plus aria-hidden="true" className="size-4" /> New venue
+            New venue <Arr />
           </ActionLink>
         }
       />
 
-      <div className="mt-8">
-        {query.isPending ? (
-          <div aria-busy="true" className="space-y-3">
-            <Skeleton className="h-14" />
-            <Skeleton className="h-14" />
+      {query.isPending ? (
+        <div aria-busy="true" className="og-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <p className="sr-only" role="status">
+            Loading venues
+          </p>
+          <Skeleton style={{ height: 40 }} />
+          <Skeleton style={{ height: 40 }} />
+        </div>
+      ) : query.isError ? (
+        <InlineAlert>
+          <p style={{ margin: 0 }}>We couldn't load your venues.</p>
+          <Action className="mt-3" small onClick={() => void query.refetch()} busy={query.isFetching}>
+            Try again
+          </Action>
+        </InlineAlert>
+      ) : query.data.length === 0 ? (
+        <section aria-labelledby="no-venues" className="og-card og-card-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 14 }}>
+          <span className="og-eyebrow">NO VENUES YET</span>
+          <h2 id="no-venues" className="og-card-title" style={{ fontSize: 22, letterSpacing: '-0.03em' }}>
+            Add your first venue
+          </h2>
+          <p className="og-sub" style={{ maxWidth: '34rem', lineHeight: 1.6 }}>
+            A venue is a place plus its seat layout. Shows are scheduled at a venue, and every show gets a copy of its seats.
+          </p>
+          <ActionLink to="/organizer/venues/new" tone="primary">
+            Add a venue <Arr />
+          </ActionLink>
+        </section>
+      ) : (
+        <section aria-labelledby="venues-heading" className="og-card is-clip">
+          <div className="og-card-head">
+            <h2 id="venues-heading" className="og-card-title">
+              Your venues
+            </h2>
+            <span className="og-card-meta">
+              {query.data.length} {query.data.length === 1 ? 'VENUE' : 'VENUES'}
+            </span>
           </div>
-        ) : query.isError ? (
-          <InlineAlert>
-            <p>We couldn't load your venues.</p>
-            <Action className="mt-3" onClick={() => void query.refetch()} busy={query.isFetching}>
-              Try again
-            </Action>
-          </InlineAlert>
-        ) : query.data.length === 0 ? (
-          <div className="border border-rule px-5 py-10 sm:px-8">
-            <h2 className="text-[1.25rem] font-medium tracking-[-0.02em] text-text">No venues yet</h2>
-            <p className="mt-2 max-w-[32rem] text-[15px] text-text-2">
-              A venue is a place plus its seat layout. Shows are scheduled at a venue, and every show gets a copy of its seats.
-            </p>
-            <ActionLink to="/organizer/venues/new" tone="primary" className="mt-6">
-              <Plus aria-hidden="true" className="size-4" /> Add your first venue
-            </ActionLink>
-          </div>
-        ) : (
-          <div className="border-t border-rule">
-            <div aria-hidden="true" className="label-mono hidden grid-cols-[minmax(0,1fr)_7rem_minmax(0,14rem)_7rem] gap-4 border-b border-rule py-2.5 text-text-3 md:grid">
-              <span>Venue</span>
-              <span className="text-right">Seats</span>
-              <span>Categories</span>
-              <span />
-            </div>
-            <ul>
-              {query.data.map((venue) => (
-                <li
-                  key={venue.id}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 border-b border-rule py-3.5 md:grid-cols-[minmax(0,1fr)_7rem_minmax(0,14rem)_7rem]"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-[15px] font-medium text-text">{venue.name}</p>
-                    <p className="mt-0.5 truncate text-[13px] text-text-2">
-                      {venue.address} · <span className="label-mono text-text-3">{venue.city}</span>
-                    </p>
-                  </div>
-                  <p className="text-right font-mono text-[13px] text-text">
+          <ul className="og-list">
+            {query.data.map((venue) => (
+              <li key={venue.id}>
+                <Link to={`/organizer/venues/${venue.id}/seats`} className="og-vrow">
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                    <span className="og-vname">{venue.name}</span>
+                    <span className="og-vaddr">
+                      {venue.city} · {venue.address}
+                    </span>
+                  </span>
+                  <span className="og-vcount">
                     {formatCount(venue.seat_count)}
-                    <span className="text-text-3 md:hidden"> seats</span>
-                  </p>
-                  <div className="min-w-0">
-                    <CategoryTags categories={venue.categories} />
-                  </div>
-                  <Link
-                    to={`/organizer/venues/${venue.id}/seats`}
-                    className="label-mono justify-self-end text-text-2 hover:text-lime"
-                  >
-                    {venue.seat_count === 0 ? 'Add seats →' : 'Seats →'}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
+                    <span style={{ color: 'var(--text-3)' }}> seats</span>
+                  </span>
+                  <CategoryTags categories={venue.categories} />
+                  <span className="og-vgo">
+                    {venue.seat_count === 0 ? 'Add seats' : 'Edit seats'}{' '}
+                    <span aria-hidden="true" className="og-go" style={{ display: 'inline-block', fontSize: 13 }}>
+                      →
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }
