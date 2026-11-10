@@ -14,6 +14,8 @@ export default defineConfig({
     // but under its own connection name: terminateApiBackends() kills
     // 'flashseat-api' only, and must never hit the test process's own clients.
     // (dotenv does not override variables that are already set.)
-    env: { DB_APPLICATION_NAME: 'flashseat-test' },
+    // PAYMENT_PROVIDER is pinned to mock so the suite never depends on the RAZORPAY_*
+    // values in .env; tests/payments.test.ts installs a fake Razorpay client itself.
+    env: { DB_APPLICATION_NAME: 'flashseat-test', PAYMENT_PROVIDER: 'mock' },
   },
 });

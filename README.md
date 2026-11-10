@@ -381,6 +381,11 @@ any is invalid. Templates: `.env.example` (production-style, placeholders for se
 | `DB_CONNECTION_TIMEOUT_MS` / `DB_STATEMENT_TIMEOUT_MS` | 5000 / 5000 | pool checkout wait / statement limit |
 | `DB_LOCK_TIMEOUT_MS` | 1000 | row-lock wait before 409 `LOCK_TIMEOUT` |
 | `ENABLE_MOCK_PAYMENT` | false | enables `confirm-mock`; refused when `NODE_ENV=production` |
+| `PAYMENT_PROVIDER` | `mock` | `mock` or `razorpay` (real orders, verify, webhook, refunds) |
+| `RAZORPAY_KEY_ID` | required with `razorpay` | public key id (test mode: `rzp_test_...`), returned to the client |
+| `RAZORPAY_KEY_SECRET` | required with `razorpay` | API secret: signs checkout callbacks, authenticates API calls. Never logged. |
+| `RAZORPAY_WEBHOOK_SECRET` | required with `razorpay` | the secret set on the webhook in the Razorpay dashboard. Never logged. |
+| `PAYMENT_JOBS_BATCH_SIZE` / `REFUND_MAX_ATTEMPTS` | 20 / 5 | refund worker batch; attempts before a refund is marked FAILED |
 | `ENABLE_RATE_LIMITING` | true | rate limiters on/off |
 | `RATE_LIMIT_REGISTER_IP_LIMIT` | 30 | registrations per IP per 60 s (the local test `.env` uses 400) |
 | `MAX_INFLIGHT_BOOKING_REQUESTS` | 150 | admission gate cap |

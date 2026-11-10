@@ -59,12 +59,13 @@ SELECT ss.id, ss.booking_id, b.status AS booking_status
  WHERE ss.status = 'BOOKED'
    AND (b.status IS NULL OR b.status NOT IN ('CONFIRMED', 'REFUND_PENDING'));
 
-\echo '--- 6. CONFIRMED reservations without CONFIRMED (or REFUND_PENDING) booking ---'
+\echo '--- 6. CONFIRMED reservations without CONFIRMED (or REFUND_PENDING / REFUNDED) booking ---'
 SELECT r.id, r.user_id, r.status AS reservation_status
   FROM reservations r
   -- REFUND_PENDING is healthy: after an event cancel, confirmed bookings move to
-  -- REFUND_PENDING (Phase 3 refund) while the reservation stays CONFIRMED.
-  LEFT JOIN bookings b ON b.reservation_id = r.id AND b.status IN ('CONFIRMED', 'REFUND_PENDING')
+  -- REFUND_PENDING while the reservation stays CONFIRMED; the refund worker then
+  -- moves them to REFUNDED (migration 003).
+  LEFT JOIN bookings b ON b.reservation_id = r.id AND b.status IN ('CONFIRMED', 'REFUND_PENDING', 'REFUNDED')
  WHERE r.status = 'CONFIRMED'
    AND b.id IS NULL;
 
@@ -88,3 +89,28 @@ SELECT b.id, b.user_id, b.show_id, b.status
   JOIN shows s ON s.id = b.show_id
  WHERE b.status = 'PENDING_PAYMENT'
    AND s.status = 'CANCELLED';
+
+\echo '--- 10. CONFIRMED bookings paid through Razorpay without a CAPTURED payment ---'
+SELECT b.id, b.status
+  FROM bookings b
+ WHERE b.status = 'CONFIRMED'
+   AND EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.provider = 'razorpay')
+   AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'CAPTURED');
+
+\echo '--- 11. payments refunded more than once (refund rows or provider refund ids) ---'
+SELECT payment_id, count(*) AS refunds
+  FROM refunds
+ GROUP BY payment_id
+HAVING count(*) > 1
+UNION ALL
+SELECT r.payment_id, count(*)
+  FROM refunds r
+ WHERE r.provider_refund_id IS NOT NULL
+ GROUP BY r.payment_id, r.provider_refund_id
+HAVING count(*) > 1;
+
+\echo '--- 12. refunds for a payment that was never CAPTURED ---'
+SELECT r.id, r.payment_id, p.status AS payment_status
+  FROM refunds r
+  JOIN payments p ON p.id = r.payment_id
+ WHERE p.status <> 'CAPTURED';
