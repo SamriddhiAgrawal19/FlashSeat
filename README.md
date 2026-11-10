@@ -1,421 +1,422 @@
 # FlashSeat
 
-- **Exactly 100 of 5,000 concurrent holds succeeded on a 100-seat show.** The result was
-  DB-verified, with zero deadlocks and zero 5xx ([load test results](load/RESULTS.md)).
-- **80 integration tests** run against real Postgres and Redis, with no mocks, plus a
-  mutation test that checks the sweeper tests catch injected bugs.
-- **Overload fails safe:** bounded 503 + `Retry-After`, and zero 500s across every load run.
-- **One-command Docker stack:** Postgres, Redis, migrations, API and sweeper.
+**FlashSeat: a concurrency-safe event ticketing platform. Pick your exact seat; it can never be sold twice.**
 
-FlashSeat is a ticket-booking REST API (Node 22, Express 5, TypeScript, PostgreSQL 16,
-Redis 7) for events with numbered or general-admission seats. Its core guarantee is that **a
-seat is never sold twice, however many users try to book it at the same moment**. Holds are
-taken with row locks inside one Postgres transaction, and database constraints reject any
-state that would mean double-selling.
+A full-stack ticketing app (React + Express + PostgreSQL) built around one guarantee: however
+many people try to book the same seat at the same moment, exactly one of them gets it. Seats
+are held for 10 minutes while the buyer pays with Razorpay, and the database itself rejects
+any state that would mean selling a seat twice.
+
+<p align="center">
+  <img src="docs/screenshots/seat-hold.webp" alt="Selecting three seats on the live seat map, holding them, and the 10-minute hold countdown starting" width="900">
+</p>
+
+| Landing | Events | Event detail |
+|---|---|---|
+| [![Landing page hero](docs/screenshots/landing.webp)](docs/screenshots/landing.webp) | [![Events list with category and date filters](docs/screenshots/events.webp)](docs/screenshots/events.webp) | [![Event detail page with dates and prices](docs/screenshots/event-detail.webp)](docs/screenshots/event-detail.webp) |
+| **Seat map** | **Tickets** | **Organizer overview** |
+| [![Seat map with three seats selected](docs/screenshots/seat-map.webp)](docs/screenshots/seat-map.webp) | [![Confirmed booking with a QR-code ticket](docs/screenshots/tickets.webp)](docs/screenshots/tickets.webp) | [![Organizer dashboard with live sales stats](docs/screenshots/organizer-overview.webp)](docs/screenshots/organizer-overview.webp) |
+
+<sub>Screenshots use the seeded demo data (`npm run demo:fresh`). Event photos: [web/public/images/CREDITS.md](web/public/images/CREDITS.md).</sub>
 
 ## Contents
 
-- [The problem](#the-problem)
+- [Features](#features)
+- [How it stays correct](#how-it-stays-correct)
 - [Architecture](#architecture)
-- [How a booking works](#how-a-booking-works)
-- [Key design decisions](#key-design-decisions)
 - [Tech stack](#tech-stack)
-- [Quickstart with Docker](#quickstart-with-docker)
-- [Demo data](#demo-data)
-- [Running the API on the host](#running-the-api-on-the-host)
+- [Getting started](#getting-started)
 - [Testing](#testing)
-- [Load testing](#load-testing)
-- [API overview](#api-overview)
 - [Project structure](#project-structure)
-- [Configuration](#configuration)
-- [Known limitations and roadmap](#known-limitations-and-roadmap)
 - [Documentation](#documentation)
+- [Roadmap and known limitations](#roadmap-and-known-limitations)
 
-## The problem
+## Features
 
-Ticket sales for a popular show are a burst: many users open the seat map when sales open
-and pick from the same few seats in the same second. A naive "check the seat is free, then
-mark it taken" flow lets two requests both see the seat as free and both sell it. Holds also
-have to expire if the buyer walks away, and clients retry on timeouts. A retried "hold these
-seats" or "confirm payment" must not create a second hold or a second set of tickets. All of
-this has to stay correct with several API instances whose clocks don't agree exactly, and
-under overload the API should turn requests away cleanly instead of hanging.
+**For attendees**
+
+- **Browse** upcoming events by city, category and date.
+- **Live seat map**: a curved venue map showing every seat as available, taken or yours,
+  refreshed while you look, with category prices and a view-from-seat preview.
+- **10-minute holds**: holding seats (up to 6) reserves them for you while you pay, with a
+  countdown. Nobody else can take them in that time; when it ends, they go back on sale.
+- **Razorpay payments** (test mode): card, UPI or netbanking through Razorpay Checkout. A
+  mock payment mode works with no Razorpay account.
+- **Tickets with QR codes**: one ticket per seat, each with its own ticket code and QR code.
+- **Add to calendar**: download an `.ics` file for the show.
+- **My bookings**: upcoming, past, pending and cancelled bookings, including refund status.
+
+**For organizers**
+
+- **Venues and a seat builder**: lay out numbered rows and sections, or general admission,
+  with a live preview.
+- **Events and shows**: create an event as a draft, add shows at a venue, and set a price
+  for each seat category.
+- **Live sales stats**: seats sold, average fill and upcoming shows across all events.
+- **Publish** an event when it has at least one show.
+- **Cancel** an event: open holds and unpaid bookings close, and paid bookings are refunded
+  automatically.
+
+### Payments
+
+| Razorpay Checkout | Payment confirmed |
+|---|---|
+| [![Razorpay Checkout in test mode showing the ₹1,198 order total and netbanking bank choices](docs/screenshots/razorpay-checkout.webp)](docs/screenshots/razorpay-checkout.webp) | [![Razorpay's Payment Successful screen for the ₹1,198 netbanking test payment](docs/screenshots/payment-success.webp)](docs/screenshots/payment-success.webp) |
+| Razorpay Checkout in test mode. The amount comes from the server, never the browser. | After the server verifies the payment's HMAC signature, the booking is confirmed and tickets are issued. |
+
+## How it stays correct
+
+Many people opening the seat map the moment sales open and clicking the same seats is the
+normal case, not an edge case. A naive "check the seat is free, then mark it taken" lets two
+requests both see the seat as free. FlashSeat closes every gap:
+
+- **Postgres is the single source of truth.** Holds, expiry times, idempotency keys,
+  payments and tickets all live in Postgres, and every time decision uses the database clock
+  ([clocks](docs/clocks.md)). Redis only does rate limiting, an admission gate and a
+  2-second seat-map cache, and fails open: correctness never depends on it.
+- **Row locks in a fixed order.** Every write locks rows in one global order (show,
+  reservation, booking, payment, then seats by ascending id), so two buyers going for
+  overlapping seats wait for each other instead of deadlocking
+  ([lock order](docs/lock-order.md), [why `ORDER BY id`](docs/booking-flow.md#why-order-by-id-prevents-deadlock)).
+- **Idempotency keys.** A hold request carries an `Idempotency-Key`; a retried request
+  returns the same hold instead of creating a second one. Checkout, confirm and payment
+  creation are idempotent by state ([replay rules](docs/booking-flow.md#idempotency-and-replay-rules)).
+- **Lazy expiry plus a sweeper.** Every availability check treats an expired hold as free,
+  so correctness never waits for cleanup. A separate sweeper process tidies expired rows
+  with `SKIP LOCKED`, so it never blocks a buyer ([lazy expiry](docs/booking-flow.md#lazy-expiry-and-the-sweeper)).
+- **Database constraints as the final safety net.** Check constraints, composite foreign
+  keys, partial unique indexes and an exclusion constraint reject bad states even if
+  application code is wrong. `uq_one_live_ticket_per_seat` allows **one live ticket per
+  seat**, full stop ([data model](docs/data-model.md)).
+- **Razorpay signature verification.** The checkout callback's HMAC-SHA256 signature is
+  checked in constant time, the payment is fetched from Razorpay, and the amount must match
+  the one stored in the database ([payments API](docs/api.md#payments-razorpay)).
+- **Webhook idempotency.** Webhooks are verified against the raw body and recorded by
+  Razorpay event id; a repeated event does nothing. The verify callback and the
+  `payment.captured` webhook run the same locked step, so they produce one confirmation and
+  one set of tickets.
+- **Automatic refunds.** If a payment arrives after the hold has ended (or the event was
+  cancelled), the booking becomes `REFUND_PENDING` and the refund worker refunds it in
+  full, with retries and backoff. A payment can never be refunded twice
+  ([paying with Razorpay](docs/booking-flow.md#paying-with-razorpay)).
+
+**Load test** (k6, from [load/RESULTS.md](load/RESULTS.md)):
+
+> Load tested the booking engine's seat-hold endpoint with k6: 5,000 concurrent hold attempts
+> on a 100-seat show gave **exactly 100 successful holds (DB-verified, no seat held twice, zero
+> deadlocks)**. At 10,000 concurrent connections it served ~1,300 req/s, peaking at ~390 hold
+> requests/s fully processed by Postgres (successful holds + clean 409s) on a 10-connection
+> Postgres pool, and shed overload as bounded 503 + Retry-After with zero 500s.
+
+| Test | Load | Result |
+|---|---|---|
+| [Contention](load/RESULTS.md#test-a-correctness-under-maximum-contention) | 1,000 VUs, 5,000 hold attempts on one 100-seat show | **100 x 201**, 4,483 x 409 `SEATS_UNAVAILABLE`, 417 x 409 `ACTIVE_RESERVATION_EXISTS`, 0 lock timeouts, 0 5xx; DB: 100 ACTIVE reservations = 100 HELD seats |
+| [Throughput](load/RESULTS.md#run-2-db_pool_max10-baseline) | ramp to 10,000 VUs on 200 shows x 50 seats | 159,645 requests (~1,330 req/s peak); 7,611 holds; 145,129 x 503 `DB_UNAVAILABLE`; 0 x 500 |
+
+The runs measured the hold endpoint on one machine (k6, API and Postgres together); the
+full methodology, the pool-size and Redis-gate experiments, and what the runs do not cover
+are in [load/RESULTS.md](load/RESULTS.md).
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  C["Client"] --> MW["Express middleware<br/>auth, rate limit, admission gate"]
-  MW --> MOD["Modules<br/>auth, venues, events, shows,<br/>show-seats, reservations, bookings"]
-  MOD --> PG[("PostgreSQL 16<br/>source of truth")]
-  MOD --> EH["Error mapper<br/>pg errors to HTTP codes"]
-  MW -. "advisory, fails open" .-> R[("Redis 7")]
-  MOD -. "seat-map cache" .-> R
-  SW["Sweeper worker<br/>separate process"] --> PG
+  U["Browser"] --> W["React SPA<br/>Vite dev server, /api proxy"]
+  W -->|"REST /api/*"| A["Express 5 API<br/>auth, rate limits, admission gate"]
+  A --> PG[("PostgreSQL 16<br/>single source of truth")]
+  A -. "rate limits, admission gate,<br/>seat-map cache (fails open)" .-> R[("Redis 7")]
+  SW["Sweeper process<br/>expiry sweep + refund worker"] --> PG
+  U -->|"Razorpay Checkout<br/>(card / UPI / netbanking)"| RZ["Razorpay<br/>test mode"]
+  A -->|"create order, fetch payment"| RZ
+  W -->|"POST /payments/razorpay/verify"| A
+  RZ -->|"POST /webhooks/razorpay"| A
+  SW -->|"refunds"| RZ
   MIG["migrate<br/>one-shot container"] --> PG
 ```
 
-- **API** (`src/server.ts`, `src/app.ts`): a stateless Express process. Each module has
-  routes, a controller (Zod validation), a service (business rules, transactions) and a
-  repository (raw SQL). Every multi-statement write runs inside one `withTransaction` call
-  (`src/db/pool.ts`).
-- **PostgreSQL** is the source of truth for everything: holds, expiry, idempotency keys and
-  tickets. Constraints are the final guard against double-selling (see
-  [docs/data-model.md](docs/data-model.md)).
-- **Redis** is advisory and fails open. It backs rate limiting, the admission gate and a 2 s
-  seat-map cache. If Redis is down or slow, requests go through as if the feature were off
-  (`src/redis/client.ts` `withRedisFallback`). Correctness never depends on it.
-- **Sweeper** (`src/workers/sweeper.ts`): a separate process that periodically marks expired
-  reservations and bookings `EXPIRED` and frees their seats. It uses `SKIP LOCKED` so it
-  never blocks an API request. The API never depends on it for correctness (see
-  [lazy expiry](docs/booking-flow.md#lazy-expiry-and-the-sweeper)).
-- **migrate**: a one-shot compose service that runs `node-pg-migrate up` and exits. `api`
-  and `sweeper` start only after it exits 0.
-- **Error mapper** (`src/middleware/errorHandler.ts`): turns Zod errors, application errors
-  and Postgres SQLSTATEs into one response shape, `{ "error": { "message", "code" } }`.
+- **API** (`src/`): a stateless Express process. Each module has routes, a controller (Zod
+  validation), a service (business rules, transactions) and a repository (raw SQL).
+- **Sweeper** (`src/workers/sweeper.ts`): a separate process that expires stale holds and
+  unpaid bookings, then runs the payment jobs: refunds and webhook retries.
+- **migrate**: a one-shot container that applies the SQL migrations; the API and sweeper
+  start only after it succeeds.
+- **Web** (`web/`): a React single-page app. In development, Vite proxies `/api/*` to the
+  API, so no CORS is needed.
 
-Details: [docs/architecture.md](docs/architecture.md).
-
-## How a booking works
-
-Hold, then checkout, then confirm. Each step is one transaction, and each locks rows in the
-same global order: show, then reservation, then booking, then seats by ascending id.
+Booking and payment, end to end:
 
 ```mermaid
 sequenceDiagram
-  participant C as Client
+  autonumber
+  participant B as Browser
   participant A as API
   participant P as Postgres
-  C->>A: POST /shows/S/reservations (Idempotency-Key K, seatIds)
-  A->>P: BEGIN, find reservation by (user, K)
-  Note over A,P: key found -> replay 200, or 409/422, stop here
-  A->>P: show FOR SHARE, bookable? (DB clock)
-  A->>P: expire own stale holds, INSERT reservation
-  A->>P: seats ORDER BY id FOR UPDATE, all free?
-  A->>P: seats HELD until now()+600s, COMMIT
-  A-->>C: 201 reservation (expiresAt)
-  C->>A: POST /reservations/R/checkout
-  A->>P: BEGIN, show FOR SHARE, reservation and booking FOR UPDATE
-  Note over A,P: booking exists -> replay 200, no second booking
-  A->>P: seats FOR UPDATE, still held by R? INSERT booking, COMMIT
-  A-->>C: 201 booking PENDING_PAYMENT (payBefore)
-  C->>A: POST /bookings/B/confirm-mock
-  A->>P: BEGIN, show FOR SHARE, reservation and booking FOR UPDATE
-  Note over A,P: already CONFIRMED -> replay 200
-  A->>P: seats FOR UPDATE, BOOKED, INSERT tickets, CONFIRMED, COMMIT
-  A-->>C: 200 booking with a ticketCode per seat
+  participant R as Razorpay
+  B->>A: POST /shows/S/reservations (Idempotency-Key K, seatIds)
+  A->>P: BEGIN, replay if (user, K) exists
+  A->>P: show FOR SHARE, seats ORDER BY id FOR UPDATE
+  A->>P: all free? seats HELD until now() + 10 min, COMMIT
+  A-->>B: 201 reservation (expiresAt), countdown starts
+  B->>A: POST /reservations/R/checkout
+  A->>P: lock show, reservation, booking, seats, INSERT booking
+  A-->>B: 201 booking PENDING_PAYMENT
+  B->>A: POST /bookings/BK/payments
+  A->>P: checks under locks, COMMIT (no lock held during the call)
+  A->>R: create order (amount from the DB)
+  A->>P: INSERT payment CREATED (one open order per booking)
+  A-->>B: keyId, orderId, amount
+  B->>R: Razorpay Checkout (card / UPI / netbanking)
+  R-->>B: payment_id, order_id, signature
+  B->>A: POST /payments/razorpay/verify
+  A->>A: HMAC-SHA256 signature check (constant time)
+  A->>R: fetch payment: captured, amount matches?
+  A->>P: lock show, reservation, booking, payment, seats
+  alt hold still live
+    A->>P: seats BOOKED, one ticket per seat, CONFIRMED, COMMIT
+    A-->>B: 200 booking with tickets (QR codes)
+  else hold ended or event cancelled
+    A->>P: booking REFUND_PENDING + refunds row, COMMIT
+    A-->>B: 409 PAYMENT_CAPTURED_SEATS_UNAVAILABLE
+    Note over P,R: sweeper process refunds it (receipt = refund id, retried with backoff)
+  end
+  R->>A: webhook payment.captured (signed, event id deduplicated)
+  A->>P: same captured step: already CONFIRMED, no-op
 ```
 
-Step by step, with race timelines and state diagrams: [docs/booking-flow.md](docs/booking-flow.md).
-
-## Key design decisions
-
-| Decision | Why | Trade-off |
-|---|---|---|
-| Raw SQL (`pg`), no ORM | Locking is explicit and reviewable: every `FOR UPDATE`, `FOR SHARE`, `SKIP LOCKED` and `ORDER BY id` is visible in the query that takes it. ORMs express the Postgres features the guarantees rest on poorly: the exclusion constraint, partial unique indexes, composite FKs, `ON CONFLICT` on a named index. And the project was built to learn SQL and transactions directly. | More SQL to write and review; no generated types or migrations from models. |
-| DB constraints as the final guard | `chk_show_seat_hold`, `chk_show_seat_booked`, composite FKs, `uq_one_active_reservation`, `uq_one_live_ticket_per_seat` and the `no_venue_overlap` exclusion constraint reject bad states even if application code is wrong. | Constraint violations have to be mapped to HTTP codes per constraint (`23505` with `err.constraint` checks). |
-| Row locks in ascending id order | Two transactions that lock overlapping seat sets always take them in the same order, so they wait on each other instead of deadlocking. | Every multi-row lock needs `ORDER BY id`; a missing one is a latent deadlock. |
-| Global lock hierarchy | events, then the venue advisory lock, shows, reservations, bookings, show_seats ([docs/lock-order.md](docs/lock-order.md)). Paths that only know a reservation or booking id do a plain read for `show_id` first, then lock from the top. | One extra read per checkout, confirm and release; the rule has to be kept by hand. |
-| Hold, then confirm | A hold (`HELD` + `held_until`) reserves seats for `HOLD_DURATION_SECONDS` (600) while the user pays; confirm turns them `BOOKED`. | Seats are unavailable to others during an abandoned hold until it expires. |
-| Lazy expiry plus a sweeper | Every availability check treats `HELD` with `held_until < now()` as free, so correctness never waits for cleanup. The sweeper only tidies rows. | Rows can read as `HELD`/`ACTIVE` in the table after they are logically expired; reads compute an effective status. |
-| DB clock, not server clock | All expiry and "has the show started" decisions use Postgres `now()`, so several API instances agree ([docs/clocks.md](docs/clocks.md)). | Access-token `exp` is still checked on the app clock (stateless JWTs), so API hosts need NTP. |
-| Idempotency keys on hold | `Idempotency-Key` header, unique per `(user_id, idempotency_key)`; a retry returns the same reservation. Checkout and confirm are idempotent by state: one booking per reservation, and confirming a `CONFIRMED` booking replays it. | Replays only work while the hold is live; a dead hold needs a new key. |
-| Tickets created only on confirm | `booking_seats` rows (one `ticket_code` per seat) are inserted in the confirm transaction, never at checkout, so an unpaid booking holds no tickets. | Checkout and confirm each re-verify the seat hold. |
-| 404 instead of 403 for others' resources | Someone else's venue, event, reservation or booking returns 404, so ids cannot be probed for existence. A wrong role still gets 403. | Clients can't tell "not yours" from "doesn't exist". |
-| Refresh-token rotation with reuse detection | Refresh tokens are random, stored as SHA-256 hashes, rotated on every use under `FOR UPDATE`. Presenting a revoked token revokes all of that user's tokens. | A stolen-cookie replay logs the real user out too (by design). |
-| Redis fails open | Redis only protects capacity, so an outage must not take bookings down: commands time out after 2 s or are rejected at once while disconnected, and the request proceeds. | During a Redis outage there is no rate limiting or admission gate. |
-| Fixed-window rate limiting | `INCR` + `EXPIRE NX` in one pipeline: atomic, one round trip, enough to blunt brute-force login, signup floods and hold griefing. | Up to 2x the limit in a short span across a window edge. |
-| Admission gate on booking writes | Caps in-flight hold, checkout and confirm requests at `MAX_INFLIGHT_BOOKING_REQUESTS` (150), using a Redis sorted set updated by one Lua script. Excess requests get an immediate 503 `SERVICE_BUSY` instead of waiting 5 s for a pool connection. | Did not raise overall goodput at 10,000 concurrent requests on one Node process (see [Load testing](#load-testing)). |
+With `PAYMENT_PROVIDER=mock`, steps 9 to 25 are replaced by one call,
+`POST /bookings/BK/confirm-mock`, which runs the same confirm step. More:
+[architecture](docs/architecture.md), [booking flow](docs/booking-flow.md) (state diagrams
+and race timelines).
 
 ## Tech stack
 
-- **Node.js 22 + TypeScript**: one language for API, worker, tests and scripts. The image is
-  `node:22-slim` because argon2's prebuilt binaries are glibc-only.
-- **Express 5**: HTTP routing and middleware.
-- **PostgreSQL 16 via `pg`**: row locks, partial unique indexes, an exclusion constraint and
-  a shared clock carry the correctness guarantees. Migrations are plain `.sql` files run by
-  **node-pg-migrate**.
-- **Redis 7 via ioredis**: counters and sets shared by all API instances, for rate limiting,
-  admission control and the seat-map cache.
-- **Zod**: validates env vars at startup and every request body, query, path and header.
-- **argon2** for passwords, **jsonwebtoken** for HS256 access tokens (algorithm pinned),
-  **pino** for JSON logs.
-- **Vitest** integration tests, **k6** load tests, **Docker Compose** for the whole stack.
+| Area | Technologies |
+|---|---|
+| Backend | Node.js 22, TypeScript, Express 5, Zod (env and request validation), argon2 (passwords), jsonwebtoken (HS256 access tokens), cookie-parser (refresh-token cookie), pino (JSON logs) |
+| Frontend | React 19, Vite 8, React Router 8, TanStack Query 5, Tailwind CSS 4, lucide-react (icons), qrcode (ticket QR codes) |
+| Data | PostgreSQL 16 via `pg` (raw SQL, no ORM), node-pg-migrate (plain `.sql` migrations), Redis 7 via ioredis |
+| Payments | Razorpay (test mode): Orders and Payments REST API, Checkout, webhooks, refunds; a built-in mock provider |
+| Testing | Vitest (integration tests against real Postgres and Redis, a fake Razorpay client), k6 (load tests), SQL invariant checks, a sweeper mutation test |
+| Tooling | Docker and Docker Compose, tsx (dev server and scripts), dotenv |
 
-## Quickstart with Docker
+## Getting started
 
-**Prerequisites:** Docker Desktop (Compose v2). For tests and load tests, also Node 22 on
-the host.
+### Prerequisites
 
-1. Create the container env file (gitignored) and fill in its one placeholder,
-   `JWT_ACCESS_SECRET` (at least 32 characters; to run the tests, use the same value as in
-   your host `.env`):
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine with Compose v2)
+- Node.js 22 and npm
+- Optional: a [Razorpay](https://razorpay.com) account in Test Mode, for real test payments
 
-   ```sh
-   cp .env.docker.example .env.docker
-   ```
-
-2. Build and start Postgres, Redis, migrations, API and sweeper:
-
-   ```sh
-   docker compose up --build -d
-   ```
-
-3. Check it. `migrate` should have exited 0, `api` should be healthy:
-
-   ```sh
-   docker compose ps -a
-   curl http://localhost:3000/health     # {"status":"ok"}
-   ```
-
-4. Stop, or reset all data:
-
-   ```sh
-   docker compose down      # stop and remove containers, keep data
-   docker compose down -v   # also delete the Postgres and Redis volumes
-   ```
-
-A full happy path with curl (organizer creates a venue, event and show; an attendee holds,
-checks out and confirms) is in [docs/api.md](docs/api.md#curl-walkthrough).
-
-## Demo data
-
-> **Warning:** `db:reset-local` and `demo:fresh` **delete all data** in the local docker
-> database (every table except `pgmigrations`) and the app's Redis keys (`seatmap:*`,
-> `ratelimit:*`, `admission:*`). They refuse to run unless `NODE_ENV` is not
-> `production`, the database host is `localhost`/`127.0.0.1`/`postgres` with the
-> database name from `.env`, Redis is local, the servers they reach are the compose
-> `postgres`/`redis` containers, and `--yes` is passed.
-
-With the stack up (`docker compose up -d`):
+### 1. Clone
 
 ```sh
-npm run demo:fresh                 # reset + seed (about 4 minutes)
-npm run db:reset-local -- --yes    # only wipe (without --yes it just prints the plan)
-npm run seed:demo                  # only seed; refuses if demo accounts already exist
+git clone https://github.com/SamriddhiAgrawal19/FlashSeat.git
+cd FlashSeat
 ```
 
-`seed:demo` uses only the public API at `http://localhost:3000`, at the production rate
-limits, so every rule and invariant applies. It creates 3 organizers, 6 venues in Pune,
-Mumbai, Bengaluru, Delhi and Hyderabad, 14 published events across all six categories (two
-with sales opening later), one DRAFT and one CANCELLED event, and ~560 bookings that fill
-several shows 20–60%, front rows first. All names are fictional.
+### 2. Create the env files
+
+The containers read `.env.docker`; the host scripts (demo data, tests) read `.env`. Both
+start from [.env.docker.example](.env.docker.example) and must share the same
+`JWT_ACCESS_SECRET`. This snippet (bash, Git Bash or macOS/Linux shells) generates a secret
+and creates both files:
+
+```sh
+cp .env.docker.example .env.docker
+SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+sed -i.bak "s|^JWT_ACCESS_SECRET=.*|JWT_ACCESS_SECRET=$SECRET|" .env.docker && rm .env.docker.bak
+cp .env.docker .env
+printf '\nDATABASE_URL=postgres://flashseat:flashseat@localhost:5432/flashseat\nREDIS_URL=redis://localhost:6379\n' >> .env
+```
+
+Or do it by hand: copy `.env.docker.example` to `.env.docker` and to `.env`, put the same
+random 32+ character string in `JWT_ACCESS_SECRET` in both, and add the two `DATABASE_URL`
+and `REDIS_URL` lines above to `.env`. Both files are gitignored.
+
+[.env.example](.env.example) is the **production** template (mock payment off, strict
+rate limits); don't use it for local development. Every variable is documented in
+[docs/operations.md](docs/operations.md#environment-variables).
+
+**Payments.** `.env.docker.example` sets `PAYMENT_PROVIDER=mock`, which needs no Razorpay
+keys: the pay page shows a "test mode" card form (nothing is sent anywhere), and **Pay**
+confirms the booking. To use Razorpay test
+mode, set `PAYMENT_PROVIDER=razorpay` and the three `RAZORPAY_*` values (Test Mode keys,
+`rzp_test_...`) in `.env.docker`, then run `docker compose up -d` again so the API and
+sweeper pick them up. Webhooks need a public HTTPS URL (for example a cloudflared or ngrok
+tunnel); see [Payments (Razorpay, test mode)](docs/operations.md#payments-razorpay-test-mode).
+
+### 3. Start the backend
+
+```sh
+npm install                  # host dependencies for the demo and test scripts
+docker compose up -d --build # Postgres, Redis, migrations, API, sweeper
+curl http://localhost:3000/health   # {"status":"ok"}
+```
+
+`docker compose ps -a` should show `migrate` exited with code 0 and `api` healthy.
+
+### 4. Load the demo data
+
+```sh
+npm run demo:fresh
+```
+
+> **Warning:** `demo:fresh` **deletes all data** in the local Docker database and the
+> app's Redis keys, then seeds demo data through the public API (takes a few minutes). It
+> refuses to run unless the targets are the local compose `postgres` and `redis`
+> containers and `NODE_ENV` is not `production`.
+
+It creates 3 organizers, 6 venues in 5 cities, 16 events across six categories (one draft,
+one cancelled, two with sales opening later) and about 560 bookings. All names are fictional.
+
+### 5. Start the web app
+
+```sh
+cd web
+npm install
+npm run dev
+```
+
+Open http://localhost:5173 (Vite picks the next free port if 5173 is taken). If the API is
+not on `http://localhost:3000`, copy [web/.env.example](web/.env.example) to
+`web/.env.local` and set `VITE_API_PROXY_TARGET`.
+
+### Demo accounts
+
+Every demo account uses the **local-only** default password `LocalDemoOnly#2026` (set
+`DEMO_PASSWORD` in `.env` before seeding to choose another; the seed prints it at the end).
 
 | Account | Role | What to look at |
 |---|---|---|
-| `demo-meera@flashseat.test` | ORGANIZER (Saptak Sound Collective) | dashboard with a cancelled event |
-| `demo-kabir@flashseat.test` | ORGANIZER (Chaupal Theatre Company) | dashboard with a DRAFT event |
-| `demo-nikhil@flashseat.test` | ORGANIZER (Lehar Fest Committee) | general-admission ground, arena |
-| `demo-asha@flashseat.test` | ATTENDEE | confirmed tickets and a REFUND_PENDING booking |
-| `demo-rahul@flashseat.test` | ATTENDEE | confirmed tickets, a PENDING_PAYMENT booking and an ACTIVE hold |
-| `demo-guest-01..20@flashseat.test` | ATTENDEE | volume buyers |
+| `demo-meera@flashseat.test` | Organizer (Saptak Sound Collective) | dashboard with a cancelled event and its refunds |
+| `demo-kabir@flashseat.test` | Organizer (Chaupal Theatre Company) | dashboard with a draft event |
+| `demo-nikhil@flashseat.test` | Organizer (Lehar Fest Committee) | general-admission ground, arena |
+| `demo-asha@flashseat.test` | Attendee | confirmed tickets and a refund-pending booking |
+| `demo-rahul@flashseat.test` | Attendee | confirmed tickets, a pending payment and an active hold |
+| `demo-guest-01@flashseat.test` … `demo-guest-20@flashseat.test` | Attendee | volume buyers |
 
-The password is `DEMO_PASSWORD` (shell or `.env`), else the local-only default
-`LocalDemoOnly#2026`; the seed prints it with a summary at the end. Rahul's hold and
-pending booking expire after `HOLD_DURATION_SECONDS` (10 minutes); run `demo:fresh`
-again to get them back. The test suite adds its own data on top of the demo data.
+Rahul's hold and pending payment expire after 10 minutes; run `npm run demo:fresh` again to
+get them back.
 
-## Running the API on the host
+### Paying in Razorpay test mode
 
-Stop the `api` and `sweeper` containers (`docker compose stop api sweeper`), then run
-`npm run dev` (API with `tsx watch`) and, if wanted, `npm run sweeper` against the compose
-Postgres and Redis. The host `.env` is `.env.docker.example` plus
-`DATABASE_URL=postgres://flashseat:flashseat@localhost:5432/flashseat` and
-`REDIS_URL=redis://localhost:6379`. Don't start from `.env.example`: that production template
-disables mock payment and keeps the strict register limit.
+With `PAYMENT_PROVIDER=razorpay` and Test Mode keys, no real money moves. Use the test
+details from Razorpay's official docs:
+
+- **Cards:** [Test card details](https://razorpay.com/docs/payments/payments/test-card-details/)
+- **UPI:** [Test UPI details](https://razorpay.com/docs/payments/payments/test-upi-details/)
+  (`success@razorpay` for a successful payment, `failure@razorpay` for a failed one)
+- **Netbanking:** pick any bank; test mode opens Razorpay's test bank page, where you choose
+  success or failure.
+
+To see the automatic refund, let a hold run out while the Razorpay window is open, then
+pay: the booking turns `REFUND_PENDING` and the sweeper process refunds it.
+
+### API docs
+
+The API runs at http://localhost:3000 (the web app reaches it through `/api`). Every
+endpoint, its errors, and a curl walkthrough of the whole booking flow are in
+[docs/api.md](docs/api.md).
 
 ## Testing
 
-Tests are integration tests against the running API, real Postgres and real Redis, with no
-mocks. Files run one at a time. Details: [docs/testing.md](docs/testing.md).
-
-| File | Tests | Covers |
-|---|---|---|
-| `tests/api-consistency.test.ts` | 14 | 404 for foreign resources, uuid validation, nested show route scoping, bulk seat limits |
-| `tests/auth.test.ts` | 23 | refresh rotation races, theft containment, DB-clock expiry, error shape, login timing, JWT forgery |
-| `tests/booking-lifecycle.test.ts` | 8 | confirm after cancel, cancelEvent cleanup, replay of dead holds, uuid case |
-| `tests/concurrency.test.ts` | 7 | 20 users on one seat, reversed seat sets, idempotent races, cancel racing every writer |
-| `tests/idempotency-race.test.ts` | 2 | 20 identical concurrent holds, second key for the same show |
-| `tests/rate-limit.test.ts` | 8 | each rate limiter, Redis outage fail-open, admission gate, lost-release recovery, seat-map cache |
-| `tests/robustness.test.ts` | 7 | lock timeouts, killed backends, register race, overlapping shows, 9 invariants |
-| `tests/sweeper.test.ts` | 11 | expiry, takeover, batching, concurrent sweeps, races with the API, stranded bookings |
-| **Total** | **80** | |
-
-Run the suite against the Docker stack:
+The tests are integration tests: they call the running API and use real Postgres and real
+Redis, with no mocks except a fake Razorpay client. With the Docker stack up and `.env`
+created as above:
 
 ```sh
-npm install
-npm run test:docker
+npm run test:docker           # whole suite: stops the sweeper container, runs Vitest, restarts it
+npm run test:docker -- tests/payments.test.ts   # one file
+npm run db:check-invariants   # SQL invariants on the live database: healthy means 0 rows each
 ```
 
-`test:docker` stops the `sweeper` container, runs `npm test`, then starts the sweeper again
-even if tests fail. A full run takes about 4–5 minutes (80/80, last verified 2026-10-30).
-**Never run a standalone sweeper while the tests run**: the sweeper tests call
-`runSweepOnce()` themselves, and an external sweeper steals their expired rows (seen as
-`sweeper.test.ts` E failing with `expected 9 to be 25`).
+**Current result: 131 tests in 13 files, all passing** (`npm run test:docker`, 2026-11-10,
+about 5 minutes; files run one at a time because they share one API and database).
 
-Regression scripts run against the live API:
+| Suite | Covers |
+|---|---|
+| `concurrency.test.ts` | 20 users on one seat; reversed seat sets (`[A,B,C]` vs `[C,B,A]`); parallel identical holds, checkouts and confirms; event cancel racing every writer |
+| `idempotency-race.test.ts` | 20 concurrent identical holds give one hold and 19 replays; a second key on the same show is refused |
+| `booking-lifecycle.test.ts` | confirm after cancel or after the show started, cancel cleanup, replays of dead holds |
+| `payments.test.ts` | Razorpay orders (amount from the DB, idempotent), signature checks, verify and webhook replays, verify racing the webhook, late payments refunded, refunds on event cancel, refund retries and backoff |
+| `sweeper.test.ts` | expiry, takeover by a new holder, batching, concurrent sweeps, sweeps racing the API |
+| `robustness.test.ts` | lock timeouts, killed database connections, register races, overlapping shows, all SQL invariants at rest |
+| `rate-limit.test.ts` | every rate limiter, Redis outage (fails open), admission gate, seat-map cache |
+| `auth.test.ts`, `auth-me.test.ts` | refresh-token rotation and reuse detection, database-clock expiry, forged JWTs, login timing, `/auth/me` |
+| `api-consistency.test.ts` | 404 for other users' resources, uuid validation, route scoping, bulk seat limits |
+| `events-list.test.ts`, `events-seat-counts.test.ts`, `organizer-reads.test.ts` | event listing filters and seat counts, organizer dashboard reads and ownership |
 
-- `node scripts/verify-batch1.mjs`, `verify-batch2.mjs`, `verify-batch3.mjs`: lifecycle,
-  robustness and auth fixes.
-- `SHOW_ID=<uuid> node scripts/smoke-concurrency.mjs` and `smoke-checkout.mjs`: races on a
-  fresh show.
-- `npm run db:check-invariants`: 9 SQL invariants; healthy means 0 rows each.
-
-`npm run verify:sweeper` is a **mutation test**: it deletes one condition from the sweeper's
-SQL, runs the sweeper tests, checks that they fail, then restores the file byte for byte.
-Details and last results: [docs/testing.md](docs/testing.md).
-
-## Load testing
-
-k6 against one API process (`DB_POOL_MAX=10`) and Postgres 16 in Docker, all on one Windows 11
-machine (Core Ultra 9 185H), measuring only `POST /shows/:showId/reservations`. Last run 2026-10-28.
-
-| Test | Load | Result |
-|---|---|---|
-| Contention ([Test A run 2](load/RESULTS.md#test-a-correctness-under-maximum-contention)) | 1,000 VUs, 5,000 hold attempts on one 100-seat show | **100 x 201**, 4,900 x 409, 0 lock timeouts, 0 5xx; 517 attempts/s; p50 1.84 s, p99 1.97 s; DB: 100 holds, 100 HELD seats |
-| Throughput ([Test B run 2](load/RESULTS.md#run-2-db_pool_max10-baseline)) | ramp to 10,000 VUs on 200 shows x 50 seats | 159,645 requests (~1,330 req/s peak); 7,611 holds; peak goodput ~390 completed holds+409s/s; 145,129 x 503 `DB_UNAVAILABLE`; **0 x 500**; p50 6.16 s, p99 11.29 s |
-
-- **No overselling in any run.** No seat was ever in two live reservations, and every DB
-  count reconciled with what k6 saw.
-- **Overload fails safe.** The pool saturates at about 1,000–3,000 concurrent requests. Past
-  that, the API answers with bounded 503 + `Retry-After` near the 5 s pool timeout instead of
-  hanging.
-- **Goodput collapses at 10,000 concurrent requests**, because rejecting ~1,300 doomed
-  requests/s lags the single Node event loop.
-- **Neither a bigger pool nor the Redis admission gate fixed that.** Pool 50 was worse than
-  pool 10 on every throughput and latency number. The gate moved rejection from a 5 s pool
-  wait to an immediate Redis check but did not raise goodput. At this concurrency the event
-  loop, not the database, is the bottleneck.
-
-[load/RESULTS.md](load/RESULTS.md) has the pool-50 run, the Redis-gate run, the full
-methodology, and the measurement mistakes that were made and corrected along the way. To
-re-run (needs [k6](https://k6.io); tokens expire after 15 minutes, so register right before
-running; re-seed after `docker compose down -v`):
-
-```sh
-npm run load:seed:contention && npm run load:register:contention && npm run load:contention
-npm run load:seed:throughput && npm run load:register:throughput && npm run load:throughput
-```
-
-## API overview
-
-Auth: `Bearer` access token in `Authorization`; the refresh token is an `httpOnly` cookie
-scoped to `/auth`. Full reference: [docs/api.md](docs/api.md).
-
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| POST | `/auth/register` | none | create attendee or organizer, returns access token + refresh cookie |
-| POST | `/auth/login` | none | log in |
-| POST | `/auth/refresh` | refresh cookie | rotate refresh token, new access token |
-| POST | `/auth/logout` | refresh cookie | revoke refresh token |
-| GET | `/auth/me` | user | current user, read fresh (plus `organization_name` for organizers) |
-| POST | `/venues` | ORGANIZER | create venue |
-| POST | `/venues/:venueId/seats/bulk` | ORGANIZER (owner) | add seats (GRID or GENERAL_ADMISSION) |
-| GET | `/venues/mine` | ORGANIZER | list own venues |
-| GET | `/events` | none | search published events |
-| GET | `/events/mine` | ORGANIZER | list own events |
-| POST | `/events` | ORGANIZER | create DRAFT event |
-| GET | `/events/:eventId` | none | event with its shows (DRAFT is 404) |
-| PATCH | `/events/:eventId` | ORGANIZER (owner) | edit event |
-| POST | `/events/:eventId/publish` | ORGANIZER (owner) | DRAFT to PUBLISHED (needs at least one show) |
-| POST | `/events/:eventId/cancel` | ORGANIZER (owner) | cancel event, shows, holds and pending bookings |
-| POST | `/events/:eventId/shows` | ORGANIZER (owner) | create show, generate its seats |
-| GET | `/events/:eventId/shows/:showId` | none | show details and prices |
-| GET | `/shows/:showId/seats` | none | seat map (cached up to 2 s) |
-| POST | `/shows/:showId/reservations` | user | hold seats (`Idempotency-Key` required) |
-| GET | `/reservations/:reservationId` | user (owner) | read hold |
-| DELETE | `/reservations/:reservationId` | user (owner) | release hold |
-| POST | `/reservations/:reservationId/checkout` | user (owner) | create PENDING_PAYMENT booking |
-| POST | `/bookings/:bookingId/confirm-mock` | user (owner) | mock payment: confirm and issue tickets |
-| GET | `/bookings/mine` | user | list own bookings |
-| GET | `/bookings/:bookingId` | user (owner) | read booking |
-| GET | `/health` | none | DB ping; 503 while shutting down |
+Beyond the suites: `npm run verify:sweeper` is a mutation test (it deletes one condition
+from the sweeper's SQL and checks the tests catch it), and `npm run smoke:concurrency` /
+`npm run smoke:checkout` race requests on a fresh show. The suite adds its own users and
+events to the local database; run `npm run demo:fresh` afterwards for clean demo data.
+Details, including why a standalone sweeper must not run during the tests:
+[docs/testing.md](docs/testing.md).
 
 ## Project structure
 
 ```text
 .
-├── src/
-│   ├── server.ts           HTTP server, graceful shutdown
+├── src/                    Express API (TypeScript)
 │   ├── app.ts              Express app, route mounting, /health
-│   ├── config/env.ts       Zod-validated environment (all settings and defaults)
-│   ├── db/pool.ts          pg pool with timeouts, withTransaction()
-│   ├── redis/client.ts     ioredis client, withRedisFallback() (fail-open)
-│   ├── middleware/         auth, rateLimit, admissionControl, errorHandler
-│   ├── modules/
-│   │   ├── auth/           register, login, refresh rotation, JWT, argon2
-│   │   ├── venues/         venues and bulk seat layouts
-│   │   ├── events/         events, publish, cancelEvent
-│   │   ├── shows/          show creation (advisory lock, seat generation)
-│   │   ├── show-seats/     seat map (+ Redis cache)
-│   │   ├── reservations/   hold, read, release
-│   │   ├── bookings/       checkout, confirm, booking reads
-│   │   └── sweeper/        expiry cleanup SQL and orchestration
-│   ├── workers/            sweeper loop, one-shot sweeper
-│   └── utils/              AppError classes, uuid schema, lifecycle flag
-├── migrations/             two SQL migrations (accounts/venues/events, then the booking engine)
-├── tests/                  Vitest integration suites, helpers, setup
-├── scripts/                regression and smoke scripts, invariant SQL, test-docker runner
-├── load/                   k6 scripts, seeding, runner, RESULTS.md
-├── docs/                   design and operations documentation
+│   ├── server.ts           HTTP server, graceful shutdown
+│   ├── config/             Zod-validated environment
+│   ├── db/                 pg pool with timeouts, withTransaction()
+│   ├── middleware/         auth, rate limits, admission gate, error mapper
+│   ├── modules/            auth, venues, events, shows, show-seats, reservations,
+│   │                       bookings, payments (Razorpay), sweeper
+│   ├── redis/              ioredis client, fail-open wrapper
+│   ├── utils/              error classes, Zod helpers, lifecycle flag
+│   └── workers/            sweeper + payment-jobs process
+├── web/                    React single-page app
+│   ├── src/                pages, components, lib (API client, booking, calendar export)
+│   ├── public/             event photos (with credits), favicon
+│   └── vite.config.ts      dev server and /api proxy
+├── migrations/             SQL migrations: accounts and venues, booking engine, payments
+├── tests/                  Vitest integration suites, fakes/ (Razorpay), helpers
+├── scripts/                demo reset/seed, test-docker runner, invariant SQL, smoke and regression scripts
+├── load/                   k6 scripts, load seeding, runner, RESULTS.md, raw results
+├── docs/                   deep dives, reviews, design references, screenshots
 ├── Dockerfile              one image for api, sweeper and migrate
 └── docker-compose.yml      postgres, redis, migrate, api, sweeper
 ```
 
-## Configuration
-
-All settings are validated by Zod in `src/config/env.ts`; the process exits at startup if
-any is invalid. Templates: `.env.example` (production-style, placeholders for secrets) and
-`.env.docker.example` (local Docker and test stack). Full table: [docs/operations.md](docs/operations.md#environment-variables).
-
-| Variable | Default | Meaning |
-|---|---|---|
-| `DATABASE_URL` | required | Postgres connection string |
-| `JWT_ACCESS_SECRET` | required | HS256 secret, at least 32 characters |
-| `JWT_ACCESS_EXPIRY` | required | access token lifetime (templates: `15m`) |
-| `REFRESH_TOKEN_EXPIRY_DAYS` | required | refresh token lifetime in days (templates: 7) |
-| `REDIS_URL` | `redis://localhost:6379` | Redis connection string |
-| `HOLD_DURATION_SECONDS` | 600 | how long a hold lasts |
-| `DB_POOL_MAX` | 10 | pg pool size (per process) |
-| `DB_CONNECTION_TIMEOUT_MS` / `DB_STATEMENT_TIMEOUT_MS` | 5000 / 5000 | pool checkout wait / statement limit |
-| `DB_LOCK_TIMEOUT_MS` | 1000 | row-lock wait before 409 `LOCK_TIMEOUT` |
-| `ENABLE_MOCK_PAYMENT` | false | enables `confirm-mock`; refused when `NODE_ENV=production` |
-| `PAYMENT_PROVIDER` | `mock` | `mock` or `razorpay` (real orders, verify, webhook, refunds) |
-| `RAZORPAY_KEY_ID` | required with `razorpay` | public key id (test mode: `rzp_test_...`), returned to the client |
-| `RAZORPAY_KEY_SECRET` | required with `razorpay` | API secret: signs checkout callbacks, authenticates API calls. Never logged. |
-| `RAZORPAY_WEBHOOK_SECRET` | required with `razorpay` | the secret set on the webhook in the Razorpay dashboard. Never logged. |
-| `PAYMENT_JOBS_BATCH_SIZE` / `REFUND_MAX_ATTEMPTS` | 20 / 5 | refund worker batch; attempts before a refund is marked FAILED |
-| `ENABLE_RATE_LIMITING` | true | rate limiters on/off |
-| `RATE_LIMIT_REGISTER_IP_LIMIT` | 30 | registrations per IP per 60 s (the local test `.env` uses 400) |
-| `MAX_INFLIGHT_BOOKING_REQUESTS` | 150 | admission gate cap |
-| `ENABLE_SEAT_MAP_CACHE` / `SEAT_MAP_CACHE_TTL_MS` | true / 2000 | seat-map cache |
-
-## Known limitations and roadmap
-
-- **Real payments (not built).** Only mock confirm exists. `confirmBookingCore` is
-  written for a future payment webhook; there are no payments, refunds or webhook tables.
-- **Refund worker (not built).** `cancelEvent` marks CONFIRMED bookings `REFUND_PENDING` and
-  leaves their seats BOOKED; `REFUNDED` and `PAYMENT_FAILED` are defined but unused.
-- **Not built either:** no frontend, no admin flows (the `ADMIN` role and organizer approval
-  exist in the schema only), no check-in, no `BLOCKED` seat management.
-- **From [docs/todo.md](docs/todo.md):** register and login run argon2 (~67 ms) inside the DB
-  transaction, so a sign-up burst turns the pool into an argon2 queue. There is also no
-  dedicated `start:test` / `.env.test` config, so tests depend on the local `.env`.
-- **From the load tests:** one Node process is the ceiling at 10,000 concurrent requests;
-  horizontal scaling and a reverse-proxy limiter are untested.
-
 ## Documentation
 
-- [docs/architecture.md](docs/architecture.md): components, process model, request lifecycle, failure behaviour
-- [docs/booking-flow.md](docs/booking-flow.md): hold, checkout, confirm, release, cancel; state diagrams; races; idempotency
-- [docs/data-model.md](docs/data-model.md): ER diagram, every table and constraint, and the bug each prevents
-- [docs/api.md](docs/api.md): every endpoint and a curl walkthrough
-- [docs/testing.md](docs/testing.md): test architecture, suites, regression scripts, mutation testing
-- [docs/operations.md](docs/operations.md): env vars, Docker services, logs, shutdown, troubleshooting
-- [docs/lock-order.md](docs/lock-order.md): the global lock hierarchy and the sweeper's locks
-- [docs/clocks.md](docs/clocks.md): which decisions use the DB clock and which the app clock
-- [docs/todo.md](docs/todo.md): deferred items
-- [docs/review/phase2-review.md](docs/review/phase2-review.md): code review of the booking engine (findings since fixed)
-- [docs/review/test-findings.md](docs/review/test-findings.md): bugs tracked by tests and the script-to-suite map
-- [load/RESULTS.md](load/RESULTS.md): load-test results and methodology
+| Document | What it covers |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | components, process model, request lifecycle, failure behaviour |
+| [docs/booking-flow.md](docs/booking-flow.md) | hold, checkout, confirm, Razorpay payment, release, cancel; state diagrams; races; idempotency |
+| [docs/data-model.md](docs/data-model.md) | ER diagram, every table and constraint, and the bug each prevents |
+| [docs/api.md](docs/api.md) | every endpoint, error codes, curl walkthrough |
+| [docs/lock-order.md](docs/lock-order.md) | the global lock hierarchy and the sweeper's locks |
+| [docs/clocks.md](docs/clocks.md) | which decisions use the database clock and which the app clock |
+| [docs/operations.md](docs/operations.md) | env vars, Docker services, Razorpay setup, logs, shutdown, troubleshooting |
+| [docs/testing.md](docs/testing.md) | test architecture, suites, regression scripts, mutation testing |
+| [docs/todo.md](docs/todo.md) | deferred items |
+| [docs/review/phase2-review.md](docs/review/phase2-review.md) | code review of the booking engine (findings since fixed) |
+| [docs/review/test-findings.md](docs/review/test-findings.md) | bugs tracked by tests, and the script-to-suite map |
+| [load/RESULTS.md](load/RESULTS.md) | load-test results and methodology |
+
+**Design references** (static HTML mockups the web app was built from; open them in a
+browser): [landing](docs/landing-v2-design.html), [log in and sign up](docs/auth-page-design.html),
+[events](docs/events-page-design.html), [event detail](docs/event-detail-design.html),
+[booking flow](docs/booking-flow-design.html), [organizer dashboard](docs/organizer-dashboard-design.html).
+
+## Roadmap and known limitations
+
+From [docs/todo.md](docs/todo.md) and the load tests:
+
+- **Password hashing inside the transaction.** Register and login run argon2 while holding a
+  database connection, so a sign-up burst can starve other requests of connections.
+- **Tests share the dev database.** There is no separate test database or `.env.test`, so
+  the suite depends on local config and leaves test data next to the demo data.
+- **My bookings filters on the client.** `GET /bookings/mine` has no server-side tab filter,
+  so with many bookings a tab can look incomplete.
+- **Seat layouts are saved group by group.** A multi-section layout is several calls; a
+  failure midway leaves a partial layout. An all-or-nothing endpoint is planned.
+- **Mixed field casing** (snake_case and camelCase) in API requests and responses.
+- **Scaling is untested beyond one API process.** At 10,000 concurrent requests the single
+  Node event loop is the bottleneck; horizontal scaling is not measured yet.
+- **No admin flows or check-in yet**: the `ADMIN` role exists only in the schema, and QR
+  codes are not scanned by anything in the app.

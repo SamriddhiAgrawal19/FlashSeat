@@ -269,7 +269,7 @@ by the sweeper.
 - **Exactly-once seat allocation under a 50:1 burst.** 5000 concurrent attempts on 100
   seats gave exactly 100 holds, and the DB agreed row for row. There were zero lock
   timeouts and zero deadlocks.
-- **No overselling at 10,000 concurrent connections.** Across 12,309 holds committed in
+- **No seat held twice at 10,000 concurrent connections.** Across 12,309 holds committed in
   Test B (7,612 + 4,697 DB rows), no seat was ever in two live reservations. Every DB row
   reconciles with what k6 saw, up to requests whose responses were lost to client timeouts.
 - **Overload fails safe.** Bounded 5 s waits produced clean 503 + `Retry-After`, with zero
@@ -293,10 +293,11 @@ by the sweeper.
 
 ## Resume / README one-liner
 
-> Load tested the booking engine with k6: 5,000 concurrent hold attempts on a 100-seat show
-> gave **exactly 100 successes (DB-verified, zero overselling, zero deadlocks)**. At 10,000
-> concurrent connections it served ~1,300 req/s, peaking at ~390 completed bookings/s on a
-> 10-connection Postgres pool, and shed overload as bounded 503 + Retry-After with zero 500s.
+> Load tested the booking engine's seat-hold endpoint with k6: 5,000 concurrent hold attempts
+> on a 100-seat show gave **exactly 100 successful holds (DB-verified, no seat held twice, zero
+> deadlocks)**. At 10,000 concurrent connections it served ~1,300 req/s, peaking at ~390 hold
+> requests/s fully processed by Postgres (successful holds + clean 409s) on a 10-connection
+> Postgres pool, and shed overload as bounded 503 + Retry-After with zero 500s.
 
 ---
 
@@ -315,7 +316,7 @@ then reserved.
 - **Test B run 1:** 188,847 of 192,654 registrations returned 503. Registration runs argon2
   (about 67 ms, about 46/s on 4 libuv threads) **inside** `withTransaction`, holding a
   pooled connection, so the pool became an argon2 queue. Reservations were starved too:
-  977 holds, p50 5.25 s on the pool timeout. This measured password hashing, not booking.
+  977 holds, p50 5.25 s on the pool timeout. This measured password hashing, not seat holds.
   It is logged in `docs/todo.md`.
 - **Lesson:** keep setup cost out of the measured path, and retry refused connects.
 
@@ -358,7 +359,7 @@ re-run meaningless, and are kept on disk for the record rather than deleted:
 | 1 | `throughput-run4-attempt1-commandtimeout-bug.*` | `redis` client's `commandTimeout` was 250ms. At 10,000 concurrent requests, Node's own event loop lags past 250ms (the probe measured up to 1.7s) *before* ioredis even gets a turn to read a reply that's already sitting in the socket buffer. Almost every rate-limit/admission check timed out and failed open. | 0 `SERVICE_BUSY` responses logged; everything fell through to the DB pool exactly as in the ungated Step 7 run — worse, in fact (1,043 successful holds vs Step 7's 7,611). |
 | 2 | `throughput-run4-attempt2-ttl-reset-bug.*` | The admission counter's safety-net TTL used `EXPIRE ... NX` (set once). Under continuous load for longer than `INFLIGHT_SAFETY_TTL_SECONDS` (10s), the key's clock was never pushed out, so it expired and reset to 0 on its own schedule — discarding however many requests were genuinely still in flight — roughly every 10s for the whole 150s+ run. | Still 0 real `SERVICE_BUSY` (fewer fail-opens this time, after fixing bug 1, but the gate itself was self-defeating); still far below Step 7's throughput. |
 | 3 | `throughput-run4-attempt3-unlogged-servicebusy.*` | Not a correctness bug: the `SERVICE_BUSY` rejection path never called the logger, so there was no direct way to confirm the (now-fixed) gate was actually firing — only inferable by subtracting logged `DB_UNAVAILABLE` lines from k6's `reserve_503` count. Fixed by adding a `logger.warn` there (matching `errorHandler`'s existing pattern for `Mapped database error`). | Numbers already matched the final run; only observability was missing. |
-| 4 | `throughput-run4-attempt4-stale-fixture.*` | Methodology, not code: this attempt reused attempt 3's already-partially-held shows instead of reseeding. Those shows' 200 holds from ~8 minutes earlier crossed `HOLD_DURATION_SECONDS` (600s) *during* this run and were swept mid-test, so the DB's ACTIVE-reservation count no longer matched k6's 201 count for reasons unrelated to this run. | `load/run.mjs`'s DB cross-check correctly `FAIL`ed (160 vs 207) — a true positive for a dirty fixture, not an oversell. |
+| 4 | `throughput-run4-attempt4-stale-fixture.*` | Methodology, not code: this attempt reused attempt 3's already-partially-held shows instead of reseeding. Those shows' 200 holds from ~8 minutes earlier crossed `HOLD_DURATION_SECONDS` (600s) *during* this run and were swept mid-test, so the DB's ACTIVE-reservation count no longer matched k6's 201 count for reasons unrelated to this run. | `load/run.mjs`'s DB cross-check correctly `FAIL`ed (160 vs 207) — a true positive for a dirty fixture, not a seat held twice. |
 
 Fixes: `commandTimeout` raised from 250ms to 2000ms (still comfortably inside the
 DB pool's own 5s `connectionTimeoutMillis`); the admission counter's `EXPIRE` call
@@ -446,7 +447,7 @@ throughput, and only partly yes for latency:**
    decision inside it.
 3. **Correctness is untouched.** The DB cross-check passed exactly (159 = 159 =
    159, no seat double-held, every invariant clean), same as every prior run.
-   Nothing about this feature risks overselling — it only changes how (and how
+   Nothing about this feature risks a seat being held twice — it only changes how (and how
    expensively) excess load is turned away.
 4. **A confound, reported rather than hidden:** this run was the fifth
    consecutive 10,000-VU k6 run against this machine inside about 40 minutes
