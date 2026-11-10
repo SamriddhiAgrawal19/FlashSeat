@@ -104,6 +104,82 @@ If `uq_one_live_ticket_per_seat` ever fires here, it is logged as
 `CRITICAL INVARIANT VIOLATION` and the request fails. Every earlier layer would have to be
 wrong for that to happen.
 
+## Paying with Razorpay
+
+With `PAYMENT_PROVIDER=razorpay` (test mode), checkout is followed by a real payment
+instead of `confirm-mock`. Code: `src/modules/payments/`.
+
+```
+client                      API                                   Razorpay
+  |  POST /bookings/:id/payments                                     |
+  |-------------------------->| lock show/res/booking, checks        |
+  |                           | (CREATED payment? return it)         |
+  |                           |  -- no locks held --  create order ->|
+  |                           |<----------------------- order_…      |
+  |                           | insert payments (CREATED)            |
+  |<-- { keyId, orderId, amount, currency, bookingId }               |
+  |  Razorpay Checkout (card / UPI) ------------------------------->|
+  |<----------- razorpay_order_id, razorpay_payment_id, signature ---|
+  |  POST /payments/razorpay/verify                                  |
+  |-------------------------->| check signature, fetch payment ---->|
+  |                           |<-------------------- captured        |
+  |                           | ON PAYMENT CAPTURED (below)          |
+  |<-- 200 { booking: CONFIRMED, tickets }                           |
+  |                           |<-- POST /webhooks/razorpay (payment.captured, same step, no-op if done)
+```
+
+**Create order.** Validate under the usual locks (show `FOR SHARE` -> reservation ->
+booking), return an open CREATED order if there is one, refuse with 409 `HOLD_TOO_SHORT`
+under 2 minutes of hold left, then commit. The Razorpay order is created with no database
+lock held (amount = `bookings.total_amount_paise`, receipt = booking id,
+`notes.bookingId`). A second short transaction re-checks the booking and inserts the
+payment. Two concurrent calls meet at the partial unique index (one CREATED payment per
+booking); the loser returns the winner's order, and its own Razorpay order expires unpaid.
+
+**On payment captured** (`onPaymentCaptured`, shared by verify and the webhook). One
+transaction in the global lock order: show (`FOR SHARE`) -> reservation -> booking ->
+payment (`FOR UPDATE`) -> seats.
+
+1. The captured amount must equal the stored amount.
+2. The payment becomes CAPTURED with `provider_payment_id`.
+3. Booking already CONFIRMED: done (replay). Already REFUND_PENDING/REFUNDED: done (the
+   refund row exists).
+4. Otherwise `confirmBookingCore` runs inside a savepoint. Success: seats BOOKED, tickets
+   created, booking CONFIRMED.
+5. If it fails with `HOLD_LOST`, `SHOW_NOT_BOOKABLE`, `BOOKING_NOT_PAYABLE` or
+   `RESERVATION_NOT_ACTIVE`, roll back to the savepoint. The booking becomes
+   `REFUND_PENDING`, and a `refunds` row is inserted (reason `HOLD_EXPIRED`, or
+   `EVENT_CANCELLED` when the show was cancelled). Nothing else is released: the seats
+   were never booked, and the sweeper handles the hold as usual. Verify answers 409
+   `PAYMENT_CAPTURED_SEATS_UNAVAILABLE` ("payment received, seats no longer available,
+   refund started").
+
+Verify and the webhook can arrive at the same moment. Both lock the reservation and the
+booking `FOR UPDATE`, so one waits. The second sees CONFIRMED (or REFUND_PENDING) and
+changes nothing: one confirmation, one set of tickets.
+
+**Refunds** (the sweeper process, after each sweep, `runPaymentJobsOnce`):
+
+1. Discovery: any REFUND_PENDING booking with a CAPTURED Razorpay payment and no refund row
+   gets one. This is a safety net, because `cancelEvent` already inserts them in its own
+   transaction.
+2. Claim due PENDING refunds with `FOR UPDATE SKIP LOCKED`, pushing `next_attempt_at` out as
+   a lease, and commit.
+3. Per refund, with no locks held: look for an existing Razorpay refund on the payment with
+   `receipt = refund id`, in case an earlier attempt succeeded but wasn't recorded. If there
+   is none, create a full refund.
+4. Short transaction: booking -> refund `PROCESSED` (only if still PENDING) -> booking
+   `REFUNDED`. If it held BOOKED seats (event cancellation), its tickets are released and
+   the seats freed.
+5. On error: `attempts + 1`, `last_error` (Razorpay's description, never a secret), and a
+   backoff of 30 s, 60 s, 2 min… After `REFUND_MAX_ATTEMPTS` (5) the refund becomes FAILED
+   and is logged as needing manual action.
+
+A payment is never refunded twice: `refunds.payment_id` is UNIQUE, the transition to
+PROCESSED is conditional, claims use SKIP LOCKED, and the receipt lookup prevents a
+duplicate after a crash between the provider call and the commit. Mock-paid bookings have
+no payment row, so they stay REFUND_PENDING with no provider call, as before.
+
 ## Release: `DELETE /reservations/:reservationId`
 
 1. Plain read of `show_id` with the owner check (404).
@@ -128,7 +204,10 @@ One transaction, set-based statements, every level locked in ascending id order:
    each `ORDER BY id FOR UPDATE`.
 4. HELD seats become `AVAILABLE`; ACTIVE reservations become `RELEASED`; PENDING_PAYMENT
    bookings become `CANCELLED`; CONFIRMED bookings become `REFUND_PENDING`. Their seats stay
-   `BOOKED` and their tickets stay live until a refund worker (not built yet) releases them.
+   `BOOKED` and their tickets stay live. Bookings paid through Razorpay get a `refunds` row
+   (reason `EVENT_CANCELLED`) in this same transaction; the refund worker pays it out, then
+   marks the booking `REFUNDED` and releases its tickets and seats. Mock-paid bookings stay
+   `REFUND_PENDING`.
 5. Set the event `CANCELLED` with `cancelled_at = now()`.
 
 The show lock is `FOR UPDATE` here and `FOR SHARE` in every booking path, so cancellation

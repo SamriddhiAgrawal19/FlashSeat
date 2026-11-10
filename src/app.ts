@@ -8,10 +8,13 @@ import { eventsRouter } from './modules/events/events.routes';
 import { showSeatsRouter } from './modules/show-seats/show-seats.routes';
 import { reservationsRouter } from './modules/reservations/reservations.routes';
 import { bookingsRouter } from './modules/bookings/bookings.routes';
+import { paymentsRouter, webhookRouter } from './modules/payments/payments.routes';
 import { errorHandler } from './middleware/errorHandler';
 
 export const app = express();
 
+// Raw-body routes first (webhook signatures are computed over the exact bytes).
+app.use('/', webhookRouter);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -21,6 +24,7 @@ app.use('/events', eventsRouter);
 app.use('/shows', showSeatsRouter);
 app.use('/', reservationsRouter);
 app.use('/', bookingsRouter);
+app.use('/', paymentsRouter);
 
 // Health check endpoint to verify DB connection
 app.get('/health', async (req, res, next) => {

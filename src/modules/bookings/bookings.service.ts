@@ -20,6 +20,10 @@ export interface FormattedBookingResponse {
   createdAt: string;
   confirmedAt: string | null;
   payBefore?: string;
+  /** Latest provider payment (Razorpay), or null (mock-paid or never paid). */
+  payment: { provider: string; status: string } | null;
+  /** Latest refund, or null. */
+  refund: { status: string; reason: string } | null;
   event: {
     id: string;
     title: string;
@@ -84,6 +88,8 @@ function formatBooking(row: repo.BookingDetailRow): FormattedBookingResponse {
       },
     },
     seats,
+    payment: row.payment ? { provider: row.payment.provider, status: row.payment.status } : null,
+    refund: row.refund ? { status: row.refund.status, reason: row.refund.reason } : null,
   };
 
   if (reportedStatus === 'PENDING_PAYMENT' && row.reservation_expires_at) {
@@ -351,6 +357,11 @@ export async function confirmMockBooking(
     const meta = await repo.findBookingById(client, bookingId);
     if (!meta || meta.user_id !== userId) {
       throw new NotFoundError('Booking not found');
+    }
+    // Tickets without a CAPTURED payment only ever come from this mock path, and
+    // only for bookings that never started a real payment.
+    if (await repo.hasProviderPayment(client, bookingId)) {
+      throw new ConflictError('This booking is being paid through the payment provider', 'PAYMENT_PROVIDER_IN_USE');
     }
 
     return await confirmBookingCore(client, bookingId);

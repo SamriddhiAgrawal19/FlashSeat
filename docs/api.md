@@ -397,6 +397,9 @@ for both the first call and replays.
 Errors: 404; 409 `SHOW_NOT_BOOKABLE`; 409 `BOOKING_NOT_PAYABLE` (not PENDING_PAYMENT); 409
 `HOLD_LOST` (hold expired or taken over); 503 `SERVICE_BUSY`.
 
+Since migration 003: 409 `PAYMENT_PROVIDER_IN_USE` when the booking already has a Razorpay
+payment. Tickets without a CAPTURED payment only ever come from this mock path.
+
 ### `GET /bookings/mine`
 
 User. Query `page` (default 1), `limit` (1–50, default 20). **200**
@@ -408,6 +411,90 @@ User. Query `page` (default 1), `limit` (1–50, default 20). **200**
 ### `GET /bookings/:bookingId`
 
 User, owner. **200** `{ "booking": {...} }`. 404 if not found or not yours.
+
+Both booking reads (this one and `GET /bookings/mine`, also the checkout and confirm
+responses) include:
+
+- `payment`: the latest `payments` row as `{ "provider": "razorpay", "status": "CREATED" | "CAPTURED" | "FAILED" }`,
+  or `null` (never paid through a provider, including every mock-paid booking).
+- `refund`: the latest `refunds` row as `{ "status": "PENDING" | "PROCESSED" | "FAILED", "reason": "EVENT_CANCELLED" | "HOLD_EXPIRED" }`,
+  or `null`. Mock-paid bookings of a cancelled event are REFUND_PENDING with `refund: null`.
+
+## Payments (Razorpay)
+
+Only when `PAYMENT_PROVIDER=razorpay`; with `mock` all three routes answer 404
+`Endpoint not available`. Razorpay is used in **test mode**. The money flow and the refund
+case are in [booking-flow.md](booking-flow.md#paying-with-razorpay).
+
+### `POST /bookings/:bookingId/payments`
+
+User, owner (404 otherwise). Admission-gated. Creates the Razorpay order for a
+PENDING_PAYMENT booking, or returns the open one.
+
+- The amount is the booking's `total_amount_paise` from the database. Any request body is
+  ignored.
+- Idempotent: while a CREATED payment exists for the booking, every call returns it (200)
+  without calling Razorpay.
+- Same checks as confirm, under the same locks: booking PENDING_PAYMENT, show bookable,
+  hold live.
+
+**201** (new order) / **200** (existing order):
+`{ "keyId": "rzp_test_…", "orderId": "order_…", "amount": 100000, "currency": "INR", "bookingId": "…" }`.
+`keyId` is the public key id for Razorpay Checkout; the secret is never returned.
+
+| Status | Code | When |
+|---|---|---|
+| 404 | `NOT_FOUND` | not found or not yours; or provider is mock |
+| 409 | `BOOKING_NOT_PAYABLE` | booking not PENDING_PAYMENT; `details.status` |
+| 409 | `SHOW_NOT_BOOKABLE` | show cancelled or started |
+| 409 | `HOLD_LOST` | hold released or expired |
+| 409 | `HOLD_TOO_SHORT` | under 2 minutes left on the hold: "Not enough time left to pay; please hold seats again" (`details.secondsLeft`) |
+| 502 | `PAYMENT_PROVIDER_ERROR` | Razorpay unreachable or answered unexpectedly; retry |
+| 503 | `SERVICE_BUSY` | admission gate full |
+
+### `POST /payments/razorpay/verify`
+
+User. Admission-gated. The Razorpay Checkout success callback:
+
+```json
+{ "razorpay_order_id": "order_…", "razorpay_payment_id": "pay_…", "razorpay_signature": "<hex>" }
+```
+
+1. `razorpay_signature` must equal `HMAC_SHA256(order_id + "|" + payment_id, RAZORPAY_KEY_SECRET)`
+   (constant-time comparison). Otherwise 400 `INVALID_SIGNATURE`, and nothing changes.
+2. The payment row is found by order id and must belong to the caller (404 otherwise).
+3. The payment is fetched from Razorpay. It must be `captured`; an `authorized` payment is
+   captured for the stored amount (manual-capture accounts). The amount and currency must match.
+4. Then the shared "payment captured" step runs (the same one the webhook uses).
+
+**200** `{ "booking": {..., "status": "CONFIRMED", seats: [{..., ticketCode}]} }`, for the
+first call and for replays.
+
+| Status | Code | When |
+|---|---|---|
+| 400 | `INVALID_SIGNATURE` | signature mismatch |
+| 400 | `VALIDATION_ERROR` | a field is missing |
+| 404 | `NOT_FOUND` | unknown order, or not yours |
+| 409 | `PAYMENT_NOT_CAPTURED` | Razorpay reports another status (`details.status`) |
+| 409 | `PAYMENT_AMOUNT_MISMATCH` | captured amount differs from the order |
+| 409 | `PAYMENT_MISMATCH` | the payment belongs to another order |
+| 409 | `PAYMENT_CAPTURED_SEATS_UNAVAILABLE` | money was captured but the hold had ended (or the show/booking was cancelled): "Payment received, but your seats are no longer available. A full refund has been started." `details: { bookingId, refund: "PENDING" }`; the booking is now REFUND_PENDING |
+| 502 | `PAYMENT_PROVIDER_ERROR` | Razorpay unreachable; retry |
+
+### `POST /webhooks/razorpay`
+
+Called by Razorpay, not by clients. No auth, no rate limit, no admission gate. The body is
+read raw (only this route), because the signature covers the exact bytes.
+
+- `X-Razorpay-Signature` must equal `HMAC_SHA256(raw body, RAZORPAY_WEBHOOK_SECRET)`;
+  otherwise **400** `INVALID_SIGNATURE` and nothing is recorded.
+- `X-Razorpay-Event-Id` is recorded in `webhook_events` (unique per provider). A repeated
+  event id answers **200** `{ "status": "duplicate" }` and does nothing.
+- `payment.captured`: the shared "payment captured" step. `payment.failed`: the open payment
+  becomes FAILED with Razorpay's error description; the booking stays PENDING_PAYMENT until
+  its hold ends, and a new order can be created. Other events are recorded and ignored.
+- A valid, recorded event always gets **200** `{ "status": "ok" }`. If processing fails
+  after recording, it is logged and retried by the sweeper process, not by Razorpay.
 
 ## Other routes
 

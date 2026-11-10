@@ -66,6 +66,28 @@ const envSchema = z.object({
     .preprocess((val) => val === 'true' || val === true, z.boolean())
     .default(true),
   SEAT_MAP_CACHE_TTL_MS: z.coerce.number().int().positive().default(2000),
+  // Payments (docs/operations.md "Payments"). mock: only POST /bookings/:id/confirm-mock
+  // (still gated by ENABLE_MOCK_PAYMENT). razorpay: real orders, verify and webhook; the
+  // three RAZORPAY_* values are then required. They are read here and nowhere else, and
+  // never logged.
+  PAYMENT_PROVIDER: z.enum(['mock', 'razorpay']).default('mock'),
+  RAZORPAY_KEY_ID: z.string().trim().optional(),
+  RAZORPAY_KEY_SECRET: z.string().trim().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().trim().optional(),
+  // Refunds and webhook retries run inside the sweeper process.
+  PAYMENT_JOBS_BATCH_SIZE: z.coerce.number().int().positive().default(20),
+  REFUND_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+}).superRefine((data, ctx) => {
+  if (data.PAYMENT_PROVIDER !== 'razorpay') return;
+  for (const name of ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'] as const) {
+    if (!data[name]) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [name],
+        message: `${name} is required when PAYMENT_PROVIDER=razorpay`,
+      });
+    }
+  }
 }).refine(
   (data) => !(data.NODE_ENV === 'production' && data.ENABLE_MOCK_PAYMENT),
   {
@@ -78,7 +100,9 @@ const envSchema = z.object({
 const _env = envSchema.safeParse(process.env);
 
 if (!_env.success) {
-  console.error('Invalid environment variables:', _env.error.format());
+  // Names and messages only: never echo a received value (some are secrets).
+  const lines = _env.error.issues.map((i) => `  ${i.path.join('.') || '(root)'}: ${i.message}`);
+  console.error(['Invalid environment variables:', ...lines].join('\n'));
   process.exit(1);
 }
 

@@ -74,6 +74,10 @@ export interface BookingDetailRow {
   venue_name: string;
   venue_city: string;
   total_count?: number;
+  /** latest payments row (Razorpay), or null for mock / unpaid bookings */
+  payment: { provider: string; status: string } | null;
+  /** latest refunds row, or null */
+  refund: { status: string; reason: string } | null;
   seats: Array<{
     id: string;
     section: string;
@@ -302,6 +306,12 @@ export async function getBookingDetailById(
             e.id AS event_id, e.title AS event_title,
             s.id AS show_id, s.starts_at AS show_starts_at,
             v.name AS venue_name, v.city AS venue_city,
+            (SELECT json_build_object('provider', p.provider, 'status', p.status)
+               FROM payments p WHERE p.booking_id = b.id
+              ORDER BY p.created_at DESC, p.id DESC LIMIT 1) AS payment,
+            (SELECT json_build_object('status', rf.status, 'reason', rf.reason)
+               FROM refunds rf WHERE rf.booking_id = b.id
+              ORDER BY rf.created_at DESC, rf.id DESC LIMIT 1) AS refund,
             COALESCE(
               json_agg(
                 json_build_object(
@@ -346,6 +356,12 @@ export async function listUserBookings(
             e.id AS event_id, e.title AS event_title,
             s.id AS show_id, s.starts_at AS show_starts_at,
             v.name AS venue_name, v.city AS venue_city,
+            (SELECT json_build_object('provider', p.provider, 'status', p.status)
+               FROM payments p WHERE p.booking_id = b.id
+              ORDER BY p.created_at DESC, p.id DESC LIMIT 1) AS payment,
+            (SELECT json_build_object('status', rf.status, 'reason', rf.reason)
+               FROM refunds rf WHERE rf.booking_id = b.id
+              ORDER BY rf.created_at DESC, rf.id DESC LIMIT 1) AS refund,
             count(*) OVER()::int AS total_count,
             COALESCE(
               json_agg(
@@ -382,4 +398,10 @@ export async function listUserBookings(
     rows: result.rows,
     total,
   };
+}
+
+// 14. Does the booking have any real-provider payment (Razorpay)? confirm-mock refuses those.
+export async function hasProviderPayment(client: PoolClient | Pool, bookingId: string): Promise<boolean> {
+  const result = await client.query(`SELECT 1 FROM payments WHERE booking_id = $1 LIMIT 1`, [bookingId]);
+  return (result.rowCount ?? 0) > 0;
 }

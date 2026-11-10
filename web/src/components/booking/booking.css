@@ -1045,6 +1045,61 @@
     font-size: 16px;
     color: #d4d4d8;
   }
+  .bk-rzp {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--r-12);
+    padding: 14px 16px;
+  }
+  .bk-rzp-title {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    color: var(--text);
+  }
+  .bk-rzp-chips {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .bk-rzp-chips li {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted-mono);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    padding: 4px 7px;
+  }
+  .bk-rzp-hint {
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted-mono);
+  }
+  .bk-rzp-hint a {
+    color: #ff8a6e;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .bk-inline-spin {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bk-paidwith {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted-mono);
+    text-transform: uppercase;
+  }
   @media (max-width: 640px) {
     .bk-pay {
       padding-top: 32px;
@@ -1384,6 +1439,11 @@
   }
   .mb-meta {
     color: var(--text);
+    margin-top: 2px;
+  }
+  .mb-refund {
+    font-size: 13px;
+    color: var(--muted-mono);
     margin-top: 2px;
   }
   .mb-title {

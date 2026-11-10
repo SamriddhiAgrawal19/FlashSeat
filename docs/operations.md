@@ -57,6 +57,24 @@ Templates:
 | `SWEEPER_BATCH_SIZE` | 200 | rows per lock query |
 | `SWEEPER_MAX_RUN_MS` | 10000 | time budget for one sweep cycle |
 
+### Payments
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `PAYMENT_PROVIDER` | `mock` | `mock`: only `confirm-mock` (still gated by `ENABLE_MOCK_PAYMENT`). `razorpay`: orders, verify, webhook and refunds. |
+| `RAZORPAY_KEY_ID` | required with `razorpay` | Dashboard key id. Test mode keys start with `rzp_test_`. Public: returned to the client for Checkout. |
+| `RAZORPAY_KEY_SECRET` | required with `razorpay` | Dashboard key secret. Authenticates API calls and signs the checkout callback. |
+| `RAZORPAY_WEBHOOK_SECRET` | required with `razorpay` | The secret you type when creating the webhook in the dashboard (not the key secret). |
+| `PAYMENT_JOBS_BATCH_SIZE` | 20 | refunds / webhook retries per worker pass |
+| `REFUND_MAX_ATTEMPTS` | 5 | failed provider calls before a refund is marked FAILED |
+
+With `PAYMENT_PROVIDER=razorpay`, a missing `RAZORPAY_*` stops the process at startup with
+`RAZORPAY_KEY_SECRET is required when PAYMENT_PROVIDER=razorpay` (the variable name, never
+a value). Both `api` and `sweeper` need the same four values: in Docker they read
+`.env.docker`, and on the host they read `.env`. The test suite pins
+`PAYMENT_PROVIDER=mock` (`vitest.config.ts`) and installs a fake Razorpay client, so tests
+never use these values and never call Razorpay.
+
 ### Redis features
 
 | Variable | Default | Meaning |
@@ -165,6 +183,52 @@ Other ways to run it:
 
 - `npm run sweeper:once` runs one sweep and prints the result.
 - `npm run sweeper` runs the loop on the host with `tsx`.
+
+## Payments (Razorpay, test mode)
+
+Code: `src/modules/payments/`. Flow and refund rules: [booking-flow.md](booking-flow.md#paying-with-razorpay).
+Endpoints: [api.md](api.md#payments-razorpay).
+
+**Keys.** In the Razorpay dashboard switch to **Test Mode**, then Account & Settings → API
+Keys → Generate Test Key. Put the key id and secret in `.env.docker` (Docker) or `.env`
+(host) with `PAYMENT_PROVIDER=razorpay`. Rebuild or recreate `api` and `sweeper` so both
+read them. Never commit real values: `.env*` files other than the `*.example` templates
+are gitignored.
+
+**Webhook.** Dashboard (Test Mode) → Account & Settings → Webhooks → Add New Webhook:
+
+- URL: `https://<public host>/webhooks/razorpay`. The route is mounted at the API root; in
+  local dev the Vite proxy is not involved, so point it at the API port.
+- Secret: any long random string; the same value goes in `RAZORPAY_WEBHOOK_SECRET`.
+- Active events: `payment.captured` and `payment.failed`.
+
+**Local testing with a tunnel.** Razorpay must reach your machine over HTTPS. Either:
+
+- `cloudflared tunnel --url http://localhost:3000` (prints a `https://….trycloudflare.com` URL), or
+- `ngrok http 3000` (prints a `https://….ngrok-free.app` URL).
+
+Use `<that URL>/webhooks/razorpay` as the webhook URL. A quick check is
+`curl -i -X POST <url>/webhooks/razorpay -d '{}'`: it should answer 400
+`INVALID_SIGNATURE`, proving the route is reachable. The URL changes on every restart of a
+free tunnel, so update the webhook each time.
+
+**Test payments.** In test mode no money moves. Use the test cards and UPI ids from
+Razorpay's docs (https://razorpay.com/docs/payments/payments/test-card-details/ and the UPI
+page next to it). At the time of writing: card `4111 1111 1111 1111` with any future expiry
+and any CVV (Visa, domestic), and UPI `success@razorpay` / `failure@razorpay` for success
+and failure. Check the docs for the current list. OTP pages in test mode offer success and
+failure buttons.
+
+**What to watch.**
+
+- `webhook_events`: rows with `processed_at IS NULL` and a growing `attempts` are failing;
+  `last_error` says why. Retries stop after 10 attempts.
+- `refunds` with `status = 'FAILED'` need manual action. The log line
+  `Refund FAILED after max attempts: needs manual action` names the refund and booking. Fix
+  the cause, then `UPDATE refunds SET status = 'PENDING', attempts = 0, next_attempt_at = now() WHERE id = …`
+  to retry. Safe: the worker first looks for a Razorpay refund with the same receipt.
+- `npm run db:check-invariants` checks 10–12: no Razorpay-paid CONFIRMED booking without
+  a CAPTURED payment, no payment refunded twice, no refund on an uncaptured payment.
 
 ## Rate limits and the admission gate
 

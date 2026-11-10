@@ -8,6 +8,7 @@ import './set-app-name'; // must be first — sets DB_APPLICATION_NAME before en
 import { env } from '../config/env';
 import { pool } from '../db/pool';
 import { runSweepOnce } from '../modules/sweeper/sweeper.service';
+import { runPaymentJobsOnce } from '../modules/payments/payment-jobs.service';
 import pino from 'pino';
 
 const logger = pino({ name: 'sweeper-worker' });
@@ -20,13 +21,24 @@ function schedule() {
   if (stopping) return;
   timer = setTimeout(async () => {
     timer = null;
-    sweepPromise = runSweepOnce();
-    try {
-      await sweepPromise;
-    } catch (err) {
-      // runSweepOnce should never throw (it catches per-show), but just in case
-      logger.error({ err }, 'Unexpected error from runSweepOnce');
-    }
+    sweepPromise = (async () => {
+      try {
+        await runSweepOnce();
+      } catch (err) {
+        // runSweepOnce should never throw (it catches per-show), but just in case
+        logger.error({ err }, 'Unexpected error from runSweepOnce');
+      }
+      // Refund payouts, webhook retries, refund-row discovery (no-op for the mock provider).
+      try {
+        const r = await runPaymentJobsOnce();
+        if (r.refundsProcessed + r.refundsFailedAttempts + r.refundsDiscovered + r.webhooksRetried > 0) {
+          logger.info(r, 'Payment jobs completed');
+        }
+      } catch (err) {
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'Unexpected error from runPaymentJobsOnce');
+      }
+    })();
+    await sweepPromise;
     sweepPromise = null;
     schedule();
   }, env.SWEEPER_INTERVAL_MS);

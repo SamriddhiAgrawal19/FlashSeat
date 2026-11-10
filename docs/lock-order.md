@@ -7,7 +7,14 @@ To prevent deadlocks across concurrent transactions in the booking engine, all o
 3. **`shows` row** (`FOR SHARE` on booking paths, `FOR UPDATE` in `cancelEvent`; `ORDER BY id ASC` when locking several)
 4. **`reservations` row** (`FOR UPDATE`; `ORDER BY id ASC` when locking several)
 5. **`bookings` row** (`FOR UPDATE`; `ORDER BY id ASC` when locking several)
+5b. **`payments` / `refunds` rows** (`FOR UPDATE`; migration 003). Always after the booking,
+   always before seats. `onPaymentCaptured` locks the payment after show -> reservation ->
+   booking, then `confirmBookingCore` locks seats. The refund worker locks booking ->
+   refund -> seats. A webhook `payment.failed` updates a payment row alone.
 6. **`show_seats` rows** (`ORDER BY id ASC FOR UPDATE`)
+
+No database lock is ever held during a Razorpay call: order creation, payment fetch and
+refund calls happen between short transactions.
 
 ## Auth lock order (`refresh_tokens`)
 
@@ -41,7 +48,10 @@ under parallel overlapping `createShow` calls).
 | `checkout` | show (`FOR SHARE`) → reservation → booking → `show_seats` (id asc) |
 | `confirmBookingCore` | show (`FOR SHARE`) → reservation → booking → `show_seats` (id asc) |
 | `releaseReservation` | show (`FOR SHARE`) → reservation → booking → `show_seats` (id asc) |
-| `cancelEvent` | event (`FOR UPDATE`) → shows (id asc) → reservations (id asc) → bookings (id asc) → `show_seats` (id asc) |
+| `cancelEvent` | event (`FOR UPDATE`) → shows (id asc) → reservations (id asc) → bookings (id asc) → `show_seats` (id asc); then inserts `refunds` (FOR KEY SHARE on `payments`). That last step comes after the seat locks, which is safe only because every other path that locks a payment together with seats holds this show's row `FOR SHARE`, and that conflicts with the `FOR UPDATE` held here. |
+| `createPaymentOrder` | tx 1: show (`FOR SHARE`) → reservation → booking; Razorpay call with no locks; tx 2: same chain → insert `payments` |
+| `onPaymentCaptured` | show (`FOR SHARE`) → reservation → booking → payment → `show_seats` (id asc, in `confirmBookingCore`) |
+| refund worker | claim: `refunds` (`SKIP LOCKED`); Razorpay call with no locks; complete: booking → refund → `show_seats` (id asc) |
 | `createShow` | event (`FOR SHARE`) → inserts `shows` / `show_category_prices` / `show_seats` |
 | `publishEvent` / `updateEvent` | event (`FOR UPDATE`) |
 

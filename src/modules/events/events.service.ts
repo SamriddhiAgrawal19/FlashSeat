@@ -2,6 +2,7 @@ import { PoolClient } from 'pg';
 import * as repo from './events.repository';
 import { CreateEventRequest, UpdateEventRequest, ListEventsQuery } from './events.schema';
 import { NotFoundError, ConflictError } from '../../utils/errors';
+import { createEventCancelledRefunds } from '../payments/payments.repository';
 
 export async function createEvent(client: PoolClient, organizerId: string, data: CreateEventRequest) {
   return await repo.createEvent(client, organizerId, data.title, data.description, data.category, data.posterUrl);
@@ -75,6 +76,13 @@ export async function cancelEvent(client: PoolClient, organizerId: string, event
   // CONFIRMED bookings keep their BOOKED seats and live tickets: the Phase 3
   // refund worker releases them after the refund is paid out.
   await repo.markConfirmedBookingsRefundPendingForEvent(client, eventId);
+  // Bookings paid through Razorpay get their refunds row here, atomically with the
+  // cancel (the sweeper's payment jobs pay it out). Mock-paid bookings have no
+  // payment and stay REFUND_PENDING as before. Lock note: this takes FOR KEY SHARE
+  // on payments rows after the seat locks above; that is safe because every other
+  // path that locks a payment together with seats holds this show's row (FOR SHARE),
+  // which conflicts with the FOR UPDATE held here (docs/lock-order.md).
+  await createEventCancelledRefunds(client, eventId);
 
   // 7. event
   await repo.updateEventStatus(client, eventId, 'CANCELLED', true);

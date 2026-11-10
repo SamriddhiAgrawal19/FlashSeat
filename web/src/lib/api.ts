@@ -410,7 +410,8 @@ export function activeReservationId(error: ApiError): string | null {
 
 /**
  * PENDING_PAYMENT reads as EXPIRED once its hold is dead. REFUND_PENDING follows a cancelled
- * event. PAYMENT_FAILED and REFUNDED exist in the schema but nothing sets them yet.
+ * event or a Razorpay payment that arrived after the hold ended; REFUNDED once the refund is paid out
+ * (Razorpay only). PAYMENT_FAILED exists in the schema but nothing sets it.
  */
 export type BookingStatus = 'PENDING_PAYMENT' | 'CONFIRMED' | 'CANCELLED' | 'EXPIRED' | 'PAYMENT_FAILED' | 'REFUND_PENDING' | 'REFUNDED';
 
@@ -431,6 +432,22 @@ export interface Booking {
   event: EventRef;
   show: ShowRef;
   seats: BookingSeat[];
+  /** Latest provider payment; null for mock-paid or never-paid bookings. */
+  payment?: BookingPayment | null;
+  /** Latest refund; null when there is none (mock-paid bookings of a cancelled event too). */
+  refund?: BookingRefund | null;
+}
+
+export interface BookingPayment {
+  provider: 'razorpay';
+  status: 'CREATED' | 'CAPTURED' | 'FAILED';
+}
+
+export type RefundReason = 'EVENT_CANCELLED' | 'HOLD_EXPIRED';
+
+export interface BookingRefund {
+  status: 'PENDING' | 'PROCESSED' | 'FAILED';
+  reason: RefundReason;
 }
 
 export interface BookingsPage {
@@ -455,6 +472,35 @@ export async function confirmMockPayment(bookingId: string, signal?: AbortSignal
 /** Owner only; 404 otherwise. */
 export async function getBooking(bookingId: string, signal?: AbortSignal): Promise<Booking> {
   const data = await request<{ booking: Booking }>(`/bookings/${encodeURIComponent(bookingId)}`, { signal });
+  return data.booking;
+}
+
+/** POST /bookings/:id/payments: the public Razorpay order (201 new, 200 the open one). */
+export interface PaymentOrder {
+  keyId: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  bookingId: string;
+}
+
+/**
+ * Creates (or returns the open) Razorpay order. 404 "Endpoint not available" when the API runs
+ * the mock provider; 409 HOLD_TOO_SHORT under 2 minutes of hold. The amount comes from the server.
+ */
+export function createPaymentOrder(bookingId: string, signal?: AbortSignal): Promise<PaymentOrder> {
+  return request<PaymentOrder>(`/bookings/${encodeURIComponent(bookingId)}/payments`, { method: 'POST', signal });
+}
+
+export interface RazorpaySuccess {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+/** Razorpay Checkout success callback -> CONFIRMED booking. Idempotent. */
+export async function verifyRazorpayPayment(body: RazorpaySuccess, signal?: AbortSignal): Promise<Booking> {
+  const data = await request<{ booking: Booking }>('/payments/razorpay/verify', { method: 'POST', body, signal });
   return data.booking;
 }
 

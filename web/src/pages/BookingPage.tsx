@@ -7,6 +7,7 @@ import { Ticket } from '../components/booking/Ticket';
 import { useEventPhoto, type EventPhoto } from '../components/booking/useEventPhoto';
 import { AccentButton, Arrow, GhostButton, PrimaryButton } from '../components/site/ui';
 import type { Booking } from '../lib/api';
+import { paidWithRazorpay, refundCopy } from '../lib/booking/refundCopy';
 import { serverNow } from '../lib/booking/serverClock';
 import { cn } from '../lib/cn';
 import { formatPaise, formatShowDate, formatShowDay, formatTime } from '../lib/format';
@@ -62,17 +63,14 @@ function StatusNotice({ booking }: { booking: Booking }) {
         </HoldStatusPanel>
       );
     case 'REFUND_PENDING':
+    case 'REFUNDED': {
+      const copy = refundCopy(booking)!;
       return (
-        <HoldStatusPanel tone="muted" title="This event was cancelled. Your refund is being processed.">
-          These tickets are no longer valid.
+        <HoldStatusPanel tone="muted" title={copy.title} action={booking.refund?.reason === 'HOLD_EXPIRED' ? eventLink : undefined}>
+          {copy.body}
         </HoldStatusPanel>
       );
-    case 'REFUNDED':
-      return (
-        <HoldStatusPanel tone="muted" title="This event was cancelled. Your payment has been refunded.">
-          These tickets are no longer valid.
-        </HoldStatusPanel>
-      );
+    }
     case 'CONFIRMED':
       return null;
   }
@@ -169,7 +167,8 @@ export function BookingPage() {
   }
 
   const voided = booking.status === 'REFUND_PENDING' || booking.status === 'REFUNDED';
-  const showTickets = booking.status === 'CONFIRMED' || voided;
+  // A payment that arrived after the hold ended never became tickets: nothing to void.
+  const showTickets = booking.status === 'CONFIRMED' || (voided && booking.refund?.reason !== 'HOLD_EXPIRED');
   const confirmed = booking.status === 'CONFIRMED';
   const count = booking.seats.length;
 
@@ -212,6 +211,7 @@ export function BookingPage() {
           <span className="site-eyebrow">
             BOOKING <span className="bk-id">{booking.id}</span>
           </span>
+          {paidWithRazorpay(booking) && <span className="bk-paidwith">Paid with Razorpay</span>}
         </div>
         <h1 id="booking-title" className="bk-h1-lg">
           {booking.event.title}

@@ -6,6 +6,7 @@ import { BookingStatusPill } from '../components/booking/StatusPill';
 import { useEventPhoto } from '../components/booking/useEventPhoto';
 import { AccentButton, Arrow, DateBlock, Eyebrow, GhostButton, PrimaryButton } from '../components/site/ui';
 import type { Booking } from '../lib/api';
+import { paidWithRazorpay, refundCopy } from '../lib/booking/refundCopy';
 import { serverNow } from '../lib/booking/serverClock';
 import { formatPaise, showDateParts } from '../lib/format';
 import { useMyBookings } from '../lib/queries';
@@ -39,6 +40,7 @@ function BookingRow({ booking, now }: { booking: Booking; now: number }) {
   const parts = showDateParts(booking.show.startsAt);
   const seats = booking.seats.length;
   const { photo, onError } = useEventPhoto(booking.event);
+  const refund = refundCopy(booking);
   return (
     <li className="mb-row">
       <DateBlock iso={booking.show.startsAt} className="mb-date" />
@@ -57,6 +59,8 @@ function BookingRow({ booking, now }: { booking: Booking; now: number }) {
         <span className="mb-meta">
           {seats} {seats === 1 ? 'SEAT' : 'SEATS'} · {formatPaise(booking.totalPaise)}
         </span>
+        {paidWithRazorpay(booking) && <span className="bk-paidwith">Paid with Razorpay</span>}
+        {refund && <span className="mb-refund">{refund.title}</span>}
       </div>
 
       <div className="mb-side">

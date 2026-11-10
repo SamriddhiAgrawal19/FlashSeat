@@ -237,7 +237,7 @@ export const INVARIANT_QUERIES: string[] = [
   `SELECT ss.id FROM show_seats ss LEFT JOIN bookings b ON b.id = ss.booking_id
     WHERE ss.status = 'BOOKED' AND (b.status IS NULL OR b.status NOT IN ('CONFIRMED','REFUND_PENDING'))`,
   `SELECT r.id FROM reservations r
-     LEFT JOIN bookings b ON b.reservation_id = r.id AND b.status IN ('CONFIRMED','REFUND_PENDING')
+     LEFT JOIN bookings b ON b.reservation_id = r.id AND b.status IN ('CONFIRMED','REFUND_PENDING','REFUNDED')
     WHERE r.status = 'CONFIRMED' AND b.id IS NULL`,
   `SELECT ss.id FROM show_seats ss JOIN shows s ON s.id = ss.show_id
     WHERE ss.status = 'HELD' AND s.status = 'CANCELLED'`,
@@ -245,6 +245,12 @@ export const INVARIANT_QUERIES: string[] = [
     WHERE r.status = 'ACTIVE' AND s.status = 'CANCELLED'`,
   `SELECT b.id FROM bookings b JOIN shows s ON s.id = b.show_id
     WHERE b.status = 'PENDING_PAYMENT' AND s.status = 'CANCELLED'`,
+  // Phase 3 payments (migration 003)
+  `SELECT b.id FROM bookings b WHERE b.status = 'CONFIRMED'
+     AND EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.provider = 'razorpay')
+     AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id AND p.status = 'CAPTURED')`,
+  `SELECT payment_id FROM refunds GROUP BY payment_id HAVING count(*) > 1`,
+  `SELECT r.id FROM refunds r JOIN payments p ON p.id = r.payment_id WHERE p.status <> 'CAPTURED'`,
 ];
 
 export async function invariantViolations(): Promise<string[]> {

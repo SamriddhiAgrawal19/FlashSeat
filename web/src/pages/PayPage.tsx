@@ -7,11 +7,13 @@ import { MiniCountdown } from '../components/booking/Countdown';
 import { HoldStatusPanel } from '../components/booking/HoldStatusPanel';
 import { OrderSummary } from '../components/booking/OrderSummary';
 import { PaymentPanel } from '../components/booking/PaymentPanel';
+import { RazorpayCheckout, type OrderProblem } from '../components/booking/RazorpayCheckout';
 import { BookingStatusPill } from '../components/booking/StatusPill';
 import { useEventPhoto } from '../components/booking/useEventPhoto';
 import { AccentButton, Arrow, Eyebrow, GhostButton, PrimaryButton } from '../components/site/ui';
-import { ApiError, releaseReservation, type Booking } from '../lib/api';
+import { ApiError, createPaymentOrder, releaseReservation, type Booking, type PaymentOrder } from '../lib/api';
 import { HOLD_ENDED_CODES, isPaymentsDisabled, payWithRetry } from '../lib/booking/checkout';
+import { refundCopy } from '../lib/booking/refundCopy';
 import { serverNow } from '../lib/booking/serverClock';
 import { isNotFound, useBooking } from '../lib/queries';
 import { showToast } from '../lib/toast';
@@ -59,16 +61,20 @@ type PayProblem =
 
 type ReleaseState = 'idle' | 'confirm' | 'releasing';
 
+/**
+ * Which payment the API runs, learned from POST /bookings/:id/payments on load:
+ * 201/200 -> Razorpay (keep the order), 404 "Endpoint not available" -> the mock flow.
+ */
+type PayMode = { kind: 'detecting' } | { kind: 'mock' } | { kind: 'razorpay'; order: PaymentOrder | null; problem: OrderProblem } | { kind: 'detect-failed' };
+
 /** Why this booking can't be paid, when it arrives in a closed state. */
 function ClosedBooking({ booking }: { booking: Booking }) {
   const copy: Partial<Record<Booking['status'], { title: string; body: string }>> = {
     EXPIRED: { title: 'Your hold expired before payment.', body: 'The seats went back on sale. They may still be free.' },
     CANCELLED: { title: 'This booking was cancelled.', body: 'The seats were released. Nothing was charged.' },
     PAYMENT_FAILED: { title: 'The payment did not go through.', body: 'Nothing was charged. Pick your seats again to try once more.' },
-    REFUND_PENDING: { title: 'This event was cancelled.', body: 'Your refund is being processed.' },
-    REFUNDED: { title: 'This event was cancelled.', body: 'Your payment has been refunded.' },
   };
-  const text = copy[booking.status] ?? { title: 'This booking can no longer be paid.', body: '' };
+  const text = refundCopy(booking) ?? copy[booking.status] ?? { title: 'This booking can no longer be paid.', body: '' };
   return (
     <HoldStatusPanel
       tone="muted"
@@ -101,6 +107,28 @@ export function PayPage() {
   const [releaseError, setReleaseError] = useState<string | null>(null);
   // A second click before React re-renders must not send a second request.
   const inFlight = useRef(false);
+  const [mode, setMode] = useState<PayMode>({ kind: 'detecting' });
+  const detectStarted = useRef(false);
+  // Razorpay: a payment is being confirmed, keep the checkout on screen whatever the booking says.
+  const [rzpLocked, setRzpLocked] = useState(false);
+
+  const canDetect = !!booking && booking.status === 'PENDING_PAYMENT' && !!booking.payBefore && Date.parse(booking.payBefore) > serverNow();
+  useEffect(() => {
+    if (!canDetect || detectStarted.current || mode.kind !== 'detecting') return;
+    detectStarted.current = true;
+    // Idempotent on the server: a second call (StrictMode, Retry) returns the same open order.
+    createPaymentOrder(bookingId)
+      .then((order) => setMode({ kind: 'razorpay', order, problem: null }))
+      .catch((error: unknown) => {
+        if (isPaymentsDisabled(error)) setMode({ kind: 'mock' });
+        else if (error instanceof ApiError && error.code === 'HOLD_TOO_SHORT') setMode({ kind: 'razorpay', order: null, problem: 'too-short' });
+        else if (error instanceof ApiError && HOLD_ENDED_CODES.has(error.code)) {
+          setMode({ kind: 'razorpay', order: null, problem: 'ended' });
+          void query.refetch();
+        } else if (error instanceof ApiError && error.status === 404) void query.refetch();
+        else setMode({ kind: 'detect-failed' });
+      });
+  }, [canDetect, bookingId, mode.kind, query]);
 
   useEffect(() => {
     document.title = booking ? `Pay · ${booking.event.title} · FlashSeat` : 'Pay · FlashSeat';
@@ -145,7 +173,7 @@ export function PayPage() {
   }
 
   // Already paid (e.g. a second tab, or Back after paying): straight to the tickets.
-  if (booking.status === 'CONFIRMED' && !paying) return <Navigate to={`/bookings/${booking.id}`} replace />;
+  if (booking.status === 'CONFIRMED' && !paying && !rzpLocked) return <Navigate to={`/bookings/${booking.id}`} replace />;
 
   const payBefore = booking.payBefore;
   const payable = booking.status === 'PENDING_PAYMENT' && !!payBefore && !expiredHere && Date.parse(payBefore) > serverNow();
@@ -203,6 +231,60 @@ export function PayPage() {
 
   const shownStatus = expiredHere && booking.status === 'PENDING_PAYMENT' ? 'EXPIRED' : booking.status;
 
+  const releaseControls = (
+    <>
+      {release === 'idle' ? (
+        <button type="button" className="bk-textbtn is-sm is-center" onClick={() => setRelease('confirm')} disabled={paying}>
+          Cancel and release seats
+        </button>
+      ) : (
+        <HoldStatusPanel
+          tone="muted"
+          title="Cancel this order?"
+          action={
+            <>
+              <GhostButton size="sm" onClick={() => void onRelease()} disabled={release === 'releasing'}>
+                {release === 'releasing' ? 'Releasing…' : 'Yes, release seats'}
+              </GhostButton>
+              <PrimaryButton size="sm" onClick={() => setRelease('idle')} disabled={release === 'releasing'}>
+                Keep my order
+              </PrimaryButton>
+            </>
+          }
+        >
+          Your seats go back on sale straight away.
+        </HoldStatusPanel>
+      )}
+      {releaseError && (
+        <p role="alert" className="bk-error-text">
+          {releaseError}
+        </p>
+      )}
+    </>
+  );
+
+  const closedCard = (
+    <section aria-label="Payment" className="bk-card bk-paycard">
+      <BookingStatusPill status={shownStatus} />
+      <h2 className="bk-h2">Payment</h2>
+      {booking.status === 'PENDING_PAYMENT' ? (
+        <HoldStatusPanel
+          tone="muted"
+          title="Your hold expired before payment."
+          action={
+            <AccentButton to={`/events/${booking.event.id}`} size="sm">
+              Back to the event <Arrow />
+            </AccentButton>
+          }
+        >
+          The seats went back on sale. They may still be free.
+        </HoldStatusPanel>
+      ) : (
+        <ClosedBooking booking={booking} />
+      )}
+    </section>
+  );
+
   return (
     <>
       <BookingHeader step="pay" event={booking.event} startsAt={booking.show.startsAt} venue={booking.show.venue} />
@@ -224,7 +306,49 @@ export function PayPage() {
           }
         />
 
-        {payable && payBefore ? (
+        {mode.kind === 'razorpay' && (payable || rzpLocked || booking.status === 'PENDING_PAYMENT') ? (
+          <RazorpayCheckout
+            booking={booking}
+            order={mode.order}
+            orderProblem={mode.problem}
+            expired={!payable}
+            onLockedChange={setRzpLocked}
+            closedView={closedCard}
+          >
+            {releaseControls}
+          </RazorpayCheckout>
+        ) : payable && payBefore && mode.kind === 'detecting' ? (
+          <section aria-busy="true" aria-label="Payment" className="bk-card bk-paycard">
+            <p className="sr-only" role="status">
+              Preparing payment
+            </p>
+            <span aria-hidden="true" className="site-skel" style={{ width: 90, height: 22, borderRadius: 6 }} />
+            <span aria-hidden="true" className="site-skel" style={{ width: '100%', height: 120, borderRadius: 12 }} />
+            <span aria-hidden="true" className="site-skel" style={{ width: '100%', height: 48, borderRadius: 12 }} />
+          </section>
+        ) : payable && payBefore && mode.kind === 'detect-failed' ? (
+          <section aria-label="Payment" className="bk-card bk-paycard">
+            <HoldStatusPanel
+              tone="error"
+              role="alert"
+              title="We couldn't start the payment."
+              action={
+                <GhostButton
+                  size="sm"
+                  onClick={() => {
+                    detectStarted.current = false;
+                    setMode({ kind: 'detecting' });
+                  }}
+                >
+                  Try again
+                </GhostButton>
+              }
+            >
+              Nothing was charged. Your seats stay held until the timer runs out.
+            </HoldStatusPanel>
+            {releaseControls}
+          </section>
+        ) : payable && payBefore ? (
           <PaymentPanel totalPaise={booking.totalPaise} paying={paying} payingNote={payingNote} onPay={() => void onPay()}>
             {problem?.kind === 'ended' && (
               <HoldStatusPanel
@@ -254,54 +378,10 @@ export function PayPage() {
               </HoldStatusPanel>
             )}
 
-            {release === 'idle' ? (
-              <button type="button" className="bk-textbtn is-sm is-center" onClick={() => setRelease('confirm')} disabled={paying}>
-                Cancel and release seats
-              </button>
-            ) : (
-              <HoldStatusPanel
-                tone="muted"
-                title="Cancel this order?"
-                action={
-                  <>
-                    <GhostButton size="sm" onClick={() => void onRelease()} disabled={release === 'releasing'}>
-                      {release === 'releasing' ? 'Releasing…' : 'Yes, release seats'}
-                    </GhostButton>
-                    <PrimaryButton size="sm" onClick={() => setRelease('idle')} disabled={release === 'releasing'}>
-                      Keep my order
-                    </PrimaryButton>
-                  </>
-                }
-              >
-                Your seats go back on sale straight away.
-              </HoldStatusPanel>
-            )}
-            {releaseError && (
-              <p role="alert" className="bk-error-text">
-                {releaseError}
-              </p>
-            )}
+            {releaseControls}
           </PaymentPanel>
         ) : (
-          <section aria-label="Payment" className="bk-card bk-paycard">
-            <BookingStatusPill status={shownStatus} />
-            <h2 className="bk-h2">Payment</h2>
-            {booking.status === 'PENDING_PAYMENT' ? (
-              <HoldStatusPanel
-                tone="muted"
-                title="Your hold expired before payment."
-                action={
-                  <AccentButton to={`/events/${booking.event.id}`} size="sm">
-                    Back to the event <Arrow />
-                  </AccentButton>
-                }
-              >
-                The seats went back on sale. They may still be free.
-              </HoldStatusPanel>
-            ) : (
-              <ClosedBooking booking={booking} />
-            )}
-          </section>
+          closedCard
         )}
       </div>
     </>
