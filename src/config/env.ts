@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import { parseTrustProxy } from './trustProxy';
 
 dotenv.config();
 
@@ -10,6 +11,18 @@ const envSchema = z.object({
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_ACCESS_EXPIRY: z.string().min(1),
   REFRESH_TOKEN_EXPIRY_DAYS: z.coerce.number().positive(),
+  // Path of the refresh-token cookie. The API's auth routes live at /auth; in dev
+  // the Vite proxy rewrites the cookie to /api/auth. In production Caddy serves the
+  // API under /api with the prefix stripped (deploy/Caddyfile), so the browser sees
+  // /api/auth and the API must set that path itself.
+  REFRESH_COOKIE_PATH: z
+    .string()
+    .trim()
+    .regex(/^\/[^;\s]*$/, 'must start with / and contain no spaces or ;')
+    .default('/auth'),
+  // Express `trust proxy` (src/config/trustProxy.ts). Off unless set: only enable it
+  // when the API is reachable ONLY through a proxy that sets X-Forwarded-For.
+  TRUST_PROXY: z.string().optional().transform(parseTrustProxy),
   HOLD_DURATION_SECONDS: z.coerce.number().int().positive().default(600),
   MAX_SEATS_PER_RESERVATION: z.coerce.number().int().positive().default(6),
   MAX_SEATS_PER_BULK_CALL: z.coerce.number().int().positive().default(2000),

@@ -1,0 +1,174 @@
+# FlashSeat production stack for ONE server (runbook: docs/deploy-aws.md).
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Every service reads .env.production (template: .env.production.example). Only
+# caddy publishes ports (80, 443, 443/udp for HTTP/3); postgres, redis and the api
+# are reachable only on the compose network. Memory limits fit a 2 GB server
+# (about 1.4 GB in total, plus the 2 GB swap file from the runbook).
+#
+# No ${...} interpolation is used in this file on purpose: compose would read it
+# from a .env next to this file, and that is the local dev file.
+#
+# The local dev stack (docker-compose.yml) is separate: different project name,
+# no container_name clashes, different volumes and image tags.
+
+name: flashseat-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+# migrate, api and sweeper share one image (Dockerfile) and one env file.
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: flashseat-app:prod
+  env_file: .env.production
+  logging: *logging
+
+services:
+  postgres:
+    image: postgres:16
+    env_file: .env.production   # POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # $$ = a literal $, expanded by the container's shell from its own env.
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    mem_limit: 512m
+    shm_size: 128m
+    logging: *logging
+
+  # Advisory only (rate limits, admission gate, seat-map cache; all fail open), so
+  # no persistence: a restart just starts with empty counters.
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "96mb", "--maxmemory-policy", "allkeys-lru"]
+    env_file: .env.production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 128m
+    logging: *logging
+
+  # One-shot: applies pending SQL migrations, then exits 0. api and sweeper wait for it.
+  migrate:
+    <<: *app
+    command: ["npm", "run", "migrate:up"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 256m
+
+  api:
+    <<: *app
+    restart: unless-stopped
+    environment:
+      NODE_OPTIONS: "--max-old-space-size=256"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # node:22-slim has no curl/wget; Node's global fetch does the same job.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    # > SHUTDOWN_TIMEOUT_MS (10s): in-flight requests drain before SIGKILL.
+    stop_grace_period: 15s
+    mem_limit: 384m
+
+  # Expires stale holds and runs refunds / webhook retries. No HTTP port, so its
+  # health check is a database round trip with the same image and env.
+  sweeper:
+    <<: *app
+    command: ["node", "dist/workers/sweeper.js"]
+    restart: unless-stopped
+    environment:
+      NODE_OPTIONS: "--max-old-space-size=160"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "const {Client}=require('pg');const c=new Client({connectionString:process.env.DATABASE_URL});c.connect().then(()=>c.query('SELECT 1')).then(()=>process.exit(0),()=>process.exit(1))"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    stop_grace_period: 15s
+    mem_limit: 256m
+
+  # The edge: TLS (automatic certificates), the built web app, /api -> api:3000.
+  caddy:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    image: flashseat-web:prod
+    env_file: .env.production   # SITE_DOMAIN
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data       # certificates and ACME account: keep, or you hit rate limits
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      # Caddy's admin API listens on localhost:2019 inside the container only.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    mem_limit: 128m
+    logging: *logging
+
+  # Not started by `up` (profile "tools"). Creates the demo catalog through the API:
+  #   docker compose -f docker-compose.prod.yml run --rm seed-catalog
+  # Needs DEMO_PASSWORD in .env.production. Talks to api:3000 on the compose network.
+  seed-catalog:
+    image: node:22-slim
+    profiles: ["tools"]
+    working_dir: /app
+    command: ["node", "scripts/seed-catalog.mjs"]
+    env_file: .env.production
+    environment:
+      API_BASE_URL: http://api:3000
+    volumes:
+      - ./scripts:/app/scripts:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: "no"
+    mem_limit: 256m
+    logging: *logging
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

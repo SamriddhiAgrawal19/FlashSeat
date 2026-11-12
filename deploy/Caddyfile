@@ -1,0 +1,74 @@
+# FlashSeat production edge (docker-compose.prod.yml, image built by deploy/Dockerfile.web).
+#
+# One origin, no CORS:
+#   /api/*  -> the api container, with the /api prefix stripped (the API keeps its
+#              own routes: /auth/login, /webhooks/razorpay, ...)
+#   else    -> the built React app in /srv, with SPA fallback to /index.html
+#
+# SITE_DOMAIN comes from .env.production. A public name (for example
+# 13-233-10-20.sslip.io) gets a Let's Encrypt certificate automatically; "localhost"
+# gets one from Caddy's own local CA (local testing only).
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	# JSON access log on stdout; docker's json-file driver rotates it.
+	log {
+		output stdout
+		format json
+	}
+
+	header {
+		# HTTPS only for a year. No includeSubDomains / preload: with an sslip.io
+		# name the parent domain is not ours.
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self \"https://checkout.razorpay.com\" \"https://api.razorpay.com\")"
+		# Fonts are self-hosted (@fontsource, bundled by Vite), so no Google Fonts.
+		# Razorpay Checkout: the script from checkout.razorpay.com, which opens frames
+		# and makes requests to *.razorpay.com. img-src allows any https image because
+		# organizers may set an external poster URL. style-src needs 'unsafe-inline'
+		# for the styles checkout.js injects.
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.razorpay.com; frame-src https://*.razorpay.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://*.razorpay.com; frame-ancestors 'none'; upgrade-insecure-requests"
+		-Server
+	}
+
+	# API. handle_path strips /api, so /api/webhooks/razorpay reaches the API as
+	# /webhooks/razorpay with the body untouched (its signature is over the raw
+	# bytes). Caddy replaces any client-sent X-Forwarded-For with the real client
+	# address; the API trusts exactly one hop (TRUST_PROXY=1).
+	handle_path /api/* {
+		request_body {
+			max_size 2MB
+		}
+		header -X-Powered-By
+		reverse_proxy api:3000
+	}
+
+	# Vite's hashed bundles: content-addressed, so cache forever. A missing file is a
+	# plain 404 (never index.html, which would then be cached as "immutable").
+	handle /assets/* {
+		root * /srv
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Event photos (public/images, not hashed): a day in the cache.
+	handle /images/* {
+		root * /srv
+		header Cache-Control "public, max-age=86400"
+		file_server
+	}
+
+	# Everything else is the SPA: real files (favicon) or index.html for any
+	# client-side route (/events, /shows/<id>, ...). no-cache: always revalidate, so
+	# a new deploy is picked up on the next load.
+	handle {
+		root * /srv
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -10,8 +10,13 @@ import { reservationsRouter } from './modules/reservations/reservations.routes';
 import { bookingsRouter } from './modules/bookings/bookings.routes';
 import { paymentsRouter, webhookRouter } from './modules/payments/payments.routes';
 import { errorHandler } from './middleware/errorHandler';
+import { env } from './config/env';
 
 export const app = express();
+
+// Behind Caddy (production) req.ip must be the client's address, not Caddy's, or
+// every IP rate limit becomes one shared bucket. Off by default (TRUST_PROXY).
+app.set('trust proxy', env.TRUST_PROXY);
 
 // Raw-body routes first (webhook signatures are computed over the exact bytes).
 app.use('/', webhookRouter);

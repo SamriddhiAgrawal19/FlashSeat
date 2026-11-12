@@ -1,0 +1,18 @@
+# The production edge: the built React app + Caddy (deploy/Caddyfile).
+# Build context is the repository root (docker-compose.prod.yml: context: .).
+
+# --- build: install web/ dependencies and run the Vite production build -> web/dist
+FROM node:22-slim AS build
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+# .dockerignore keeps the host's web/node_modules, web/dist and web/.env* out of this copy.
+COPY web/ ./
+RUN npm run build
+
+# --- runtime: Caddy serving /srv and proxying /api to the api container
+FROM caddy:2.10-alpine
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /web/dist /srv
+# Fails the build if the Caddyfile does not parse (SITE_DOMAIN is a runtime value).
+RUN SITE_DOMAIN=localhost caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile

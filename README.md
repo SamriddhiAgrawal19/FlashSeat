@@ -312,6 +312,11 @@ details from Razorpay's official docs:
 To see the automatic refund, let a hold run out while the Razorpay window is open, then
 pay: the booking turns `REFUND_PENDING` and the sweeper process refunds it.
 
+### Deploying
+
+One Linux server running `docker-compose.prod.yml` behind Caddy with automatic HTTPS:
+follow [docs/deploy-aws.md](docs/deploy-aws.md) (AWS EC2, ap-south-1).
+
 ### API docs
 
 The API runs at http://localhost:3000 (the web app reaches it through `/api`). Every
@@ -330,7 +335,7 @@ npm run test:docker -- tests/payments.test.ts   # one file
 npm run db:check-invariants   # SQL invariants on the live database: healthy means 0 rows each
 ```
 
-**Current result: 131 tests in 13 files, all passing** (`npm run test:docker`, 2026-11-10,
+**Current result: 137 tests in 14 files, all passing** (`npm run test:docker`, 2026-11-12,
 about 5 minutes; files run one at a time because they share one API and database).
 
 | Suite | Covers |
@@ -342,6 +347,7 @@ about 5 minutes; files run one at a time because they share one API and database
 | `sweeper.test.ts` | expiry, takeover by a new holder, batching, concurrent sweeps, sweeps racing the API |
 | `robustness.test.ts` | lock timeouts, killed database connections, register races, overlapping shows, all SQL invariants at rest |
 | `rate-limit.test.ts` | every rate limiter, Redis outage (fails open), admission gate, seat-map cache |
+| `trust-proxy.test.ts` | `X-Forwarded-For` honoured only with `TRUST_PROXY`, production refresh cookie (`Path=/api/auth`, `Secure`) |
 | `auth.test.ts`, `auth-me.test.ts` | refresh-token rotation and reuse detection, database-clock expiry, forged JWTs, login timing, `/auth/me` |
 | `api-consistency.test.ts` | 404 for other users' resources, uuid validation, route scoping, bulk seat limits |
 | `events-list.test.ts`, `events-seat-counts.test.ts`, `organizer-reads.test.ts` | event listing filters and seat counts, organizer dashboard reads and ownership |
@@ -377,8 +383,10 @@ Details, including why a standalone sweeper must not run during the tests:
 ├── scripts/                demo reset/seed, test-docker runner, invariant SQL, smoke and regression scripts
 ├── load/                   k6 scripts, load seeding, runner, RESULTS.md, raw results
 ├── docs/                   deep dives, reviews, design references, screenshots
+├── deploy/                 Caddyfile and Dockerfile.web (production edge: web app + /api proxy)
 ├── Dockerfile              one image for api, sweeper and migrate
-└── docker-compose.yml      postgres, redis, migrate, api, sweeper
+├── docker-compose.yml      local dev: postgres, redis, migrate, api, sweeper
+└── docker-compose.prod.yml one-server production: the same plus caddy (docs/deploy-aws.md)
 ```
 
 ## Documentation
@@ -391,6 +399,7 @@ Details, including why a standalone sweeper must not run during the tests:
 | [docs/api.md](docs/api.md) | every endpoint, error codes, curl walkthrough |
 | [docs/lock-order.md](docs/lock-order.md) | the global lock hierarchy and the sweeper's locks |
 | [docs/clocks.md](docs/clocks.md) | which decisions use the database clock and which the app clock |
+| [docs/deploy-aws.md](docs/deploy-aws.md) | production on one EC2 server: Docker Compose behind Caddy (automatic HTTPS), secrets, backups, updates |
 | [docs/operations.md](docs/operations.md) | env vars, Docker services, Razorpay setup, logs, shutdown, troubleshooting |
 | [docs/testing.md](docs/testing.md) | test architecture, suites, regression scripts, mutation testing |
 | [docs/todo.md](docs/todo.md) | deferred items |

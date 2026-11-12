@@ -1,13 +1,20 @@
-# Host artifacts: the image installs and compiles its own.
+# Host artifacts: the image installs and compiles its own. The **/ forms also cover
+# web/ (deploy/Dockerfile.web copies web/ and must not get the host's Windows/macOS
+# node_modules or a stale dist).
 node_modules
+**/node_modules
 dist
+**/dist
 coverage
 logs
 *.log
+backups
 
 # Secrets / local config: containers get env via env_file at run time, never baked in.
 .env
 .env.*
+**/.env
+**/.env.*
 
 # Not needed in the image (the build only uses package*.json, tsconfig.json, src/, migrations/).
 .git

@@ -3,13 +3,17 @@ import { registerSchema, loginSchema } from './auth.schema';
 import * as authService from './auth.service';
 import { pool, withTransaction } from '../../db/pool';
 import { AppError, UnauthorizedError } from '../../utils/errors';
+import { env } from '../../config/env';
 
 const COOKIE_NAME = 'refreshToken';
+// Secure in production (HTTPS behind Caddy). The path is where the BROWSER sees the
+// auth routes: /auth when it talks to the API directly (dev, tests), /api/auth in
+// production where Caddy strips the /api prefix (REFRESH_COOKIE_PATH).
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: env.NODE_ENV === 'production',
   sameSite: 'strict' as const,
-  path: '/auth'
+  path: env.REFRESH_COOKIE_PATH
 };
 
 export async function register(req: Request, res: Response, next: NextFunction) {

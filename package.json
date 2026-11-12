@@ -19,6 +19,8 @@
     "db:show-settings": "tsx scripts/show-db-settings.ts",
     "db:reset-local": "node scripts/reset-local-db.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
+    "seed:catalog": "node scripts/seed-catalog.mjs",
+    "db:backup:prod": "bash scripts/backup-db.sh",
     "demo:fresh": "node scripts/reset-local-db.mjs --yes && node scripts/seed-demo.mjs",
     "smoke:concurrency": "node scripts/smoke-concurrency.mjs",
     "smoke:checkout": "node scripts/smoke-checkout.mjs",

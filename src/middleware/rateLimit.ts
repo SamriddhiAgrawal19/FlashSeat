@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { redis, withRedisFallback } from '../redis/client';
+import pino from 'pino';
 import { env } from '../config/env';
+
+const logger = pino({ name: 'rate-limit' });
 
 interface RateLimitOptions {
   /** Derives the Redis key suffix from the request (e.g. IP, email, user id). Returning null skips the check for that request. */
@@ -65,6 +68,9 @@ export function rateLimit({ keyFn, limit, windowSeconds, name }: RateLimitOption
     );
 
     if (!result.allowed) {
+      // req.ip is the client address (X-Forwarded-For behind Caddy when TRUST_PROXY
+      // is set). The key itself is not logged: for login-email it is an address.
+      logger.warn({ limiter: name, ip: req.ip, retryAfterSeconds: result.retryAfterSeconds }, 'Rate limit exceeded');
       res.setHeader('Retry-After', String(result.retryAfterSeconds));
       return res.status(429).json({ error: { message: 'Too many requests', code: 'RATE_LIMITED' } });
     }

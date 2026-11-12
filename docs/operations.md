@@ -11,6 +11,9 @@ Templates:
 
 - `.env.example`: production-style values with `<PLACEHOLDER>`s for secrets. Start a deploy
   from this.
+- `.env.production.example`: the single-server production stack (`docker-compose.prod.yml`
+  behind Caddy). Copy it to `.env.production` on the server (gitignored). Runbook:
+  [deploy-aws.md](deploy-aws.md).
 - `.env.docker.example`: the local Docker and test stack. Copy it to `.env.docker`
   (gitignored). It has no `DATABASE_URL` or `REDIS_URL`, because `docker-compose.yml` sets
   those to the service hostnames.
@@ -26,6 +29,8 @@ Templates:
 | `JWT_ACCESS_SECRET` | required | HS256 secret, at least 32 characters. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. |
 | `JWT_ACCESS_EXPIRY` | required | access-token lifetime in `jsonwebtoken` format (templates: `15m`) |
 | `REFRESH_TOKEN_EXPIRY_DAYS` | required | refresh-token lifetime (templates: 7) |
+| `REFRESH_COOKIE_PATH` | `/auth` | `Path` of the refresh-token cookie: where the **browser** sees the auth routes. `/auth` when it talks to the API directly (dev, tests; the Vite proxy rewrites it to `/api/auth`). `/api/auth` in production, where Caddy serves the API under `/api` and strips the prefix. |
+| `TRUST_PROXY` | off | Express `trust proxy`. Off: `X-Forwarded-For` is ignored and `req.ip` (the IP rate-limit key) is the socket address. `1` behind Caddy: trust one hop, so `req.ip` is the client address Caddy appended. Also accepts `true`, a hop count, or Express's address/subnet list. Only enable it when the API is reachable **only** through the proxy, or clients can pick their own rate-limit key. |
 | `ENABLE_MOCK_PAYMENT` | false | enables `POST /bookings/:id/confirm-mock`. Must be false in production (enforced). |
 | `SHUTDOWN_TIMEOUT_MS` | 10000 | drain deadline on SIGTERM before a forced exit 1 |
 
@@ -130,6 +135,17 @@ Migrations: `npm run migrate:up` / `migrate:down` (node-pg-migrate, SQL files in
 `migrations/`). `docker compose start sweeper` also re-runs `migrate`, which is harmless
 because applied migrations are skipped.
 
+## Production (one server)
+
+`docker-compose.prod.yml` runs postgres, redis, migrate, api, sweeper and caddy; only caddy
+publishes ports (80, 443, 443/udp). Caddy (`deploy/Caddyfile`, image `deploy/Dockerfile.web`)
+serves the built web app with SPA fallback and proxies `/api/*` to `api:3000` with the prefix
+stripped, so the browser, the API and the refresh cookie share one origin and no CORS is needed.
+Step-by-step: [deploy-aws.md](deploy-aws.md). Backups: `scripts/backup-db.sh` (daily cron,
+7-day retention). Demo content without bookings: `docker compose -f docker-compose.prod.yml run
+--rm seed-catalog` (`scripts/seed-catalog.mjs`, also `npm run seed:catalog` with
+`API_BASE_URL` and `DEMO_PASSWORD` set).
+
 ## Logs
 
 All processes log JSON lines to stdout with pino (`level` 30 info, 40 warn, 50 error,
@@ -144,6 +160,7 @@ All processes log JSON lines to stdout with pino (`level` 30 info, 40 warn, 50 e
 | `db` | `Transaction failed, rolled back.` (error) | an unexpected error inside `withTransaction` (a 5xx `AppError`, a database error, a bug); the transaction was rolled back |
 | `db` | `Transaction failed, rolled back.` (**debug**) | an expected 4xx `AppError` ended the transaction (`SEATS_UNAVAILABLE`, `INVALID_CREDENTIALS`, ...). Not shown at pino's default `info` level. |
 | `db` | `Unexpected idle client error on the pool`, `Pooled client connection error` | a connection died; the process stays up |
+| `rate-limit` | `Rate limit exceeded` (warn, with `limiter`, `ip`, `retryAfterSeconds`) | one line per 429 `RATE_LIMITED`; `ip` is the client address (behind Caddy, from `X-Forwarded-For`) |
 | `admission-control` | `Admission gate rejected request: SERVICE_BUSY` (warn, with `count`, `limit`) | one line per 503 `SERVICE_BUSY` |
 | `redis` | `Redis operation failed; using fallback` (warn), `Redis connection error` (warn) | fail-open in action |
 | `auth` | `Refresh token reuse detected; revoked all of the user's tokens` (warn) | possible token theft |
@@ -198,7 +215,9 @@ are gitignored.
 **Webhook.** Dashboard (Test Mode) → Account & Settings → Webhooks → Add New Webhook:
 
 - URL: `https://<public host>/webhooks/razorpay`. The route is mounted at the API root; in
-  local dev the Vite proxy is not involved, so point it at the API port.
+  local dev the Vite proxy is not involved, so point it at the API port. In production
+  behind Caddy it is `https://<SITE_DOMAIN>/api/webhooks/razorpay` (Caddy strips `/api`
+  and passes the body through unchanged).
 - Secret: any long random string; the same value goes in `RAZORPAY_WEBHOOK_SECRET`.
 - Active events: `payment.captured` and `payment.failed`.
 
